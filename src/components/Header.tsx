@@ -39,13 +39,15 @@ export default function Header() {
   const path = usePathname() || '/';
   const router = useRouter();
   const active = activeKey(path);
-  const [open, setOpen] = useState<'settings' | 'account' | null>(null);
+  const [open, setOpen] = useState<'settings' | 'account' | 'menu' | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(null); };
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null); };
     document.addEventListener('click', h);
-    return () => document.removeEventListener('click', h);
+    document.addEventListener('keydown', k);
+    return () => { document.removeEventListener('click', h); document.removeEventListener('keydown', k); };
   }, []);
   useEffect(() => setOpen(null), [path]);
 
@@ -70,7 +72,7 @@ export default function Header() {
           <Logo size={44} className="shrink-0" />
           <span className="font-bold text-lg tracking-tight">{SITE}</span>
         </Link>
-        <nav className="nav order-3 sm:order-none w-full sm:w-auto flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-medium" aria-label="Ana menü">
+        <nav className="nav hidden sm:flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-medium" aria-label="Ana menü">
           {NAV.map(([h, l, k]) => (
             <Link key={k} href={h} className={`${k === active ? 'is-active' : ''} inline-flex items-center gap-1.5`} aria-current={k === active ? 'page' : undefined}>
               {l}
@@ -78,8 +80,8 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-3 relative" ref={wrap}>
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#1C1511] border border-[#2E231B] text-sm text-acct font-semibold" title="Art arda çalıştığın gün sayısı">
+        <div className="flex items-center gap-2 sm:gap-3 relative" ref={wrap}>
+          <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#1C1511] border border-[#2E231B] text-sm text-acct font-semibold" title="Art arda çalıştığın gün sayısı">
             <Raw html={I.flame()} /> {streak} gün seri
           </div>
           <button
@@ -101,9 +103,39 @@ export default function Header() {
               {(user.name.trim()[0] || 'A').toLocaleUpperCase('tr')}
             </button>
           ) : (
-            <Link href="/giris" className="h-11 px-4 rounded-full bg-chip border border-line3 text-ink text-sm font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh">
-              <Raw html={I.user(17)} /> Giriş yap
+            <Link href="/giris" aria-label="Giriş yap" className="h-11 w-11 sm:w-auto sm:px-4 justify-center rounded-full bg-chip border border-line3 text-ink text-sm font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh">
+              <Raw html={I.user(17)} /> <span className="hidden sm:inline">Giriş yap</span>
             </Link>
+          )}
+          {/* Mobilde menü bağlantıları hamburger düğmesinin altında */}
+          <button
+            type="button"
+            aria-label={open === 'menu' ? 'Menüyü kapat' : 'Menüyü aç'}
+            aria-expanded={open === 'menu'}
+            aria-controls="mobil-menu"
+            onClick={() => setOpen(open === 'menu' ? null : 'menu')}
+            className="sm:hidden relative w-11 h-11 rounded-full bg-chip border border-line3 text-ink flex items-center justify-center hover:border-lineh"
+          >
+            <Raw html={open === 'menu' ? I.x(18) : I.menu(20)} />
+            {open !== 'menu' && mistakes.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-bad border-2 border-head" aria-hidden="true" />}
+          </button>
+
+          {open === 'menu' && (
+            <div id="mobil-menu" className="sm:hidden absolute right-0 top-14 z-50 w-[calc(100vw-32px)] max-w-[360px] p-2 rounded-2xl bg-s4 border border-line3 shadow-2xl">
+              <nav aria-label="Ana menü" className="flex flex-col">
+                {NAV.map(([h, l, k]) => (
+                  <Link key={k} href={h} aria-current={k === active ? 'page' : undefined}
+                    className={`flex items-center justify-between gap-3 px-4 h-12 rounded-xl text-[16px] font-semibold ${k === active ? 'bg-s5 text-ink' : 'text-soft hover:text-ink hover:bg-s5'}`}>
+                    {l}
+                    {k === 'mistakes' && mistakes.length > 0 && <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-badbg border border-badln text-bad text-[11px] font-bold inline-flex items-center justify-center">{mistakes.length > 99 ? '99+' : mistakes.length}</span>}
+                  </Link>
+                ))}
+              </nav>
+              <div className="mt-1 px-4 h-12 border-t border-line flex items-center gap-2 text-sm text-acct font-semibold">
+                <Raw html={I.flame()} /> {streak} gün seri
+                {!user && <Link href="/giris" className="ml-auto text-soft hover:text-ink">Giriş yap</Link>}
+              </div>
+            </div>
           )}
 
           {open === 'settings' && (

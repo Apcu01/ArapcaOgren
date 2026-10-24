@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { Topic } from '@/lib/types';
-import { actsOf, normAr, normTr } from '@/lib/text';
+import { actsOf, isAr, normAr, searchKey } from '@/lib/text';
 import { Ar, useApp } from './AppProvider';
 import { I, Raw } from './icons';
 
@@ -24,10 +24,12 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
   const totalActs = topics.reduce((n, t) => n + actMap[t.id].length, 0);
 
   const list = useMemo(() => {
-    const qt = normTr(q.trim()), qa = normAr(q.trim());
+    const qt = searchKey(q), qa = isAr(q) ? normAr(q.trim()) : '';
     return topics.filter((t) => (level === 'Tümü' || t.level === level) &&
-      (!qt || normTr(t.name + ' ' + t.desc + ' ' + (t.tags || '')).includes(qt) || (qa && normAr(t.ar).includes(qa))));
+      (!q.trim() || (!!qt && searchKey(t.name + ' ' + t.desc + ' ' + (t.tags || '')).includes(qt)) || (!!qa && normAr(t.ar).includes(qa))));
   }, [topics, level, q]);
+
+  const toResults = () => document.getElementById('konular')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // Kaldığın yer kartı
   const cont = topics.find((x) => x.id === state.last) || topics.find((x) => topicStats(x.id, actMap[x.id]).pct < 100) || topics[0];
@@ -43,8 +45,14 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
           <label className="mt-2 max-w-[520px] flex items-center gap-3 px-[18px] h-[54px] rounded-[14px] bg-s2 border border-line2 text-faint focus-within:border-lineh">
             <Raw html={I.search()} />
             <span className="sr-only">Konu ara</span>
-            <input value={q} onChange={(e) => setQ(e.target.value)} type="search" autoComplete="off" placeholder="Konu ara: saatler, zamirler, sıfatlar" className="flex-1 min-w-0 bg-transparent border-0 outline-none text-ink font-medium text-base placeholder:text-faint" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); toResults(); } }} type="search" autoComplete="off" placeholder="Konu ara: saatler, zamirler, sıfatlar" className="flex-1 min-w-0 bg-transparent border-0 outline-none text-ink font-medium text-base placeholder:text-faint" />
           </label>
+          {/* Sonuçlar aşağıdaki listede; ekranın dışında kalabildiği için kaç konu bulunduğu burada da söylenir */}
+          <p className="m-0 -mt-1 text-sm text-mute2 empty:hidden" aria-live="polite">
+            {q.trim() && (list.length
+              ? <>{list.length} konu bulundu · <button type="button" onClick={toResults} className="text-acct font-semibold hover:text-ink underline underline-offset-4">Sonuçlara git</button></>
+              : <>&quot;{q.trim()}&quot; için konu bulunamadı.</>)}
+          </p>
         </div>
         {cont && cst && (
           <Link href={`/konu?id=${cont.id}`} className="flex-[1_1_360px] min-w-0 flex flex-col gap-[18px] p-7 rounded-[22px] bg-s4 border border-line3 text-ink hover:text-ink hover:border-lineh">
@@ -74,7 +82,7 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
         ))}
       </section>
 
-      <section className="flex flex-col gap-[22px]">
+      <section id="konular" className="scroll-mt-6 flex flex-col gap-[22px]">
         <div className="flex flex-wrap gap-4 items-end justify-between">
           <div className="flex flex-col gap-1.5">
             <h2 className="m-0 text-[28px] font-bold tracking-tight">Kategoriler</h2>

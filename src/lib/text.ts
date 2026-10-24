@@ -11,6 +11,9 @@ export const normAr = (s: unknown) => strip(s).replace(/[أإآٱ]/g, 'ا').repl
 export const audioKey = (s: unknown) => normAr(s).replace(/[؟،؛.!?,:;"'()]/g, '').replace(/\s+/g, ' ').trim().slice(0, 191);
 export const normTr = (s: unknown) =>
   String(s || '').toLocaleLowerCase('tr').replace(/[âà]/g, 'a').replace(/[îì]/g, 'i').replace(/[ûù]/g, 'u').replace(/[''ʿʾ-]/g, '');
+/** Arama anahtarı: Türkçe harfler sadeleşir (sıfat = sifat), boşluk ve tireler yok sayılır (harf-i cer = harficer) */
+export const searchKey = (s: unknown) =>
+  normTr(s).replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/[^a-z0-9]/g, '');
 const LATIN = /[A-Za-zÇĞİÖŞÜçğıöşüâîû]/;
 const AR_RUN = /[؀-ۿ][؀-ۿ\s]*[؀-ۿ؟]|[؀-ۿ]/g;
 

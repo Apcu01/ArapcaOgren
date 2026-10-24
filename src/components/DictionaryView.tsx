@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { Topic, Word } from '@/lib/types';
-import { isAr, normAr, normTr } from '@/lib/text';
+import { isAr, normAr, searchKey } from '@/lib/text';
 import { useApp } from './AppProvider';
 import { I, Raw } from './icons';
 
@@ -27,9 +27,9 @@ export default function DictionaryView({ topics, initialKonu }: { topics: Topic[
   }, [topics]);
 
   const list = useMemo(() => {
-    const s = q.trim(), qt = normTr(s), qa = normAr(s);
+    const s = q.trim(), qt = searchKey(s), qa = normAr(s);
     return words.filter((w) => (!konu || w.topics.some((t) => t.id === konu)) &&
-      (!s || normTr(w.tr + ' ' + (w.en || '') + ' ' + (w.tl || '')).includes(qt) || (isAr(s) && normAr(w.ar).includes(qa))));
+      (!s || (!!qt && searchKey(w.tr + ' ' + (w.en || '') + ' ' + (w.tl || '')).includes(qt)) || (isAr(s) && normAr(w.ar).includes(qa))));
   }, [words, q, konu]);
 
   return (

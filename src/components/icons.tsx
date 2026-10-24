@@ -12,6 +12,7 @@ export const I = {
   mic: (s?: number) => svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>', s || 18),
   check: (s?: number) => svg('<path d="m5 12 5 5L20 7"/>', s || 18, 2.4),
   x: (s?: number) => svg('<path d="M6 6l12 12M18 6 6 18"/>', s || 18, 2.4),
+  menu: (s?: number) => svg('<path d="M4 7h16M4 12h16M4 17h16"/>', s || 18),
   gear: (s?: number) => svg('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>', s || 20),
   bulb: (s?: number) => svg('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.8 1.5 1.7 1.5 2.5h5c0-.8.7-1.7 1.5-2.5A6 6 0 0 0 12 3z"/>', s || 18),
   alert: (s?: number) => svg('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>', s || 18),
