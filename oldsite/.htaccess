@@ -1,0 +1,14 @@
+# Apache / cPanel barındırma için uzantısız adresler
+Options -MultiViews
+RewriteEngine On
+
+# /konu.html → /konu ve /index.html → / (kalıcı yönlendirme, sorgu dizesi korunur)
+RewriteCond %{THE_REQUEST} \s/+(.*/)?index\.html[\s?] [NC]
+RewriteRule ^(.*/)?index\.html$ /%1 [R=301,L]
+RewriteCond %{THE_REQUEST} \s/+([^?\s]+)\.html[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# /konu → konu.html (dosya varsa)
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^(.+?)/?$ $1.html [L]
