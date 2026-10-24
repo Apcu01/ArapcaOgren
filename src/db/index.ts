@@ -8,9 +8,12 @@ const g = globalThis as unknown as { __arbPool?: mysql.Pool };
 
 function pool() {
   if (!g.__arbPool) {
-    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL tanımlı değil (.env.local dosyasına ekleyin).');
+    // Docker derlemesinde veritabanı adresi verilmez; havuz bağlantıyı ilk sorguda açtığı için
+    // derleme sırasında sahte bir adres yeterli
+    const building = process.env.NEXT_PHASE === 'phase-production-build';
+    if (!process.env.DATABASE_URL && !building) throw new Error('DATABASE_URL tanımlı değil (.env.local dosyasına ekleyin).');
     g.__arbPool = mysql.createPool({
-      uri: process.env.DATABASE_URL,
+      uri: process.env.DATABASE_URL || 'mysql://build@127.0.0.1:3306/build',
       connectionLimit: 8,
       timezone: 'Z',
       dateStrings: false,

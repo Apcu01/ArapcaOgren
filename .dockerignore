@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+.git
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+ses-ornekleri
+oldsite
+tests
+arblearn.zip
+.claude
