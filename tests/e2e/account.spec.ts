@@ -7,7 +7,7 @@ const password = 'e2e-Sifre-123';
 
 test('kayıt, ilerlemenin aktarılması, başka cihazdan giriş ve hesabın silinmesi', async ({ page, browser }) => {
   // Misafirken bir ders oku
-  await page.goto('/konu?id=belirlilik');
+  await page.goto('/konu/belirlilik');
   await page.getByRole('button', { name: 'Okudum, etkinliklere geç' }).click();
 
   // Hesap aç
@@ -27,7 +27,7 @@ test('kayıt, ilerlemenin aktarılması, başka cihazdan giriş ve hesabın sili
   await p2.getByRole('button', { name: 'Giriş yap' }).last().click();
   await expect(p2.getByRole('button', { name: 'Hesap menüsü' })).toBeVisible();
   await p2.goto('/ilerleme');
-  const card = p2.locator('a[href="/konu?id=belirlilik"]');
+  const card = p2.locator('a[href="/konu/belirlilik"]');
   await expect(card.getByText(/Konu okundu/)).toBeVisible();
   await other.close();
 

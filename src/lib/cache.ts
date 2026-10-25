@@ -1,4 +1,5 @@
 import 'server-only';
+import { revalidatePath } from 'next/cache';
 
 /* Sık okunan ve seyrek değişen veriler (dersler, ses eşlemesi, anlatım sesleri) için süreç içi önbellek.
    Uzak veritabanına her istekte gidilmez. Yönetim panelindeki değişiklikler invalidate ile anında yansır;
@@ -22,4 +23,26 @@ export function cached<T>(key: string, fn: () => Promise<T>, ttl = CACHE_TTL): P
 /** Verilen öneklerle başlayan kayıtları siler; önek verilmezse hepsini */
 export function invalidate(...prefixes: string[]) {
   for (const k of [...store.keys()]) if (!prefixes.length || prefixes.some((p) => k.startsWith(p))) store.delete(k);
+}
+
+/**
+ * Bellek önbelleğini temizler ve önceden hazırlanmış bütün sayfaların yeniden hazırlanmasını ister.
+ * Yönetim panelindeki değişikliklerden sonra çağrılır; ziyaretçiler bir sonraki istekte güncel sayfayı görür.
+ */
+export function refreshSite(...prefixes: string[]) {
+  // Kelime sayfaları dersleri de kullanır: her yenilemede onlar da tazelenir
+  invalidate(...prefixes, ...(prefixes.length ? ['words:'] : []));
+  try { revalidatePath('/', 'layout'); } catch { /* istek dışında çağrıldıysa (betik) yok say */ }
+}
+
+/**
+ * Derleme sırasında veritabanına ulaşılamazsa (ör. Docker derlemesinde adres verilmediyse) derlemeyi düşürmez, boş değer döner.
+ * Sayfalar ilk istekte veritabanından yeniden hazırlanır. Çalışma sırasındaki hatalar olduğu gibi iletilir.
+ */
+export async function buildSafe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+  if (process.env.NEXT_PHASE !== 'phase-production-build') return fn();
+  try { return await fn(); } catch (e) {
+    console.warn('Derleme sırasında veritabanına ulaşılamadı, sayfa ilk istekte hazırlanacak:', (e as Error).message);
+    return fallback;
+  }
 }

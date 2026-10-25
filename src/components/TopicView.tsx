@@ -22,7 +22,7 @@ export default function TopicView({ topic: t, prev, next, narr }: { topic: Topic
   const [kind, setKind] = useState('Tümü');
   const [playing, setPlaying] = useState<{ act: ActView; nonce: number } | null>(null);
 
-  useEffect(() => { setLast(t.id); track('view', { path: '/konu?id=' + t.id, topicId: t.id }); }, [t.id, setLast, track]);
+  useEffect(() => { setLast(t.id); track('view', { path: '/konu/' + t.id, topicId: t.id }); }, [t.id, setLast, track]);
   useEffect(() => { if (location.hash === '#etkinlikler') setTab('acts'); }, []);
 
   const tracks = useMemo(() => {
@@ -103,8 +103,8 @@ export default function TopicView({ topic: t, prev, next, narr }: { topic: Topic
               : <Activities t={t} list={list} kind={kind} setKind={setKind} nextId={nextAct?.id} onOpen={openAct} />}
           </div>
           <div className="flex flex-wrap justify-between gap-3 pt-4 border-t border-line">
-            {prev ? <Link href={`/konu?id=${prev.id}`} className="inline-flex items-center gap-2 text-mute hover:text-ink"><Raw html={I.back()} /> {prev.name}</Link> : <span />}
-            {next && <Link href={`/konu?id=${next.id}`} className="inline-flex items-center gap-2 text-acct">Sonraki ders: {next.name} <Raw html={I.arrow(16)} /></Link>}
+            {prev ? <Link href={`/konu/${prev.id}`} className="inline-flex items-center gap-2 text-mute hover:text-ink"><Raw html={I.back()} /> {prev.name}</Link> : <span />}
+            {next && <Link href={`/konu/${next.id}`} className="inline-flex items-center gap-2 text-acct">Sonraki ders: {next.name} <Raw html={I.arrow(16)} /></Link>}
           </div>
         </section>
         <Words t={t} />

@@ -248,7 +248,7 @@ export default function TopicEditor({ initial, isNew, audio: audio0, qstats, nar
           <p className="m-0 text-sm text-faint">{isNew ? 'Kaydedince ders listesine eklenir.' : <>Kısa ad: <span className="font-mono">{d.id}</span> · {d.published ? 'Yayında' : 'Taslak'}{dirty ? ' · kaydedilmemiş değişiklikler var' : ''}</>}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {!isNew && <Link href={`/konu?id=${initial.id}`} target="_blank" className="h-11 px-4 rounded-xl border border-line3 bg-s2 text-soft font-semibold text-sm inline-flex items-center hover:text-ink hover:border-lineh">Sitede gör</Link>}
+          {!isNew && <Link href={`/admin/dersler/${initial.id}/onizleme`} target="_blank" className="h-11 px-4 rounded-xl border border-line3 bg-s2 text-soft font-semibold text-sm inline-flex items-center hover:text-ink hover:border-lineh">Sitede gör</Link>}
           <button type="button" onClick={save} disabled={busy || (!dirty && !isNew)} className="h-11 px-6 rounded-xl bg-acc text-onacc font-bold text-[15px] disabled:opacity-50">{busy ? 'Kaydediliyor' : 'Kaydet'}</button>
         </div>
       </div>
@@ -292,7 +292,7 @@ function MetaTab({ d, up, isNew }: TabProps & { isNew: boolean }) {
     <div className={box}>
       <div className="grid gap-4 md:grid-cols-2">
         <F label="Ders adı"><TI value={d.name} onChange={(v) => up((x) => { x.name = v; })} placeholder="Örn. Renkler" /></F>
-        <F label="Kısa ad (adres)" hint={isNew ? 'Adres: /konu?id=kisa-ad. Yalnızca küçük harf, rakam ve tire. Sonradan değiştirilemez.' : 'Kısa ad değiştirilemez (kullanıcı ilerlemesi buna bağlı).'}>
+        <F label="Kısa ad (adres)" hint={isNew ? 'Adres: /konu/kisa-ad. Yalnızca küçük harf, rakam ve tire. Sonradan değiştirilemez.' : 'Kısa ad değiştirilemez (kullanıcı ilerlemesi buna bağlı).'}>
           <input value={d.id} disabled={!isNew} onChange={(e) => up((x) => { x.id = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''); })} className={inCls + ' font-mono text-sm disabled:opacity-60'} placeholder="renkler" />
         </F>
         <F label="Arapça adı"><TI ar value={d.ar} onChange={(v) => up((x) => { x.ar = v; })} placeholder="الْأَلْوَانُ" /></F>

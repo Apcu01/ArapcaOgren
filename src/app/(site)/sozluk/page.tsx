@@ -1,9 +1,11 @@
 import DictionaryView from '@/components/DictionaryView';
 import { getTopics } from '@/lib/topics';
+import { getWordSlugMap } from '@/lib/words';
 
 export const metadata = { title: 'Sözlük', description: 'Derslerde geçen bütün Arapça kelimeler: Türkçe ve İngilizce karşılıkları, okunuşları ve sesli telaffuzları.', alternates: { canonical: '/sozluk' } };
 
-export default async function DictionaryPage({ searchParams }: { searchParams: Promise<{ konu?: string }> }) {
-  const [{ konu }, topics] = await Promise.all([searchParams, getTopics()]);
-  return <DictionaryView topics={topics} initialKonu={konu || ''} />;
+// Önceden hazırlanır; ?konu= süzgeci tarayıcıda okunur
+export default async function DictionaryPage() {
+  const [topics, slugs] = await Promise.all([getTopics(), getWordSlugMap()]);
+  return <DictionaryView topics={topics} slugs={slugs} />;
 }

@@ -5,6 +5,7 @@ import { getSessionUser } from '@/lib/auth';
 import { aiCallsToday, aiLookup, cachedLookup, lexiconLookup, LOOKUP_DAILY_LIMIT } from '@/lib/lookup';
 import { limitCheck, recordAttempt } from '@/lib/ratelimit';
 import { LOOKUP_RE } from '@/lib/translit';
+import { throttle } from '@/lib/throttle';
 
 const Body = z.object({
   q: z.string().trim().min(1, 'Bir kelime yaz.').max(40, 'En fazla 40 karakter yazabilirsin.').regex(LOOKUP_RE, 'Yalnızca harf kullan (en fazla 40 karakter).'),
@@ -15,6 +16,8 @@ const Body = z.object({
 // Ders kelimeleri (sayfada), yerleşik sözlük ve önbellek herkese açık ve sınırsızdır.
 // Yalnızca maliyet doğuran yapay zekâ isteği hesap ister ve IP başına saatlik sınıra tabidir.
 export async function POST(req: Request) {
+  const limited = throttle('lookup', req);
+  if (limited) return limited;
   const p = await parse(req, Body);
   if ('res' in p) return p.res;
   const { q, ai } = p.data;

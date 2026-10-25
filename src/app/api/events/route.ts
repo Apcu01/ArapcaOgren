@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db, schema } from '@/db';
 import { getSessionUser } from '@/lib/auth';
 import { ok, parse } from '@/lib/api';
+import { throttle } from '@/lib/throttle';
 
 const Body = z.object({
   type: z.enum(['view', 'lesson', 'activity']),
@@ -16,6 +17,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const limited = throttle('events', req);
+  if (limited) return limited;
   const p = await parse(req, Body);
   if ('res' in p) return p.res;
   const user = await getSessionUser();

@@ -6,6 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { Pair, Question, QType, Word } from '@/lib/types';
 import { esc, isAr, shuffle, SPEAK_MAX, TYPE, type ActView } from '@/lib/text';
 import { pronScore, pronVerdict, type PronVerdict } from '@/lib/pron';
+import { recognizer, type SR } from '@/lib/speech';
 import { clockSVG, distractors, fmt, hmKey, nextH, randTime, ring, timeAr, timeTr, timeWhy, type HM } from '@/lib/clock';
 import { hash53 } from '@/lib/qkey';
 
@@ -544,18 +545,6 @@ function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview, tall
 }
 
 /* ================= Telaffuz ================= */
-type SR = {
-  lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
-  start: () => void; stop: () => void; abort: () => void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: ((e: { error: string }) => void) | null;
-  onend: (() => void) | null;
-};
-const recognizer = (): (new () => SR) | null => {
-  if (typeof window === 'undefined') return null;
-  const w = window as unknown as { SpeechRecognition?: new () => SR; webkitSpeechRecognition?: new () => SR };
-  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
-};
 const canRecord = () => typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
 const SPEAK_TRIES = 3;
 

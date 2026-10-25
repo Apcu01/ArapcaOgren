@@ -2,7 +2,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppProvider } from '@/components/AppProvider';
-import { DEFAULT_SETTINGS } from '@/lib/settings';
 import Player from '@/components/Player';
 import { actsOf } from '@/lib/text';
 import type { Activity, Word } from '@/lib/types';
@@ -18,7 +17,7 @@ function setup(a: Activity) {
   const [view] = actsOf({ acts: [a], words });
   const onClose = vi.fn();
   render(
-    <AppProvider user={null} initial={null} initialSettings={DEFAULT_SETTINGS} initialMistakes={null} audios={{}}>
+    <AppProvider audios={{}}>
       <Player topic={topic} act={view} list={[view]} onClose={onClose} onSwitch={vi.fn()} />
     </AppProvider>
   );

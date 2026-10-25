@@ -4,12 +4,17 @@ FROM node:24.22.1-bookworm-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Bağımlılıklar ve derleme (gizli anahtarlar burada gerekmez; yalnızca çalışırken verilir)
+# Bağımlılıklar ve derleme.
+# Sayfalar derlemede önceden hazırlanır: DATABASE_URL ve SITE_URL derleme argümanı olarak verilirse içerik derlemede hazır olur
+# (Dokploy: Build Args). Verilmezse derleme yine çalışır, sayfalar sunucu açıldıktan birkaç saniye sonra veritabanından hazırlanır.
+# Bu değerler yalnızca derleme aşamasında kullanılır, son imaja girmez. OpenRouter anahtarı derlemede gerekmez.
 FROM base AS build
+ARG DATABASE_URL
+ARG SITE_URL
 COPY package.json package-lock.json .npmrc ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
-RUN npm run build
+RUN DATABASE_URL="$DATABASE_URL" SITE_URL="$SITE_URL" npm run build
 
 # Çalışma imajı
 FROM base AS run

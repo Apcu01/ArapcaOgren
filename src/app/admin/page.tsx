@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Bar, Card, Stat, ago, pct, scoreColor } from '@/components/admin/ui';
 import DailyChart from '@/components/admin/DailyChart';
 import LivePresence from '@/components/admin/LivePresence';
+import RefreshSiteButton from '@/components/admin/RefreshSiteButton';
 import { snapshot } from '@/lib/presence';
 import { getHardestQuestions, getStats } from '@/lib/stats';
 
@@ -18,7 +19,10 @@ export default async function AdminHome() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <h1 className="m-0 text-[32px] sm:text-[40px] font-bold tracking-tight leading-tight">Genel bakış</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="m-0 text-[32px] sm:text-[40px] font-bold tracking-tight leading-tight">Genel bakış</h1>
+          <RefreshSiteButton />
+        </div>
         <p className="m-0 text-mute">Ziyaret ve etkinlik sayıları misafirleri de kapsar; ilerleme sayıları yalnızca hesabı olan kullanıcılarındır.</p>
       </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Topic, Word } from '@/lib/types';
 import { isAr, normAr, searchKey } from '@/lib/text';
 import { rootOf, spaced, type Root } from '@/lib/roots';
@@ -10,10 +10,13 @@ import { I, Raw } from './icons';
 
 type Row = Word & { topics: { id: string; name: string }[]; root: Root | null };
 
-export default function DictionaryView({ topics, initialKonu }: { topics: Topic[]; initialKonu: string }) {
+/** slugs: Arapça yazım -> kelime sayfası adresi */
+export default function DictionaryView({ topics, slugs = {} }: { topics: Topic[]; slugs?: Record<string, string> }) {
   const { tx } = useApp();
   const [q, setQ] = useState('');
-  const [konu, setKonu] = useState(initialKonu);
+  const [konu, setKonu] = useState('');
+  // Ders sayfasından gelen ?konu= süzgeci (sayfa önceden hazırlandığı için tarayıcıda okunur)
+  useEffect(() => { const k = new URLSearchParams(location.search).get('konu'); if (k) setKonu(k); }, []);
   const [open, setOpen] = useState<string | null>(null);
 
   // Tüm derslerin kelimelerini tek listede topla
@@ -74,7 +77,7 @@ export default function DictionaryView({ topics, initialKonu }: { topics: Topic[
               <Raw html={tx.ar(w.ar, 'text-[26px] text-ink')} />
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[16px] font-semibold text-ink">{w.tr}</span>
+              {slugs[w.ar] ? <Link href={`/kelime/${slugs[w.ar]}`} prefetch={false} className="text-[16px] font-semibold text-ink hover:text-acct">{w.tr}</Link> : <span className="text-[16px] font-semibold text-ink">{w.tr}</span>}
               <span className="text-sm text-faint"><span className="tl">{w.tl || ''}</span>{w.en && <span className="en">{w.tl ? ' · ' : ''}EN: {w.en}</span>}</span>
             </div>
             <div className="flex flex-wrap gap-1.5 items-center">
@@ -84,7 +87,7 @@ export default function DictionaryView({ topics, initialKonu }: { topics: Topic[
                   Kök <span lang="ar" dir="rtl" className="font-ar text-[13px]">{spaced(w.root.letters)}</span>
                 </button>
               )}
-              {w.topics.map((t) => <Link key={t.id} href={`/konu?id=${t.id}`} className="px-2.5 py-1 rounded-full bg-s5 border border-line2 text-xs font-semibold text-soft hover:text-ink">{t.name}</Link>)}
+              {w.topics.map((t) => <Link key={t.id} href={`/konu/${t.id}`} className="px-2.5 py-1 rounded-full bg-s5 border border-line2 text-xs font-semibold text-soft hover:text-ink">{t.name}</Link>)}
             </div>
           </div>
           {isOpen && w.root && <RootPanel root={w.root} family={families.get(w.root.letters) || []} current={id} />}

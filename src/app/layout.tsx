@@ -1,14 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { cookies } from 'next/headers';
 import './globals.css';
 import { AppProvider } from '@/components/AppProvider';
-import { parseSettings, SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
 import NavProgress from '@/components/NavProgress';
 import ServiceWorker from '@/components/ServiceWorker';
 import { getAudioMap } from '@/lib/audio';
-import { getSessionUser } from '@/lib/auth';
-import { getMistakes } from '@/lib/mistakes';
-import { getUserProgress } from '@/lib/progress';
+import { SETTINGS_COOKIE, THEME_COLOR } from '@/lib/settings';
 import { SITE_DESC, SITE_NAME, siteOrigin } from '@/lib/site';
 
 export const metadata: Metadata = {
@@ -30,37 +26,32 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false }
 };
 
-// Tarayıcı çubuğunun rengi seçili temaya uyar; sistem temasında cihazın tercihine göre seçilir
-export async function generateViewport(): Promise<Viewport> {
-  const { theme } = await readSettings();
-  if (theme === 'system') {
-    return {
-      colorScheme: 'dark light',
-      themeColor: [{ media: '(prefers-color-scheme: dark)', color: THEME_COLOR.dark }, { media: '(prefers-color-scheme: light)', color: THEME_COLOR.light }]
-    };
-  }
-  return { themeColor: THEME_COLOR[theme], colorScheme: theme };
-}
+// Tarayıcı çubuğu rengi cihazın temasına göre; kullanıcı ayarı seçtiyse sayfa açılınca istemci günceller
+export const viewport: Viewport = {
+  colorScheme: 'dark light',
+  themeColor: [{ media: '(prefers-color-scheme: dark)', color: THEME_COLOR.dark }, { media: '(prefers-color-scheme: light)', color: THEME_COLOR.light }]
+};
 
-async function readSettings(): Promise<Settings> {
-  return parseSettings((await cookies()).get(SETTINGS_COOKIE)?.value);
-}
+// Sayfalar önceden hazırlanır ve en geç saatte bir yenilenir; yönetim panelindeki değişiklikler hemen yenilenir
+export const revalidate = 3600;
+
+// Görünüm ayarlarını (tema, yazı boyutu, okunuş, İngilizce) sayfa çizilmeden önce çerezden uygular: renk ya da düzen sıçraması olmaz
+const SETTINGS_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${SETTINGS_COOKIE}=([^;]*)/);if(!m)return;var s=JSON.parse(decodeURIComponent(m[1]));var b=document.body;if(['dark','light','system'].indexOf(s.theme)>=0)document.documentElement.setAttribute('data-theme',s.theme);if(s.tl===false)b.classList.add('no-tl');if(s.en===false)b.classList.add('no-en');if(s.arSize===1||s.arSize===2)b.classList.add('ar-'+s.arSize)}catch(e){}})()`;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [user, settings, audios] = await Promise.all([getSessionUser(), readSettings(), getAudioMap()]);
-  const [initial, mistakes] = user ? await Promise.all([getUserProgress(user.id), getMistakes(user.id)]) : [null, null];
-  const bodyCls = ['bg-bg text-ink font-sans min-h-screen flex flex-col', ...settingsClasses(settings)].join(' ');
+  const audios = await getAudioMap();
   return (
-    <html lang="tr" data-theme={settings.theme}>
+    <html lang="tr" data-theme="dark" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
-      <body className={bodyCls}>
+      <body className="bg-bg text-ink font-sans min-h-screen flex flex-col" suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: SETTINGS_SCRIPT }} />
         <a href="#app" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-acc focus:text-onacc">İçeriğe geç</a>
-        <AppProvider key={user?.id ?? 'guest'} user={user} initial={initial} initialSettings={settings} initialMistakes={mistakes} audios={audios}>
+        <AppProvider audios={audios}>
           {children}
         </AppProvider>
         <NavProgress />

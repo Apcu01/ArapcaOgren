@@ -55,7 +55,7 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
           </p>
         </div>
         {cont && cst && (
-          <Link href={`/konu?id=${cont.id}`} className="flex-[1_1_360px] min-w-0 flex flex-col gap-[18px] p-7 rounded-[22px] bg-s4 border border-line3 text-ink hover:text-ink hover:border-lineh">
+          <Link href={`/konu/${cont.id}`} className="flex-[1_1_360px] min-w-0 flex flex-col gap-[18px] p-7 rounded-[22px] bg-s4 border border-line3 text-ink hover:text-ink hover:border-lineh">
             <div className="flex justify-between items-start gap-3">
               <div className="flex flex-col gap-1.5">
                 <span className="text-[13px] font-semibold text-lab tracking-[.08em] uppercase">{state.last ? 'Kaldığın yer' : 'Buradan başla'}</span>
@@ -101,7 +101,7 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
           {list.map((t) => {
             const st = topicStats(t.id, actMap[t.id]);
             return (
-              <Link key={t.id} className="cat flex flex-col gap-5 p-6 rounded-[18px] bg-s3 border border-line text-ink hover:text-ink" href={`/konu?id=${t.id}`}>
+              <Link key={t.id} className="cat flex flex-col gap-5 p-6 rounded-[18px] bg-s3 border border-line text-ink hover:text-ink" href={`/konu/${t.id}`}>
                 <div className="flex justify-between items-start gap-3">
                   <span className="w-14 h-14 rounded-[14px] bg-chip border border-chipln flex items-center justify-center font-ar text-[30px] text-acct" aria-hidden="true">{t.glyph}</span>
                   <div className="flex flex-col items-end gap-1.5">

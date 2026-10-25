@@ -3,11 +3,14 @@ import { z } from 'zod';
 import { db } from '@/db';
 import { ok, parse } from '@/lib/api';
 import { METRICS } from '@/lib/metrics';
+import { throttle } from '@/lib/throttle';
 
 // İstemci sayaçları biriktirip toplu gönderir; tek istekte bir sayaç için en fazla 500 (kötüye kullanıma karşı)
 const Body = z.object({ counts: z.partialRecord(z.enum(METRICS), z.number().int().min(1).max(500)) });
 
 export async function POST(req: Request) {
+  const limited = throttle('metrics', req);
+  if (limited) return limited;
   const p = await parse(req, Body);
   if ('res' in p) return p.res;
   const rows = Object.entries(p.data.counts).map(([metric, n]) => sql`(DATE_FORMAT(CURDATE(), '%Y-%m-%d'), ${metric}, ${n})`);

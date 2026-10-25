@@ -6,8 +6,12 @@ import { expect, test, type Page } from '@playwright/test';
 async function finishQuiz(page: Page) {
   const player = page.locator('#player');
   for (let i = 0; i < 40; i++) {
-    if (await player.getByText('Bitti', { exact: true }).isVisible()) return;
-    await player.locator('.opt[data-v]').first().click();
+    // Sıradaki soru ya da sonuç ekranı çizilene kadar bekle
+    const done = player.getByRole('button', { name: 'Etkinliklere dön' });
+    const opt = player.locator('.opt[data-v]').first();
+    await expect(done.or(opt)).toBeVisible();
+    if (await done.isVisible()) return;
+    await opt.click();
     await player.locator('[data-next]').click();
   }
   throw new Error('Etkinlik bitmedi');
@@ -17,12 +21,12 @@ test('ana sayfada konu araması Türkçe karakter olmadan da çalışır', async
   await page.goto('/');
   await page.getByPlaceholder('Konu ara: saatler, zamirler, sıfatlar').fill('sifat');
   await expect(page.getByText(/\d+ konu bulundu/)).toBeVisible();
-  await expect(page.locator('#konular a[href="/konu?id=sifatlar"]')).toBeVisible();
-  await expect(page.locator('#konular a[href="/konu?id=saatler"]')).toHaveCount(0);
+  await expect(page.locator('#konular a[href="/konu/sifatlar"]')).toBeVisible();
+  await expect(page.locator('#konular a[href="/konu/saatler"]')).toHaveCount(0);
 });
 
 test('ders okunur, etkinlik çözülür ve ilerleme sayfasına yansır', async ({ page }) => {
-  await page.goto('/konu?id=renkler');
+  await page.goto('/konu/renkler');
   // Sayfa etkileşime hazır olana kadar (React yüklenene kadar) dokunuşu tekrarla
   await expect(async () => {
     await page.getByRole('button', { name: /Okudum, etkinliklere geç|^Etkinliklere geç/ }).first().click();
@@ -33,7 +37,7 @@ test('ders okunur, etkinlik çözülür ve ilerleme sayfasına yansır', async (
   await page.getByRole('button', { name: 'Etkinliklere dön' }).click();
 
   await page.goto('/ilerleme');
-  const card = page.locator('a[href="/konu?id=renkler"]').locator('xpath=ancestor::div[contains(@class,"rounded-[18px]")][1]');
+  const card = page.locator('a[href="/konu/renkler"]').locator('xpath=ancestor::div[contains(@class,"rounded-[18px]")][1]');
   await expect(card.getByText('Konu okundu')).toBeVisible();
   await expect(card.getByText(/Çoktan seçmeli · %\d+/)).toBeVisible();
   // Çalışma takvimi: bugün iki çalışma (ders + etkinlik)

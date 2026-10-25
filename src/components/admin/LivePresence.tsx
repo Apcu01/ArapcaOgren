@@ -24,11 +24,12 @@ export default function LivePresence({ initial }: { initial: PresenceSnapshot })
 }
 
 const PAGES: Record<string, string> = { '/': 'Ana sayfa', '/sozluk': 'Sözlük', '/kelime-bul': 'Kelime bul', '/alfabe': 'Alfabe', '/ilerleme': 'İlerlemem', '/hatalarim': 'Hatalarım', '/giris': 'Giriş', '/kayit': 'Kayıt', '/hesap': 'Hesabım' };
-/** Sayfa adresini okunur ada çevirir: /konu?id=renkler -> Ders: renkler */
+/** Sayfa adresini okunur ada çevirir: /konu/renkler -> Ders: renkler, /kelime/ketebe -> Kelime: ketebe */
 function label(p: string) {
   const [path, query = ''] = p.split('?');
   const params = new URLSearchParams(query);
-  if (path === '/konu') return 'Ders: ' + (params.get('id') || '');
+  if (path.startsWith('/konu/')) return 'Ders: ' + path.slice(6);
+  if (path.startsWith('/kelime/')) return 'Kelime: ' + decodeURIComponent(path.slice(8));
   if (path === '/kelime-bul' && params.get('q')) return 'Kelime bul: ' + params.get('q');
   return PAGES[path] || decodeURIComponent(path);
 }

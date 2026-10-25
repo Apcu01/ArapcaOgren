@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { ActRec, ProgressState, Question, SessionUser } from '@/lib/types';
 import { mistakeKey, type MistakeItem } from '@/lib/qkey';
@@ -8,17 +8,26 @@ import { audioKey, dayKey, esc, makeText, streakOf, type ActView, type TextFns }
 import { I } from './icons';
 
 import type { Metric } from '@/lib/metrics';
-import { SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
+import { DEFAULT_SETTINGS, parseSettings, SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
 export type { Settings };
 const LS_KEY = 'arblearn:v1';
 const ANON_KEY = 'arblearn:anon';
 const MISTAKES_KEY = 'arblearn:mistakes';
 const MAX_LOCAL_MISTAKES = 300;
+// Oturum gelene kadar başlıkta hesap düğmesi yerine bir an 'Giriş yap' görünmesin diye son üyenin adı
+const HINT_KEY = 'arblearn:user-hint';
+type UserHint = { name: string };
 
 const empty = (): ProgressState => ({ progress: {}, last: null, days: [], counts: {} });
 
 type Ctx = {
   user: SessionUser | null;
+  /** Oturum henüz sunucudan gelmediyse 'loading' */
+  session: 'loading' | 'ready';
+  /** Oturum gelirken gösterilecek son üye bilgisi (tarayıcıda saklanır) */
+  hint: UserHint | null;
+  /** Giriş, çıkış ve hesap değişikliklerinden sonra oturumu ve ilerlemeyi yeniden yükler */
+  refreshSession: () => Promise<void>;
   settings: Settings;
   setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void;
   tx: TextFns;
@@ -81,34 +90,56 @@ function post(url: string, body: unknown) {
     .catch(() => null);
 }
 
-export function AppProvider({ user, initial, initialSettings, initialMistakes, audios, children }: {
-  user: SessionUser | null;
-  initial: ProgressState | null;
-  initialSettings: Settings;
-  initialMistakes: MistakeItem[] | null;
+/* Sayfalar önceden hazırlanır (statik): oturum, ilerleme ve ayarlar sunucuda değil burada, tarayıcıda okunur.
+   Ayarlar sayfa çizilmeden önce çerezden uygulanır; oturum /api/me ile gelir. */
+export function AppProvider({ audios, children }: {
   /** Yüklenmiş ses kayıtları: harekesiz metin anahtarı -> kayıt numarası */
   audios: Record<string, number>;
   children: React.ReactNode;
 }) {
-  const [settings, setSettings] = useState<Settings>(initialSettings);
-  const [state, setState] = useState<ProgressState>(initial ?? empty());
-  const [ready, setReady] = useState(!!user);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [session, setSession] = useState<'loading' | 'ready'>('loading');
+  const [hint, setHint] = useState<UserHint | null>(null);
+  const [state, setState] = useState<ProgressState>(empty());
+  const [ready, setReady] = useState(false);
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Misafir: ilerleme localStorage'da
-  useEffect(() => {
-    if (user) return;
-    setState(readLocal());
-    setReady(true);
-  }, [user]);
+  // Ayarlar: ekrana çizilmeden önce çerezden (sunucu varsayılan ayarlarla çizer)
+  useLayoutEffect(() => {
+    setSettings(parseSettings(document.cookie.match(new RegExp('(?:^|; )' + SETTINGS_COOKIE + '=([^;]*)'))?.[1]));
+    setSettingsReady(true);
+    try { setHint(JSON.parse(localStorage.getItem(HINT_KEY) || 'null')); } catch { /* yok */ }
+  }, []);
 
   /* ---------- Hatalarım ---------- */
-  const [mistakes, setMistakes] = useState<MistakeItem[]>(initialMistakes ?? []);
-  useEffect(() => {
-    if (user) return;
-    try { const l = JSON.parse(localStorage.getItem(MISTAKES_KEY) || '[]'); if (Array.isArray(l)) setMistakes(l); } catch { /* yok */ }
-  }, [user]);
+  const [mistakes, setMistakes] = useState<MistakeItem[]>([]);
+
+  /* ---------- Oturum: üyeyse ilerleme ve hatalar sunucudan, misafirse tarayıcıdan ---------- */
+  const refreshSession = useCallback(async () => {
+    const r = await fetch('/api/me', { cache: 'no-store' }).catch(() => null);
+    const j = r?.ok ? ((await r.json()) as { user: SessionUser | null; progress?: ProgressState; mistakes?: MistakeItem[] }) : null;
+    if (j?.user) {
+      setUser(j.user);
+      setState(j.progress ?? empty());
+      setMistakes(j.mistakes ?? []);
+      const h = { name: j.user.name };
+      setHint(h);
+      try { localStorage.setItem(HINT_KEY, JSON.stringify(h)); } catch { /* yok */ }
+    } else {
+      setUser(null);
+      setState(readLocal());
+      try { const l = JSON.parse(localStorage.getItem(MISTAKES_KEY) || '[]'); setMistakes(Array.isArray(l) ? l : []); } catch { setMistakes([]); }
+      setHint(null);
+      try { localStorage.removeItem(HINT_KEY); } catch { /* yok */ }
+    }
+    setReady(true);
+    setSession('ready');
+  }, []);
+  useEffect(() => { void refreshSession(); }, [refreshSession]);
+
   const saveLocalMistakes = (list: MistakeItem[]) => { try { localStorage.setItem(MISTAKES_KEY, JSON.stringify(list)); } catch { /* yok */ } };
   const mistakesRef = useRef(mistakes);
   mistakesRef.current = mistakes;
@@ -196,7 +227,7 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
     return { done, total: acts.length, lesson: !!p.lesson, pct: Math.round((steps / total) * 100), started: steps > 0 || Object.keys(p.acts).length > 0 };
   }, [state]);
 
-  /* ---------- Ayarlar (çerezde: sunucu da doğru biçimde çizer) ---------- */
+  /* ---------- Ayarlar (çerezde; ilk çizimde kök düzendeki betik uygular) ---------- */
   const setSetting = useCallback(<K extends keyof Settings>(k: K, v: Settings[K]) => {
     setSettings((prev) => {
       const next = { ...prev, [k]: v };
@@ -205,17 +236,18 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
     });
   }, []);
   useEffect(() => {
+    if (!settingsReady) return; // ilk çizimde çerezi uygulayan betiğin eklediği sınıflara dokunma
     const on = settingsClasses(settings);
     for (const c of ['no-tl', 'no-en', 'ar-1', 'ar-2']) document.body.classList.toggle(c, on.includes(c));
-  }, [settings]);
+  }, [settings, settingsReady]);
   // Tema: html etiketindeki data-theme ve tarayıcı çubuğu rengi
   useEffect(() => {
     const root = document.documentElement;
-    if (root.dataset.theme === settings.theme) return;
+    if (!settingsReady || root.dataset.theme === settings.theme) return;
     root.dataset.theme = settings.theme;
     const light = settings.theme === 'light' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
     document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => { m.content = light ? THEME_COLOR.light : THEME_COLOR.dark; });
-  }, [settings.theme]);
+  }, [settings.theme, settingsReady]);
   const tx = useMemo(() => makeText(settings.harakat), [settings.harakat]);
 
   /* ---------- Bildirim ---------- */
@@ -321,7 +353,7 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
   }, [pathname]);
 
   const value: Ctx = {
-    user, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
+    user, session, hint, refreshSession, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
     streak: streakOf(state.days), reset, speak, canSpeak, toast, track, metric,
     mistakes, addMistake, resolveMistake, removeMistake, clearMistakes
   };

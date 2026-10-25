@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { getSessionUser } from '@/lib/auth';
 import { ok, parse } from '@/lib/api';
 import { touch } from '@/lib/presence';
+import { throttle } from '@/lib/throttle';
 
 // Açık sekmenin "buradayım" sinyali (dakikada bir); yalnızca bellekte tutulur
 const Body = z.object({
@@ -10,6 +11,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const limited = throttle('presence', req);
+  if (limited) return limited;
   const p = await parse(req, Body);
   if ('res' in p) return p.res;
   const user = await getSessionUser();

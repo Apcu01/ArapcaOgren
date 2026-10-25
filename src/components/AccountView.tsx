@@ -21,7 +21,7 @@ function Note({ m }: { m: Msg }) {
 }
 
 export default function AccountView({ createdAt, hasPassword, google }: { createdAt: string; hasPassword: boolean; google: boolean }) {
-  const { user, streak, state } = useApp();
+  const { user, streak, state, refreshSession } = useApp();
   const router = useRouter();
   const [m1, setM1] = useState<Msg>(null);
   const [m2, setM2] = useState<Msg>(null);
@@ -35,7 +35,7 @@ export default function AccountView({ createdAt, hasPassword, google }: { create
     const name = String(new FormData(e.currentTarget).get('name'));
     const r = await send('PATCH', { name });
     setM1(r.ok ? { ok: true, text: 'Adın güncellendi.' } : { ok: false, text: r.error || 'Kaydedilemedi.' });
-    if (r.ok) router.refresh();
+    if (r.ok) { await refreshSession(); router.refresh(); }
   }
   async function savePass(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,12 +51,14 @@ export default function AccountView({ createdAt, hasPassword, google }: { create
     const fd = new FormData(e.currentTarget);
     const r = await send('DELETE', hasPassword ? { password: String(fd.get('pw')) } : { confirm: String(fd.get('pw')).trim().toLocaleUpperCase('tr') });
     if (!r.ok) { setM3({ ok: false, text: r.error || 'Silinemedi.' }); return; }
+    await refreshSession();
     router.push('/');
     router.refresh();
   }
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     clearPageCache();
+    await refreshSession();
     router.push('/');
     router.refresh();
   }

@@ -56,7 +56,7 @@ export default function ProgressView({ topics }: { topics: Topic[] }) {
           return (
             <div key={t.id} className="p-5 sm:p-6 rounded-[18px] bg-s3 border border-line flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-4 justify-between">
-                <Link href={`/konu?id=${t.id}`} className="flex items-center gap-4 text-ink hover:text-ink min-w-0">
+                <Link href={`/konu/${t.id}`} className="flex items-center gap-4 text-ink hover:text-ink min-w-0">
                   <span className="w-12 h-12 shrink-0 rounded-xl bg-chip border border-chipln flex items-center justify-center font-ar text-[26px] text-acct" aria-hidden="true">{t.glyph}</span>
                   <span className="flex flex-col min-w-0"><span className="font-bold text-lg">{t.n}. {t.name}</span><span className="text-sm text-mute2">{st.lesson ? 'Konu okundu' : 'Konu okunmadı'} · {st.done}/{st.total} etkinlik</span></span>
                 </Link>

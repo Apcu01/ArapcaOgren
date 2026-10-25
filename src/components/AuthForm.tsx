@@ -1,5 +1,6 @@
 'use client';
 
+import { useApp } from './AppProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -55,6 +56,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 
 export default function AuthForm({ mode, google = false, error }: { mode: 'login' | 'register'; google?: boolean; error?: string }) {
   const router = useRouter();
+  const { refreshSession } = useApp();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(error ? GOOGLE_ERRORS[error] || '' : '');
   const googleHref = () => {
@@ -74,6 +76,7 @@ export default function AuthForm({ mode, google = false, error }: { mode: 'login
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setErr(j.error || 'Bir hata oluştu, tekrar dene.'); setBusy(false); return; }
       await mergeGuestProgress();
+      await refreshSession();
       const next = new URLSearchParams(location.search).get('next');
       router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
       router.refresh();

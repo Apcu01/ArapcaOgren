@@ -60,7 +60,7 @@ export default function TopicsTable({ topics, usage }: { topics: Row[]; usage: R
                     </td>
                     <td>
                       <span className="flex justify-end gap-2">
-                        <Link href={`/konu?id=${t.id}`} target="_blank" className="h-9 px-3 rounded-lg border border-line3 bg-s2 text-soft text-sm font-semibold inline-flex items-center hover:text-ink hover:border-lineh">Gör</Link>
+                        <Link href={t.published ? `/konu/${t.id}` : `/admin/dersler/${t.id}/onizleme`} target="_blank" className="h-9 px-3 rounded-lg border border-line3 bg-s2 text-soft text-sm font-semibold inline-flex items-center hover:text-ink hover:border-lineh">Gör</Link>
                         <Link href={`/admin/dersler/${t.id}`} className="h-9 px-3 rounded-lg border border-line3 bg-s2 text-soft text-sm font-semibold inline-flex items-center gap-1.5 hover:text-ink hover:border-lineh"><Raw html={I.edit(15)} /> Düzenle</Link>
                         <button type="button" disabled={busy === t.id} aria-label={`${t.name} dersini sil`}
                           onClick={() => { if (confirm(`"${t.name}" dersi, etkinlikleri ve kullanıcıların bu dersteki ilerlemesi kalıcı olarak silinecek. Emin misin?`)) call(t.id, 'DELETE'); }}

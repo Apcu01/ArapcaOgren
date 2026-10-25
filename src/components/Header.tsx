@@ -31,7 +31,7 @@ function activeKey(path: string) {
 }
 
 export default function Header() {
-  const { streak, settings, setSetting, user, mistakes, toast } = useApp();
+  const { streak, settings, setSetting, user, mistakes, toast, refreshSession, session, hint } = useApp();
   const [offline, setOffline] = useState<'idle' | 'busy' | 'done'>('idle');
   async function downloadAll() {
     setOffline('busy');
@@ -57,6 +57,7 @@ export default function Header() {
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     clearPageCache();
+    await refreshSession();
     setOpen(null);
     router.push('/');
     router.refresh();
@@ -95,7 +96,8 @@ export default function Header() {
             className="w-11 h-11 rounded-full bg-chip border border-line3 text-ink flex items-center justify-center hover:border-lineh"
             dangerouslySetInnerHTML={{ __html: I.gear() }}
           />
-          {user ? (
+          {/* Oturum gelene kadar son üyenin adı gösterilir (sayfalar önceden hazırlandığı için oturum tarayıcıda yüklenir) */}
+          {(user ?? (session === 'loading' ? hint : null)) ? (
             <button
               type="button"
               aria-label="Hesap menüsü"
@@ -103,7 +105,7 @@ export default function Header() {
               onClick={() => setOpen(open === 'account' ? null : 'account')}
               className="w-11 h-11 rounded-full bg-chip border border-line3 text-ink font-semibold text-[15px] hover:border-lineh"
             >
-              {(user.name.trim()[0] || 'A').toLocaleUpperCase('tr')}
+              {((user ?? hint)!.name.trim()[0] || 'A').toLocaleUpperCase('tr')}
             </button>
           ) : (
             <Link href="/giris" aria-label="Giriş yap" className="h-11 w-11 sm:w-auto sm:px-4 justify-center rounded-full bg-chip border border-line3 text-ink text-sm font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh">
