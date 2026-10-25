@@ -15,6 +15,7 @@ const NAV: [string, string, string][] = [
   ['/', 'Kategoriler', 'home'],
   ['/ilerleme', 'İlerlemem', 'progress'],
   ['/sozluk', 'Sözlük', 'dict'],
+  ['/kelime-bul', 'Kelime bul', 'find'],
   ['/alfabe', 'Alfabe', 'abc'],
   ['/hatalarim', 'Hatalarım', 'mistakes']
 ];
@@ -22,6 +23,7 @@ const NAV: [string, string, string][] = [
 function activeKey(path: string) {
   if (path.startsWith('/ilerleme')) return 'progress';
   if (path.startsWith('/sozluk')) return 'dict';
+  if (path.startsWith('/kelime-bul')) return 'find';
   if (path.startsWith('/alfabe')) return 'abc';
   if (path.startsWith('/hatalarim')) return 'mistakes';
   if (path === '/' || path.startsWith('/konu')) return 'home';
@@ -73,7 +75,7 @@ export default function Header() {
           <Logo size={44} className="shrink-0" />
           <span className="font-bold text-lg tracking-tight">{SITE}</span>
         </Link>
-        <nav className="nav hidden sm:flex flex-wrap gap-x-7 gap-y-2 text-[15px] font-medium" aria-label="Ana menü">
+        <nav className="nav hidden sm:flex flex-wrap gap-x-4 xl:gap-x-7 gap-y-2 text-[15px] font-medium" aria-label="Ana menü">
           {NAV.map(([h, l, k]) => (
             <Link key={k} href={h} className={`${k === active ? 'is-active' : ''} inline-flex items-center gap-1.5`} aria-current={k === active ? 'page' : undefined}>
               {l}
@@ -83,7 +85,7 @@ export default function Header() {
         </nav>
         <div className="flex items-center gap-2 sm:gap-3 relative" ref={wrap}>
           <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-pill border border-track text-sm text-acct font-semibold" title="Art arda çalıştığın gün sayısı">
-            <Raw html={I.flame()} /> {streak} gün seri
+            <Raw html={I.flame()} /> {streak} gün<span className="hidden xl:inline"> seri</span>
           </div>
           <button
             type="button"

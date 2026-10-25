@@ -13,10 +13,11 @@ Next.js 16 (App Router) + TypeScript + MySQL ile çalışan Arapça öğrenme si
 - **Kök ailesi:** Sözlükte kökü bilinen kelimelerde "Kök" düğmesi; kökün anlamını, derslerde aynı kökten gelen kelimeleri ve Türkçedeki karşılıklarını (كتب: kitap, kâtip, mektep) gösterir. Veri `src/lib/roots.ts` dosyasında.
 - **Çalışma takvimi:** İlerlemem sayfasında son bir yılın günlük çalışma haritası, çalışılan gün sayısı ve en uzun seri.
 - **Açık ve koyu tema:** Ayarlardan Koyu, Açık ya da Sistem seçilir; renkler `globals.css` içindeki tema değişkenlerinden gelir.
+- **Kelime bul (`/kelime-bul`):** Arapça kelime duyulduğu gibi Latin harfleriyle (ketebe, efvan, müderris) ya da Arapça yazılır. Önce derslerdeki kelimelerde, sonra yaklaşık 850 kelimelik yerleşik sözlükte (`scripts/lexicon-data.ts`: defterdeki kelimeler, meslekler, selamlaşmalar, bağlaçlar, harf-i cerler, ev eşyaları, yiyecekler, yerler, hayvanlar, giyim, hava ve doğa, okul, spor, duygular, alışveriş, sağlık, sayılar, günlük kalıplar, sıfatlar ve sık fiiller; çift kayıt ve ders kelimeleriyle çakışma kontrolü: `npx tsx scripts/lexicon-check.ts`; `npm run db:lexicon` ile veritabanına yüklenir) esnek okunuş araması yapılır. Harekeler tamamen yanlış okunsa da ünsüz iskeletine göre en yakın kelimeler önerilir. Yerleşik sözlükte de (hareke, şedde, uzatma ve İngilizce yazım farkları yok sayılır; `src/lib/translit.ts`). Bulunamazsa OpenRouter üzerinden yapay zekâya (varsayılan `deepseek/deepseek-v4-flash-0731`, `LOOKUP_MODEL` ile değişir) sorulur; harekeli yazılış, Türkçe anlam, kök ve örnek cümle döner. Sonuçlar `lookups` tablosunda önbelleğe alınır, aynı arama tekrar ücret oluşturmaz. Ders kelimeleri, yerleşik sözlük ve önbellek herkese açık ve sınırsızdır; yalnızca maliyet doğuran yapay zekâ isteği giriş ister ve IP başına saatte 120 ile sınırlıdır. Arama en fazla 40 karakterdir ve günlük toplam tavan (`LOOKUP_DAILY_LIMIT`, varsayılan 2000). Arama başına maliyet yaklaşık 0,00005 - 0,0001 $; yönetim panelindeki Kelime aramaları sayfası aramaları ve toplam maliyeti gösterir.
 - **Hata bildirimi:** Sorularda, kelime kartlarında ve ders bölümlerinde "Hata mı var?" düğmesi; bildirimler yönetim panelindeki Bildirimler sayfasında toplanır.
 - **Paylaşım kartı:** Tamamlanan her ders için indirilebilir ve paylaşılabilir görsel.
 - **PWA:** Telefona uygulama gibi eklenebilir, ziyaret edilen ya da indirilen dersler çevrimdışı açılır.
-- **Yönetim paneli (`/admin`):** İstatistikler (soru bazında dahil), kullanıcılar ve verileri, ders/etkinlik düzenleme, sesler, hata bildirimleri.
+- **Yönetim paneli (`/admin`):** Şu an sitede olanlar (canlı: üye ve misafir sayısı, baktıkları sayfalar; açık sekmeler dakikada bir sinyal gönderir, sunucu belleğinde tutulur), son 14 günün grafiği ve tablosu (siteye giren kişi, okunan konu, yapılan etkinlik, dinlenen ders ve kelime, kelime bul araması, doğru ve yanlış cevap; yeni sayaçlar `daily_metrics` tablosunda), istatistikler (soru bazında dahil), kullanıcılar ve verileri, ders/etkinlik düzenleme, sesler, hata bildirimleri.
 
 ## Kurulum
 
@@ -80,7 +81,7 @@ Google'dan gelen e-posta, var olan bir hesabın e-postasıyla aynıysa iki hesap
 npm test
 ```
 
-Birim ve bileşen testleri (71 test): Arapça metin işleme, arama, saat ifadeleri, telaffuz karşılaştırması, kök ailesi, soru anahtarları, giriş sınırı kuralları, ders verisinin doğrulaması ve oynatıcının puanlaması.
+Birim ve bileşen testleri (84 test): Arapça metin işleme, arama, saat ifadeleri, telaffuz karşılaştırması, kök ailesi, soru anahtarları, giriş sınırı kuralları, ders verisinin doğrulaması ve oynatıcının puanlaması.
 
 ```bash
 npm run test:api
@@ -92,7 +93,7 @@ API entegrasyon testleri (12 test): çalışan bir sunucu (`TEST_BASE_URL`, vars
 npm run test:e2e
 ```
 
-Uçtan uca testler (Playwright, 7 test): gerçek bir Chromium tarayıcısında arama, ders okuma ve etkinlik çözme, ilerleme sayfası ve çalışma takvimi, tema değiştirme, sözlükte kök ailesi, harf çizme, mobil menü ve hesap akışı (kayıt, misafir ilerlemesinin aktarılması, başka tarayıcıdan giriş, hesabın silinmesi). Yerel geliştirme sunucusunu kullanır, açık değilse başlatır; başka bir adres için `E2E_URL` verilebilir. İlk kurulumda tarayıcı bir kez indirilmelidir: `npx playwright install chromium`. Hesap testi bir kayıt yaptığı için kayıt sınırına sayılır ve oluşturduğu hesabı siler.
+Uçtan uca testler (Playwright, 11 test): gerçek bir Chromium tarayıcısında arama, kelime bul (yapay zekâ cevabı taklit edilir, ücret oluşmaz), ders okuma ve etkinlik çözme, ilerleme sayfası ve çalışma takvimi, tema değiştirme, sözlükte kök ailesi, harf çizme, mobil menü ve hesap akışı (kayıt, misafir ilerlemesinin aktarılması, başka tarayıcıdan giriş, hesabın silinmesi). Yerel geliştirme sunucusunu kullanır, açık değilse başlatır; başka bir adres için `E2E_URL` verilebilir. İlk kurulumda tarayıcı bir kez indirilmelidir: `npx playwright install chromium`. Hesap ve kelime bul testleri birer geçici hesap açıp sonunda siler; kayıt sınırı (IP başına saatte 5) nedeniyle aynı bilgisayardan saatte en fazla iki kez çalıştırılabilir.
 
 ## Diğer komutlar
 
@@ -122,7 +123,7 @@ Uçtan uca testler (Playwright, 7 test): gerçek bir Chromium tarayıcısında a
 
 ### Veritabanı tabloları
 
-`users`, `sessions` (çerezdeki belirtecin yalnızca SHA-256 özeti saklanır), `topics`, `activities`, `topic_progress`, `activity_progress`, `study_days`, `mistakes`, `question_stats`, `audio` (ses dosyaları), `narration_audio` (öğretmen anlatımı sesleri), `reports` (hata bildirimleri), `auth_attempts` (giriş ve bildirim sınırı), `events` (ziyaret, ders okuma ve etkinlik bitirme; misafirler dahil).
+`users`, `sessions` (çerezdeki belirtecin yalnızca SHA-256 özeti saklanır), `topics`, `activities`, `topic_progress`, `activity_progress`, `study_days`, `mistakes`, `question_stats`, `audio` (ses dosyaları), `narration_audio` (öğretmen anlatımı sesleri), `reports` (hata bildirimleri), `lookups` (kelime bul önbelleği), `lexicon` (kelime bul yerleşik sözlüğü; `ar` sütunu harekeye duyarlı `utf8mb4_bin`), `auth_attempts` (giriş ve bildirim sınırı), `events` (ziyaret, ders okuma ve etkinlik bitirme; misafirler dahil).
 
 ## Güvenlik
 
@@ -133,6 +134,7 @@ Uçtan uca testler (Playwright, 7 test): gerçek bir Chromium tarayıcısında a
 ## Notlar
 
 - Ayarlar (hareke, okunuş, İngilizce, Arapça yazı boyutu, tema) bir çerezde saklanır; sunucu sayfayı doğru biçimde çizer.
+- Hız: sayfa geçişlerinde üstte ince bir ilerleme çubuğu anında görünür (yükleme iskeleti bilerek kullanılmaz: React içeriği iskeletten sonra bir süre geciktirdiği için geçişi ~200 ms yerine ~800 ms yapıyordu). Ziyaret edilen sayfalar tarayıcıda 30 sn tutulur (`staleTimes`), oturum bilgisi sunucu belleğinde 60 sn tutulur (çıkış ve hesap değişikliklerinde hemen silinir).
 - Dersler, ses eşlemesi ve anlatım sesleri sunucu belleğinde önbelleğe alınır (`src/lib/cache.ts`). Yönetim panelindeki değişiklikler anında yansır; komut satırı betiklerinin (`db:seed`, `audio:generate`, `audio:narrate`) yaptığı değişiklikler en geç 5 dakika sonra görünür ya da sunucu yeniden başlatılınca hemen görünür.
 - Tailwind CSS 3.4 kullanılır (eski sitedeki CDN sürümüyle aynı ana sürüm). `npm audit` uyarıları Tailwind 3'ün derleme zamanı bağımlılıklarındandır; çalışan siteye gönderilmez.
 - `drizzle-kit push`, mevcut bir veritabanında bileşik birincil anahtarları gereksiz yere yeniden kurmak isteyebilir ("Cannot drop index 'PRIMARY'"). Bu, aracın bilinen bir sorunudur; şema zaten günceldir.

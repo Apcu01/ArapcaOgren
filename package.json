@@ -19,7 +19,8 @@
     "test:api": "vitest run --config vitest.api.config.mts",
     "audio:generate": "tsx scripts/tts.ts",
     "audio:narrate": "tsx scripts/narrate.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:lexicon": "tsx scripts/lexicon.ts"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.3.0",

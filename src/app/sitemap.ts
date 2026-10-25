@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/`, lastModified: last, changeFrequency: 'weekly', priority: 1 },
     ...topics.map((t) => ({ url: `${base}/konu?id=${t.id}`, lastModified: t.updatedAt, changeFrequency: 'monthly' as const, priority: 0.8 })),
     { url: `${base}/alfabe`, changeFrequency: 'yearly', priority: 0.7 },
-    { url: `${base}/sozluk`, lastModified: last, changeFrequency: 'weekly', priority: 0.6 }
+    { url: `${base}/sozluk`, lastModified: last, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${base}/kelime-bul`, changeFrequency: 'monthly', priority: 0.6 }
   ];
 }

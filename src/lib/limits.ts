@@ -1,5 +1,5 @@
 // Kaba kuvvet koruması kuralları (saf fonksiyonlar; veritabanından bağımsız test edilebilir)
-export type AttemptKind = 'login' | 'register' | 'password' | 'report';
+export type AttemptKind = 'login' | 'register' | 'password' | 'report' | 'lookup';
 
 export const RULES: Record<AttemptKind, { windowMin: number; perEmail?: number; perIp?: number; countOk?: boolean }> = {
   // Aynı e-postaya 15 dakikada 5, aynı IP'den 20 hatalı giriş
@@ -9,7 +9,9 @@ export const RULES: Record<AttemptKind, { windowMin: number; perEmail?: number; 
   // Şifre değiştirme / hesap silme: hesap başına 15 dakikada 5 hatalı şifre
   password: { windowMin: 15, perEmail: 5 },
   // Hata bildirimi: aynı IP'den saatte 20 bildirim
-  report: { windowMin: 60, perIp: 20, countOk: true }
+  report: { windowMin: 60, perIp: 20, countOk: true },
+  // Yapay zekâ ile kelime arama (sözlükten ve önbellekten gelenler sayılmaz): aynı IP'den saatte 120
+  lookup: { windowMin: 60, perIp: 120, countOk: true }
 };
 
 export type AttemptRow = { email: string | null; ip: string; ok: boolean; createdAt: Date };

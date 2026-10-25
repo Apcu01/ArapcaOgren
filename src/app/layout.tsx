@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import './globals.css';
 import { AppProvider } from '@/components/AppProvider';
 import { parseSettings, SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
+import NavProgress from '@/components/NavProgress';
 import ServiceWorker from '@/components/ServiceWorker';
 import { getAudioMap } from '@/lib/audio';
 import { getSessionUser } from '@/lib/auth';
@@ -62,6 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <AppProvider key={user?.id ?? 'guest'} user={user} initial={initial} initialSettings={settings} initialMistakes={mistakes} audios={audios}>
           {children}
         </AppProvider>
+        <NavProgress />
         <ServiceWorker />
       </body>
     </html>

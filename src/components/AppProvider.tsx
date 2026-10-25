@@ -7,6 +7,7 @@ import { mistakeKey, type MistakeItem } from '@/lib/qkey';
 import { audioKey, dayKey, esc, makeText, streakOf, type ActView, type TextFns } from '@/lib/text';
 import { I } from './icons';
 
+import type { Metric } from '@/lib/metrics';
 import { SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
 export type { Settings };
 const LS_KEY = 'arblearn:v1';
@@ -34,6 +35,8 @@ type Ctx = {
   canSpeak: () => boolean;
   toast: (msg: string) => void;
   track: (type: 'view' | 'lesson' | 'activity', data?: Record<string, unknown>) => void;
+  /** Günlük sayaç (dinleme, arama, doğru/yanlış): biriktirilip toplu gönderilir */
+  metric: (m: Metric, n?: number) => void;
   mistakes: MistakeItem[];
   addMistake: (topicId: string, q: Question) => void;
   resolveMistake: (topicId: string, q: Question) => void;
@@ -224,6 +227,23 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
     toastTimer.current = setTimeout(() => setToastMsg(null), 4200);
   }, []);
 
+  /* ---------- Günlük sayaçlar: 20 saniyede bir ve sekme gizlenirken toplu gönderilir ---------- */
+  const counts = useRef<Partial<Record<Metric, number>>>({});
+  const metric = useCallback((m: Metric, n = 1) => { counts.current[m] = (counts.current[m] || 0) + n; }, []);
+  useEffect(() => {
+    const flush = () => {
+      const c = counts.current;
+      if (!Object.keys(c).length) return;
+      counts.current = {};
+      post('/api/metrics', { counts: Object.fromEntries(Object.entries(c).map(([k, v]) => [k, Math.min(500, v!)])) });
+    };
+    const t = setInterval(flush, 20_000);
+    const hide = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', hide);
+    window.addEventListener('pagehide', flush);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', hide); window.removeEventListener('pagehide', flush); flush(); };
+  }, []);
+
   /* ---------- Ses (Web Speech API) ---------- */
   const voice = useRef<SpeechSynthesisVoice | null>(null);
   const warned = useRef(false);
@@ -241,6 +261,7 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
   const canSpeak = useCallback(() => !!voice.current, []);
   const audioEl = useRef<HTMLAudioElement | null>(null);
   const speak = useCallback((text: string, rate = 0.8) => {
+    metric('word_listen');
     // Önce yönetim panelinden yüklenmiş gerçek ses kaydı
     const rec = audios[audioKey(text)];
     if (rec) {
@@ -264,7 +285,7 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
       toast('Bu cihazda Arapça ses bulunamadı. Edge tarayıcısı ya da işletim sisteminin Arapça ses paketi en iyi sonucu verir.');
     }
     return true;
-  }, [toast, audios]);
+  }, [toast, audios, metric]);
   // data-say özniteliği taşıyan her düğme (zengin içerikteki tablolar dahil) sesli okur
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -286,9 +307,22 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
     track('view', { path: pathname });
   }, [pathname, track]);
 
+  /* ---------- Şu an sitede: görünür sekme dakikada bir sinyal gönderir (yönetim sayfaları hariç) ---------- */
+  useEffect(() => {
+    if (!pathname || pathname.startsWith('/admin')) return;
+    const ping = () => {
+      if (document.visibilityState !== 'visible') return;
+      post('/api/presence', { anonId: anonId(), path: (location.pathname + location.search).slice(0, 200) });
+    };
+    ping();
+    const t = setInterval(ping, 60_000);
+    document.addEventListener('visibilitychange', ping);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', ping); };
+  }, [pathname]);
+
   const value: Ctx = {
     user, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
-    streak: streakOf(state.days), reset, speak, canSpeak, toast, track,
+    streak: streakOf(state.days), reset, speak, canSpeak, toast, track, metric,
     mistakes, addMistake, resolveMistake, removeMistake, clearMistakes
   };
 

@@ -4,6 +4,7 @@ import { db, schema } from '@/db';
 import { adminOrFail } from '@/lib/admin';
 import { fail, ok, parse } from '@/lib/api';
 import { resetProgress } from '@/lib/progress';
+import { clearSessionCache } from '@/lib/auth';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -25,6 +26,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (p.data.role && p.data.role !== u.role) {
     if (p.data.role === 'user' && (await otherAdmins(id)) === 0) return fail('Son yöneticinin yetkisi kaldırılamaz.');
     await db.update(schema.users).set({ role: p.data.role }).where(eq(schema.users.id, id));
+    clearSessionCache();
   }
   if (p.data.resetProgress) await resetProgress(id);
   return ok();
@@ -38,5 +40,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const [u] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.id, id));
   if (!u) return fail('Kullanıcı bulunamadı.', 404);
   await db.delete(schema.users).where(eq(schema.users.id, id));
+  clearSessionCache();
   return ok();
 }

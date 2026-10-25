@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint, boolean, char, customType, datetime, double, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, varchar
 } from 'drizzle-orm/mysql-core';
-import type { Item, Mistake, Question, ReportContext, Section, Word } from '@/lib/types';
+import type { Item, LookupResult, Mistake, Question, ReportContext, Section, Word } from '@/lib/types';
 
 // Ses dosyaları veritabanında saklanır (her barındırmada çalışsın, ayrı dosya depolaması gerekmesin)
 const mediumBlob = customType<{ data: Buffer }>({ dataType: () => 'mediumblob' });
@@ -171,3 +171,38 @@ export const reports = mysqlTable('reports', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   resolvedAt: timestamp('resolved_at')
 }, (t) => [index('reports_status_idx').on(t.status, t.createdAt), index('reports_topic_idx').on(t.topicId)]);
+
+// Yapay zekâ ile kelime arama sonuçları (önbellek): aynı arama tekrar sorulunca modele gidilmez
+export const lookups = mysqlTable('lookups', {
+  id: int('id').autoincrement().primaryKey(),
+  qkey: varchar('qkey', { length: 120 }).notNull().unique(),
+  query: varchar('query', { length: 80 }).notNull(),
+  model: varchar('model', { length: 120 }).notNull(),
+  result: json('result').$type<LookupResult>().notNull(),
+  hits: int('hits').notNull().default(1),
+  cost: double('cost').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  lastAt: timestamp('last_at').notNull().defaultNow()
+}, (t) => [index('lookups_created_idx').on(t.createdAt)]);
+
+// Kelime bul yerleşik sözlüğü: burada bulunan kelimeler yapay zekâya sorulmaz (scripts/lexicon-data.ts, npm run db:lexicon)
+export const lexicon = mysqlTable('lexicon', {
+  id: int('id').autoincrement().primaryKey(),
+  // Veritabanında utf8mb4_bin: harekeye duyarlı (عَالِم âlim ile عَالَم dünya ayrı kelimeler)
+  ar: varchar('ar', { length: 120 }).notNull().unique(),
+  tl: varchar('tl', { length: 120 }).notNull(),
+  tr: varchar('tr', { length: 300 }).notNull(),
+  en: varchar('en', { length: 200 }).notNull().default(''),
+  type: varchar('type', { length: 4 }).notNull(),
+  variants: json('variants').$type<string[]>().notNull(),
+  muAr: varchar('mu_ar', { length: 120 }),
+  muTl: varchar('mu_tl', { length: 120 }),
+  note: varchar('note', { length: 400 })
+});
+
+// Günlük sayaçlar (yönetim panelindeki 14 günlük grafik): dinlenen ders anlatımı, dinlenen kelime sesi, kelime bul araması, doğru ve yanlış cevap
+export const dailyMetrics = mysqlTable('daily_metrics', {
+  day: char('day', { length: 10 }).notNull(),
+  metric: varchar('metric', { length: 24 }).notNull(),
+  n: int('n').notNull().default(0)
+}, (t) => [primaryKey({ columns: [t.day, t.metric] })]);

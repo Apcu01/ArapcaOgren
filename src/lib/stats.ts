@@ -12,8 +12,13 @@ async function q<T = Row>(query: ReturnType<typeof sql>): Promise<T[]> {
   return rows;
 }
 
+export type DayStat = {
+  d: string; views: number; visitors: number; lessons: number; activities: number;
+  lessonListens: number; wordListens: number; lookups: number; correct: number; wrong: number;
+};
+
 export async function getStats() {
-  const [[totals], [ev], daily, topTopics, hardest, typeDist, topPages, recent] = await Promise.all([
+  const [[totals], [ev], daily, topTopics, hardest, typeDist, topPages, recent, metricRows, [today]] = await Promise.all([
     q(sql`SELECT
         (SELECT COUNT(*) FROM users) users,
         (SELECT COUNT(*) FROM users WHERE role = 'admin') admins,
@@ -40,6 +45,7 @@ export async function getStats() {
     q(sql`SELECT DATE_FORMAT(created_at, '%Y-%m-%d') d,
         SUM(type = 'view') views,
         SUM(type = 'activity') activities,
+        SUM(type = 'lesson') lessons,
         COUNT(DISTINCT COALESCE(CONCAT('u', user_id), anon_id)) visitors
       FROM events WHERE created_at >= CURDATE() - INTERVAL 13 DAY
       GROUP BY d ORDER BY d`),
@@ -60,16 +66,22 @@ export async function getStats() {
     q(sql`SELECT path, COUNT(*) n FROM events WHERE type = 'view' AND created_at >= NOW() - INTERVAL 30 DAY
       GROUP BY path ORDER BY n DESC LIMIT 8`),
     db.select({ id: schema.users.id, name: schema.users.name, email: schema.users.email, createdAt: schema.users.createdAt })
-      .from(schema.users).orderBy(desc(schema.users.createdAt)).limit(6)
+      .from(schema.users).orderBy(desc(schema.users.createdAt)).limit(6),
+    q(sql`SELECT day d, metric, n FROM daily_metrics WHERE day >= DATE_FORMAT(CURDATE() - INTERVAL 13 DAY, '%Y-%m-%d')`),
+    q(sql`SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') d`)
   ]);
 
-  // Son 14 günü boş günlerle doldur
-  const days: { d: string; views: number; activities: number; visitors: number }[] = [];
+  // Son 14 günü boş günlerle doldur (gün, olaylarla aynı olsun diye veritabanının tarihinden sayılır)
+  const m = (d: string, k: string) => num(metricRows.find((x) => x.d === d && x.metric === k)?.n);
+  const end = new Date(String(today?.d) + 'T12:00:00Z');
+  const days: DayStat[] = [];
   for (let i = 13; i >= 0; i--) {
-    const dt = new Date(Date.now() - i * 864e5);
-    const k = dt.toISOString().slice(0, 10);
+    const k = new Date(end.getTime() - i * 864e5).toISOString().slice(0, 10);
     const r = daily.find((x) => x.d === k);
-    days.push({ d: k, views: num(r?.views), activities: num(r?.activities), visitors: num(r?.visitors) });
+    days.push({
+      d: k, views: num(r?.views), visitors: num(r?.visitors), lessons: num(r?.lessons), activities: num(r?.activities),
+      lessonListens: m(k, 'lesson_listen'), wordListens: m(k, 'word_listen'), lookups: m(k, 'lookup'), correct: m(k, 'correct'), wrong: m(k, 'wrong')
+    });
   }
   const alphaActs = actsOf({ ...ALPHABET_TOPIC, autoListen: true });
   const actTitle = (topicId: unknown, key: unknown, title: unknown) =>

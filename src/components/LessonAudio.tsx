@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useApp } from './AppProvider';
 import { I, Raw } from './icons';
 
 export type NarrIds = { sections: (number | null)[]; summary: number | null };
@@ -34,10 +35,14 @@ export function useLessonAudio(tracks: Track[]) {
     return () => { a.pause(); a.src = ''; };
   }, []);
 
+  const { metric } = useApp();
+  const counted = useRef(false);
   const play = useCallback((i: number, scroll = true) => {
     const a = audio.current;
     const t = tracks[i];
     if (!a || !t) return;
+    // Dinlenen ders: sayfada anlatım ilk kez başlatılınca bir kez sayılır
+    if (!counted.current) { counted.current = true; metric('lesson_listen'); }
     try { speechSynthesis.cancel(); } catch { /* yok */ }
     a.src = `/api/narration/${t.id}`;
     a.playbackRate = rate;
@@ -45,7 +50,7 @@ export function useLessonAudio(tracks: Track[]) {
     setCur(i);
     setPos(0);
     if (scroll) document.getElementById(t.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [tracks, rate]);
+  }, [tracks, rate, metric]);
 
   // Bölüm bitince sıradakine geç
   useEffect(() => {

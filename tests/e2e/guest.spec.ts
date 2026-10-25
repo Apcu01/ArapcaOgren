@@ -23,9 +23,12 @@ test('ana sayfada konu araması Türkçe karakter olmadan da çalışır', async
 
 test('ders okunur, etkinlik çözülür ve ilerleme sayfasına yansır', async ({ page }) => {
   await page.goto('/konu?id=renkler');
-  await page.getByRole('button', { name: 'Okudum, etkinliklere geç' }).click();
-  await page.getByRole('button', { name: /Hangi renk\?/ }).first().click();
-  await expect(page.locator('#player')).toBeVisible();
+  // Sayfa etkileşime hazır olana kadar (React yüklenene kadar) dokunuşu tekrarla
+  await expect(async () => {
+    await page.getByRole('button', { name: /Okudum, etkinliklere geç|^Etkinliklere geç/ }).first().click();
+    await page.getByRole('button', { name: /Hangi renk\?/ }).first().click();
+    await expect(page.locator('#player')).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await finishQuiz(page);
   await page.getByRole('button', { name: 'Etkinliklere dön' }).click();
 

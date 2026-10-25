@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { Bar, Card, Stat, ago, pct, scoreColor } from '@/components/admin/ui';
+import DailyChart from '@/components/admin/DailyChart';
+import LivePresence from '@/components/admin/LivePresence';
+import { snapshot } from '@/lib/presence';
 import { getHardestQuestions, getStats } from '@/lib/stats';
 
 export const metadata = { title: 'Genel bakış' };
@@ -7,7 +10,6 @@ export const metadata = { title: 'Genel bakış' };
 export default async function AdminHome() {
   const [s, hardQ] = await Promise.all([getStats(), getHardestQuestions(10)]);
   const { totals: t, ev } = s;
-  const maxDay = Math.max(1, ...s.days.map((d) => Math.max(d.views, d.activities)));
   const maxTopic = Math.max(1, ...s.topTopics.map((x) => x.n));
   const maxType = Math.max(1, ...s.typeDist.map((x) => x.n));
   const maxPage = Math.max(1, ...s.topPages.map((x) => x.n));
@@ -20,6 +22,8 @@ export default async function AdminHome() {
         <p className="m-0 text-mute">Ziyaret ve etkinlik sayıları misafirleri de kapsar; ilerleme sayıları yalnızca hesabı olan kullanıcılarındır.</p>
       </div>
 
+      <LivePresence initial={snapshot()} />
+
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Stat label="Kullanıcı" value={t.users} sub={`Son 7 gün: +${t.new7} · son 30 gün: +${t.new30}`} />
         <Stat label="Aktif kullanıcı (7 gün)" value={t.active7} sub={`${t.admins} yönetici`} />
@@ -31,21 +35,7 @@ export default async function AdminHome() {
         <Stat label="İçerik" value={`${t.published} / ${t.topics}`} sub={`Yayında / toplam ders · ${t.acts} etkinlik`} />
       </div>
 
-      <Card title="Son 14 gün" right={<span className="flex gap-4 text-xs text-mute"><span className="inline-flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-acc inline-block" /> Görüntüleme</span><span className="inline-flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-ok inline-block" /> Etkinlik</span></span>}>
-        <div className="overflow-x-auto">
-          <div className="min-w-[560px] h-[200px] flex items-end gap-2" role="img" aria-label="Son 14 günün görüntüleme ve etkinlik sayıları">
-            {s.days.map((d) => (
-              <div key={d.d} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end" title={`${dayLabel(d.d)}: ${d.views} görüntüleme, ${d.activities} etkinlik, ${d.visitors} ziyaretçi`}>
-                <div className="w-full flex items-end justify-center gap-[3px] flex-1">
-                  <div className="w-[42%] rounded-t-md bg-acc" style={{ height: `${(d.views / maxDay) * 100}%`, minHeight: d.views ? 3 : 0 }} />
-                  <div className="w-[42%] rounded-t-md bg-ok" style={{ height: `${(d.activities / maxDay) * 100}%`, minHeight: d.activities ? 3 : 0 }} />
-                </div>
-                <span className="text-[10px] text-faint whitespace-nowrap">{dayLabel(d.d)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Card>
+      <DailyChart days={s.days} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="En çok çalışılan dersler (30 gün)">

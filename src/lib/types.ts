@@ -85,3 +85,9 @@ export type SessionUser = { id: number; name: string; email: string; role: 'user
 
 /** Hata bildiriminde saklanan içerik: bildirildiği andaki soru, kelime ya da bölüm */
 export type ReportContext = { label: string; question?: Question; word?: Word; section?: string; act?: string };
+
+/** Kelime bul: yapay zekânın bulduğu kelimeler */
+export type LookupResult = {
+  results: { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; example?: { ar: string; tr: string }; note?: string }[];
+  note?: string;
+};

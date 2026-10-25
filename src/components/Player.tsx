@@ -53,7 +53,9 @@ export default function Player({ topic, act, list, onClose, onSwitch, preview = 
   /** Hatalarım pratiği: etkinlik skoru kaydedilmez, doğru cevaplanan hata listeden düşer */
   practice?: boolean;
 }) {
-  const { setAct, track, addMistake, resolveMistake } = useApp();
+  const { setAct, track, addMistake, resolveMistake, metric } = useApp();
+  // Doğru / yanlış sayacı (yönetim paneli); önizlemede sayılmaz
+  const tally = useCallback((ok: boolean) => { if (!preview) metric(ok ? 'correct' : 'wrong'); }, [preview, metric]);
   const answers = useRef<AnswerRec[]>([]);
   const log = useCallback((a: AnswerRec) => { answers.current.push(a); }, []);
   // Yanlışlar Hatalarım'a eklenir; daha önce yanlış yapılıp şimdi doğru cevaplanan soru listeden düşer
@@ -113,7 +115,7 @@ export default function Player({ topic, act, list, onClose, onSwitch, preview = 
     }
   }
 
-  const props = { topic, act, finish, setHdr, toTop, endlessRef, close, log, miss, hit, preview };
+  const props = { topic, act, finish, setHdr, toTop, endlessRef, close, log, miss, hit, preview, tally };
   return (
     <div id="player" ref={root} tabIndex={-1} onKeyDown={onKey} className="fixed inset-0 z-[80] bg-bg overflow-y-auto outline-none" role="dialog" aria-modal="true">
       <div className="min-h-full flex flex-col">
@@ -155,6 +157,7 @@ type SubProps = {
   miss: (q: Question) => void;
   hit: (q: Question) => void;
   preview: boolean;
+  tally: (ok: boolean) => void;
 };
 
 /* ================= Kelime kartları ================= */
@@ -221,7 +224,7 @@ function Flash({ topic, act, finish, setHdr, miss, hit, preview }: SubProps) {
 
 /* ================= Eşleştirme ================= */
 type MPair = { l: string; r: string; i: number };
-function Match({ act, finish, setHdr, miss, hit }: SubProps) {
+function Match({ act, finish, setHdr, miss, hit, tally }: SubProps) {
   const { tx, speak } = useApp();
   const rounds = useMemo(() => {
     const pairs = shuffle((act.items as Pair[]).map((p, i) => ({ l: p[0], r: p[1], i })));
@@ -256,6 +259,7 @@ function Match({ act, finish, setHdr, miss, hit }: SubProps) {
     const a = sel;
     setSel(null);
     if (a.i === i) {
+      tally(true);
       const nr = new Set(right).add(i);
       const allPairs = rounds.flat();
       const mp = pairs.find((x) => x.i === i)!;
@@ -276,6 +280,7 @@ function Match({ act, finish, setHdr, miss, hit }: SubProps) {
         }, 650);
       }
     } else {
+      tally(false);
       setMistakes((x) => x + 1);
       const li = a.side === 'l' ? a.i : i;
       const lp = pairs.find((x) => x.i === li)!;
@@ -330,7 +335,7 @@ function buildListen(words: Word[]): Q[] {
   });
 }
 
-function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview }: SubProps) {
+function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview, tally }: SubProps) {
   const { tx, speak, canSpeak } = useApp();
   const T = tx.text;
   const initial = useMemo<Q[]>(() => {
@@ -379,6 +384,7 @@ function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview }: Su
   }
 
   function answer(ok: boolean, right: string, given: string) {
+    tally(ok);
     const first = !q._retry;
     if (first) {
       setAnswered((n) => n + 1);
@@ -555,7 +561,7 @@ const SPEAK_TRIES = 3;
 
 type Attempt = { heard: string; score: number; verdict: PronVerdict };
 
-function Speak({ topic, act, finish, setHdr, toTop, preview }: SubProps) {
+function Speak({ topic, act, finish, setHdr, toTop, preview, tally }: SubProps) {
   const { tx, speak, toast } = useApp();
   const items = useMemo(() => {
     const src = (act.items as Word[] | null | undefined)?.length ? (act.items as Word[]) : topic.words;
@@ -640,6 +646,7 @@ function Speak({ topic, act, finish, setHdr, toTop, preview }: SubProps) {
       const alts = Array.from(e.results[0] || []).map((a) => a.transcript);
       const score = pronScore(w.ar, alts);
       setTries((t) => [...t, { heard: alts[0] || '', score, verdict: pronVerdict(score) }]);
+      tally(pronVerdict(score) !== 'bad');
     };
     r.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
@@ -737,7 +744,7 @@ function Speak({ topic, act, finish, setHdr, toTop, preview }: SubProps) {
 }
 
 /* ================= Sınırsız saat pratiği ================= */
-function ClockPractice({ act, finish, setHdr, toTop, endlessRef, close, log, miss, hit }: SubProps) {
+function ClockPractice({ act, finish, setHdr, toTop, endlessRef, close, log, miss, hit, tally }: SubProps) {
   const { tx, speak } = useApp();
   const [stats, setStats] = useState<Endless & { streak: number }>({ answered: 0, correct: 0, best: 0, streak: 0 });
   const wrong = useRef<Wrong[]>([]);
@@ -771,6 +778,7 @@ function ClockPractice({ act, finish, setHdr, toTop, endlessRef, close, log, mis
   function choose(o: HM) {
     if (picked) return;
     const ok = hmKey(o) === hmKey(t);
+    tally(ok);
     log({ qk: 'saat-' + t.m, label: 'Saat :' + String(t.m).padStart(2, '0') + ' (' + MIN_LABEL[t.m] + ')', ok });
     if (ok) hit(clockQ(t)); else miss(clockQ(t));
     setPicked(hmKey(o));

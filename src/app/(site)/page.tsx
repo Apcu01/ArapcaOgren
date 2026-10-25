@@ -2,7 +2,8 @@ import HomeView from '@/components/HomeView';
 import { SITE_DESC, SITE_NAME, siteOrigin } from '@/lib/site';
 import { getTopics } from '@/lib/topics';
 
-export const metadata = { alternates: { canonical: '/' } };
+// Sekme başlığı diğer sayfalar gibi önce sayfa adı: Ana Sayfa | ArapcaOgren
+export const metadata = { title: { absolute: `Ana Sayfa | ${SITE_NAME}` }, alternates: { canonical: '/' } };
 
 export default async function HomePage() {
   const topics = await getTopics();
