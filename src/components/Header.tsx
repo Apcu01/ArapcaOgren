@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from './AppProvider';
-import { AR_SIZES } from '@/lib/settings';
+import { AR_SIZES, THEMES } from '@/lib/settings';
 import { I, Raw } from './icons';
 import Logo from './Logo';
 import { clearPageCache, precacheAll } from './ServiceWorker';
@@ -43,7 +43,8 @@ export default function Header() {
   const wrap = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(null); };
+    // composedPath tıklama anındaki yolu verir: tıklanan simge yeniden çizilip sayfadan kalksa bile (menü / çarpı) doğru çalışır
+    const h = (e: MouseEvent) => { if (wrap.current && !e.composedPath().includes(wrap.current)) setOpen(null); };
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null); };
     document.addEventListener('click', h);
     document.addEventListener('keydown', k);
@@ -81,7 +82,7 @@ export default function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-2 sm:gap-3 relative" ref={wrap}>
-          <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#1C1511] border border-[#2E231B] text-sm text-acct font-semibold" title="Art arda çalıştığın gün sayısı">
+          <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-pill border border-track text-sm text-acct font-semibold" title="Art arda çalıştığın gün sayısı">
             <Raw html={I.flame()} /> {streak} gün seri
           </div>
           <button
@@ -141,10 +142,21 @@ export default function Header() {
           {open === 'settings' && (
             <div className="absolute right-0 top-14 z-50 w-[290px] p-5 rounded-2xl bg-s4 border border-line3 shadow-2xl">
               <p className="text-xs font-bold tracking-[.1em] uppercase text-lab mb-3">Görünüm</p>
+              <div className="pb-2">
+                <span className="text-[15px] font-semibold text-ink">Tema</span>
+                <div role="radiogroup" aria-label="Tema" className="mt-2 grid grid-cols-3 gap-1 p-1 rounded-xl bg-s2 border border-line3">
+                  {THEMES.map(([t, l]) => (
+                    <button key={t} type="button" role="radio" aria-checked={settings.theme === t} onClick={() => setSetting('theme', t)}
+                      className={'h-9 rounded-lg text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 ' + (settings.theme === t ? 'bg-acc text-onacc' : 'text-soft hover:text-ink')}>
+                      <Raw html={t === 'dark' ? I.moon(14) : t === 'light' ? I.sun(14) : I.monitor(14)} /> {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {rows.map(([k, l, h]) => (
                 <label key={k} className="flex items-center justify-between gap-3 py-2.5 cursor-pointer">
                   <span className="flex flex-col"><span className="text-[15px] font-semibold text-ink">{l}</span><span className="text-xs text-faint">{h}</span></span>
-                  <input type="checkbox" checked={settings[k]} onChange={(e) => setSetting(k, e.target.checked)} className="w-5 h-5 accent-[#C8894A]" />
+                  <input type="checkbox" checked={settings[k]} onChange={(e) => setSetting(k, e.target.checked)} className="w-5 h-5 accent-acc" />
                 </label>
               ))}
               <div className="pt-3 pb-1">

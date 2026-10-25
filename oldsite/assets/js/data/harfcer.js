@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'harfcer', n: 12, level: 'İleri', glyph: 'ح',
+  id: 'harfcer', n: 13, level: 'İleri', glyph: 'ح',
   ar: 'حُرُوفُ الْجَرِّ', name: 'Harf-i Cerler',
   desc: 'فِي، عَلَى، مِنْ، إِلَى، عَنْ، بِـ، لِـ ve cümlede kullanımları.',
   long: 'Türkçedeki -de, -den, -e hal eklerinin Arapça karşılıkları olan harf-i cerler (edatlar), sonrasındaki ismin esre alması, zamirlerle birleşmeleri ve fiillerle kalıplaşmış kullanımları.',

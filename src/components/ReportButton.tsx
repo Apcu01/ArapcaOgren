@@ -76,7 +76,7 @@ function ReportDialog({ topicId, kind, context, onClose }: { topicId: string; ki
           <legend className="text-sm font-semibold text-soft mb-2">Sorun ne?</legend>
           {reasons.map((r) => (
             <label key={r} className={`flex items-center gap-3 px-4 h-12 rounded-xl border cursor-pointer ${reason === r ? 'bg-s5 border-acc text-ink' : 'bg-s2 border-line2 text-soft hover:border-lineh'}`}>
-              <input type="radio" name="reason" checked={reason === r} onChange={() => { setReason(r); setErr(''); }} className="w-4 h-4 accent-[#C8894A]" />
+              <input type="radio" name="reason" checked={reason === r} onChange={() => { setReason(r); setErr(''); }} className="w-4 h-4 accent-acc" />
               <span className="text-[15px] font-semibold">{REPORT_REASONS[r]}</span>
             </label>
           ))}

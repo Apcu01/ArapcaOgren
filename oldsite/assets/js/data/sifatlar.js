@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'sifatlar', n: 5, level: 'Orta', glyph: 'ص',
+  id: 'sifatlar', n: 6, level: 'Orta', glyph: 'ص',
   ar: 'الصِّفَاتُ', name: 'Sıfatlar',
   desc: 'Sıfat–isim uyumu: cinsiyet, sayı, belirlilik; “daha” ve “en”.',
   long: 'Arapçada sıfat isimden sonra gelir ve ona dört açıdan uyar. “Büyük ev” ile “Ev büyüktür” farkını, dişil sıfatları, cansız çoğul kuralını ve karşılaştırma (daha / en) yapısını öğren.',

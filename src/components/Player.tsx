@@ -125,7 +125,7 @@ export default function Player({ topic, act, list, onClose, onSwitch, preview = 
                 <span className="truncate text-mute">{preview && <span className="mr-2 px-2 py-0.5 rounded-full bg-progbg border border-progln text-prog text-[11px] font-bold">Önizleme</span>}<span className="text-lab font-bold uppercase tracking-[.08em] text-xs">{TYPE[act.type].label}</span> · {topic.name}: {act.title}</span>
                 <span className="shrink-0 text-faint">{hdr.label}</span>
               </div>
-              <div className="h-2 rounded-full bg-[#2E231B] overflow-hidden"><div className="h-full rounded-full bg-acc transition-all duration-300" style={{ width: Math.round(hdr.p * 100) + '%' }} /></div>
+              <div className="h-2 rounded-full bg-track overflow-hidden"><div className="h-full rounded-full bg-acc transition-all duration-300" style={{ width: Math.round(hdr.p * 100) + '%' }} /></div>
             </div>
           </div>
         </div>
@@ -519,7 +519,7 @@ function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview }: Su
         )}
         {q.tr && q.t !== 'order' && <p className="m-0 text-soft">"{q.tr}"{q.en && <> <span className="en text-faint">· EN: {q.en}</span></>}</p>}
         {q.t === 'listen' && !res.ok && <p className="m-0 text-soft"><Raw html={tx.ar(q.ar || '', 'text-2xl')} /> = <b>{right}</b></p>}
-        {q.why && <p className="m-0 text-[15px] leading-relaxed text-[#D8C9BA]"><span className="inline-flex align-[-3px] text-acct mr-1"><Raw html={I.bulb(17)} /></span><Raw html={T(q.why)} /></p>}
+        {q.why && <p className="m-0 text-[15px] leading-relaxed text-prose"><span className="inline-flex align-[-3px] text-acct mr-1"><Raw html={I.bulb(17)} /></span><Raw html={T(q.why)} /></p>}
         {!res.ok && !q._retry && <p className="m-0 text-xs text-faint">Bu soruyu sonda tekrar soracağız.</p>}
         <div className="flex justify-end"><button ref={nextBtn} type="button" data-next onClick={next} className="h-12 px-7 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2">Devam <Raw html={I.arrow()} /></button></div>
       </div>
@@ -848,7 +848,7 @@ function ClockPractice({ act, finish, setHdr, toTop, endlessRef, close, log, mis
             </div>
             <div className="flex items-center gap-3 flex-wrap"><Raw html={tx.ar(full, 'text-[26px] text-ink')} /><SayBtn text={full} cls="w-9 h-9" size={16} /></div>
             <p className="m-0 text-soft"><b className="text-ink">{fmt(t.h, t.m)}</b> {timeTr(t.h, t.m)}</p>
-            <p className="m-0 text-[15px] leading-relaxed text-[#D8C9BA]"><span className="inline-flex align-[-3px] text-acct mr-1"><Raw html={I.bulb(17)} /></span><Raw html={tx.text(timeWhy(t.h, t.m))} /></p>
+            <p className="m-0 text-[15px] leading-relaxed text-prose"><span className="inline-flex align-[-3px] text-acct mr-1"><Raw html={I.bulb(17)} /></span><Raw html={tx.text(timeWhy(t.h, t.m))} /></p>
             <div className="flex justify-end"><button ref={nextBtn} type="button" data-next onClick={goNext} className="h-12 px-7 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2">Sonraki saat <Raw html={I.arrow()} /></button></div>
           </div>
         )}

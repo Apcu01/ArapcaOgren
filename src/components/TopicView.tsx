@@ -64,7 +64,7 @@ export default function TopicView({ topic: t, prev, next, narr }: { topic: Topic
         <span aria-hidden="true">/</span><span className="text-ink">{t.name}</span>
       </nav>
 
-      <section className="flex flex-wrap gap-8 items-center justify-between p-6 sm:p-9 rounded-3xl bg-s3 border border-[#2E231B]">
+      <section className="flex flex-wrap gap-8 items-center justify-between p-6 sm:p-9 rounded-3xl bg-s3 border border-track">
         <div className="flex-[999_1_480px] min-w-0 flex flex-col gap-3.5">
           <div className="flex flex-wrap items-baseline gap-x-[18px] gap-y-1">
             <h1 className="m-0 text-[36px] sm:text-[46px] leading-[1.1] tracking-[-0.025em] font-bold">{t.name}</h1>
@@ -141,7 +141,7 @@ function Lesson({ t, tx, lessonRead, onDone, la }: { t: Topic; tx: TextFns; less
         <Raw html={tx.ar(e.ar, 'text-[28px] sm:text-[30px] text-ink text-right flex-1')} />
       </div>
       {e.tl && <div className="tl text-sm text-faint text-right">{e.tl}</div>}
-      <div className="flex flex-col gap-1 pt-2 border-t border-[#241B15]">
+      <div className="flex flex-col gap-1 pt-2 border-t border-line4">
         <div className="flex gap-2 text-[15px]"><span className="shrink-0 w-7 text-xs font-bold text-lab pt-0.5">TR</span><span className="text-ink">{e.tr}</span></div>
         {e.en && <div className="en flex gap-2 text-[15px]"><span className="shrink-0 w-7 text-xs font-bold text-lab pt-0.5">EN</span><span className="text-mute">{e.en}</span></div>}
         {e.note && <Raw as="div" className="text-sm text-mute2 leading-relaxed mt-1" html={rich(e.note)} />}
@@ -204,7 +204,7 @@ function Lesson({ t, tx, lessonRead, onDone, la }: { t: Topic; tx: TextFns; less
         <h2 className="m-0 flex flex-wrap items-baseline gap-3 text-2xl font-bold tracking-tight">Özet: akılda kalacaklar<SectionListen la={la} anchor="puf" /></h2>
         <ul className="m-0 p-0 list-none grid gap-2.5">
           {t.keys.map((k, i) => (
-            <li key={i} className="flex gap-3 p-4 rounded-xl bg-s1 border border-line"><span className="text-ok shrink-0 mt-0.5"><Raw html={I.check(18)} /></span><span className="prose-l"><span className="text-[15.5px] leading-relaxed text-[#D8C9BA]" dangerouslySetInnerHTML={{ __html: rich(k) }} /></span></li>
+            <li key={i} className="flex gap-3 p-4 rounded-xl bg-s1 border border-line"><span className="text-ok shrink-0 mt-0.5"><Raw html={I.check(18)} /></span><span className="prose-l"><span className="text-[15.5px] leading-relaxed text-prose" dangerouslySetInnerHTML={{ __html: rich(k) }} /></span></li>
           ))}
         </ul>
         {t.mistakes.length > 0 && (
@@ -214,8 +214,8 @@ function Lesson({ t, tx, lessonRead, onDone, la }: { t: Topic; tx: TextFns; less
               {t.mistakes.map((m, i) => (
                 <div key={i} className="rounded-2xl bg-s1 border border-line p-4 sm:p-5 flex flex-col gap-3">
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-badbg border border-badln"><span className="text-bad shrink-0"><Raw html={I.x(18)} /></span><Raw html={tx.auto(m.bad, 'text-2xl text-[#F2C0B6]')} /></div>
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-okbg border border-okln"><span className="text-okt shrink-0"><Raw html={I.check(18)} /></span><Raw html={tx.auto(m.good, 'text-2xl text-[#CFE6B8]')} /></div>
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-badbg border border-badln"><span className="text-bad shrink-0"><Raw html={I.x(18)} /></span><Raw html={tx.auto(m.bad, 'text-2xl text-badfg')} /></div>
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-okbg border border-okln"><span className="text-okt shrink-0"><Raw html={I.check(18)} /></span><Raw html={tx.auto(m.good, 'text-2xl text-okfg')} /></div>
                   </div>
                   <p className="m-0 text-[15px] text-mute leading-relaxed" dangerouslySetInnerHTML={{ __html: rich(m.why) }} />
                 </div>
@@ -246,7 +246,7 @@ function Activities({ t, list, kind, setKind, nextId, onOpen }: {
     const s = actState(t.id, a.id);
     if (s && s.done) return ['Tamamlandı · %' + Math.round(s.best * 100), 'bg-okbg text-okt border-okln'];
     if (s) return ['Denendi · %' + Math.round(s.best * 100), 'bg-progbg text-prog border-progln'];
-    return ['Başlanmadı', 'bg-[#1C1714] text-[#9C8B7E] border-[#2E2620]'];
+    return ['Başlanmadı', 'bg-s0 text-dim border-edge'];
   };
   return (
     <div className="flex flex-col gap-5">
@@ -267,7 +267,7 @@ function Activities({ t, list, kind, setKind, nextId, onOpen }: {
                 <span className={`px-2.5 py-[5px] rounded-full text-xs font-bold border ${bc}`}>{bl}</span>
               </span>
               <span className="flex items-center gap-4">
-                <span className="flex-none w-[60px] h-[60px] rounded-[14px] bg-chip border border-[#3E2D20] flex items-center justify-center font-ar text-[20px] text-acct overflow-hidden" aria-hidden="true">{tx.showAr(a.glyph || t.glyph)}</span>
+                <span className="flex-none w-[60px] h-[60px] rounded-[14px] bg-chip border border-chipln flex items-center justify-center font-ar text-[20px] text-acct overflow-hidden" aria-hidden="true">{tx.showAr(a.glyph || t.glyph)}</span>
                 <span className="flex flex-col gap-1 min-w-0">
                   <span className="text-lg font-bold">{a.title}</span>
                   <Raw className="text-sm leading-relaxed text-mute2" html={tx.text(a.desc)} />
@@ -296,7 +296,7 @@ function Words({ t }: { t: Topic }) {
       </div>
       <div className="flex flex-col max-h-[560px] overflow-y-auto pr-1">
         {t.words.map((w, i) => (
-          <div key={i} className="flex justify-between items-center gap-3 py-3 border-b border-[#241B15]">
+          <div key={i} className="flex justify-between items-center gap-3 py-3 border-b border-line4">
             <span className="flex flex-col min-w-0"><span className="text-[15px] text-soft">{w.tr}</span>{w.tl && <span className="tl text-xs text-faint">{w.tl}</span>}</span>
             <span className="flex items-center gap-2">
               <Raw html={tx.ar(w.ar, 'text-[22px] text-ink')} />

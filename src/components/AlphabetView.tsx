@@ -5,6 +5,7 @@ import { ALPHABET_TOPIC as T, HARAKAT, LETTERS } from '@/lib/alphabet';
 import { actsOf, type ActView } from '@/lib/text';
 import { useApp } from './AppProvider';
 import { I, Raw } from './icons';
+import LetterTrace from './LetterTrace';
 import Player from './Player';
 
 const Z = '‍'; // birleşik biçimleri göstermek için sıfır genişlikli birleştirici
@@ -43,7 +44,7 @@ export default function AlphabetView() {
 
       <div className="flex gap-3 p-4 sm:p-5 rounded-2xl bg-progbg/60 border border-progln max-w-[900px]">
         <span className="text-prog shrink-0 mt-0.5"><Raw html={I.bulb(20)} /></span>
-        <p className="m-0 text-[15.5px] leading-relaxed text-[#D8C9BA]"><b className="text-prog">Püf noktası:</b> Birçok harf aynı gövdeyi paylaşır, farkı noktalar yaratır: ب ت ث ن ي (başta hepsi ـبـ gibi görünür). Önce gövdeyi, sonra noktanın yerini ve sayısını öğren. Bitişmeyen altı harf: <Raw html={tx.ar('ا د ذ ر ز و')} /> Bunlardan sonra kelime içinde boşluk varmış gibi görünür.</p>
+        <p className="m-0 text-[15.5px] leading-relaxed text-prose"><b className="text-prog">Püf noktası:</b> Birçok harf aynı gövdeyi paylaşır, farkı noktalar yaratır: ب ت ث ن ي (başta hepsi ـبـ gibi görünür). Önce gövdeyi, sonra noktanın yerini ve sayısını öğren. Bitişmeyen altı harf: <Raw html={tx.ar('ا د ذ ر ز و')} /> Bunlardan sonra kelime içinde boşluk varmış gibi görünür.</p>
       </div>
 
       <section className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
@@ -66,6 +67,8 @@ export default function AlphabetView() {
           );
         })}
       </section>
+
+      <LetterTrace />
 
       <section className="flex flex-col gap-4">
         <h2 className="m-0 text-2xl font-bold">Ek harfler ve işaretler</h2>

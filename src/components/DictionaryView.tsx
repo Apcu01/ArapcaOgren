@@ -4,15 +4,17 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { Topic, Word } from '@/lib/types';
 import { isAr, normAr, searchKey } from '@/lib/text';
+import { rootOf, spaced, type Root } from '@/lib/roots';
 import { useApp } from './AppProvider';
 import { I, Raw } from './icons';
 
-type Row = Word & { topics: { id: string; name: string }[] };
+type Row = Word & { topics: { id: string; name: string }[]; root: Root | null };
 
 export default function DictionaryView({ topics, initialKonu }: { topics: Topic[]; initialKonu: string }) {
   const { tx } = useApp();
   const [q, setQ] = useState('');
   const [konu, setKonu] = useState(initialKonu);
+  const [open, setOpen] = useState<string | null>(null);
 
   // Tüm derslerin kelimelerini tek listede topla
   const words = useMemo(() => {
@@ -21,10 +23,16 @@ export default function DictionaryView({ topics, initialKonu }: { topics: Topic[
       const k = normAr(w.ar) + '|' + w.tr;
       const ref = { id: t.id, name: t.name };
       if (seen.has(k)) seen.get(k)!.topics.push(ref);
-      else seen.set(k, { ...w, topics: [ref] });
+      else seen.set(k, { ...w, topics: [ref], root: rootOf(w.ar) });
     }));
     return [...seen.values()];
   }, [topics]);
+  // Kök -> o kökten gelen sözlük kelimeleri
+  const families = useMemo(() => {
+    const m = new Map<string, Row[]>();
+    for (const w of words) if (w.root) m.set(w.root.letters, [...(m.get(w.root.letters) || []), w]);
+    return m;
+  }, [words]);
 
   const list = useMemo(() => {
     const s = q.trim(), qt = searchKey(s), qa = normAr(s);
@@ -37,7 +45,7 @@ export default function DictionaryView({ topics, initialKonu }: { topics: Topic[
       <div className="flex flex-col gap-3">
         <span className="text-[13px] font-semibold tracking-[.12em] uppercase text-lab">Sözlük</span>
         <h1 className="m-0 text-[36px] sm:text-[44px] font-bold tracking-tight leading-tight">Tüm kelimeler</h1>
-        <p className="m-0 text-mute text-lg max-w-[620px]">Derslerde geçen bütün kelimeler. Türkçe, İngilizce, okunuş ya da Arapça yazarak arayabilirsin; harekesiz yazman yeterli.</p>
+        <p className="m-0 text-mute text-lg max-w-[620px]">Derslerde geçen bütün kelimeler. Türkçe, İngilizce, okunuş ya da Arapça yazarak arayabilirsin; harekesiz yazman yeterli. <b className="text-ink">Kök</b> düğmesi, kelimenin ailesini ve Türkçede aynı kökten gelen kelimeleri gösterir.</p>
       </div>
       <div className="flex flex-wrap gap-3">
         <label className="flex-[1_1_320px] flex items-center gap-3 px-[18px] h-[54px] rounded-[14px] bg-s2 border border-line2 text-faint focus-within:border-lineh">
@@ -55,8 +63,12 @@ export default function DictionaryView({ topics, initialKonu }: { topics: Topic[
       <div className="flex justify-between text-sm text-faint"><span>{list.length} kelime</span><span>Kelimeye dokunarak sesli dinleyebilirsin</span></div>
       <div className="rounded-[20px] bg-s1 border border-line overflow-hidden">
         {!list.length && <div className="p-10 text-center text-mute rounded-2xl border border-dashed border-line3">Eşleşen kelime yok.</div>}
-        {list.map((w, i) => (
-          <div key={i} className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4 border-b border-[#241B15] last:border-b-0">
+        {list.map((w, i) => {
+          const id = w.ar + '|' + w.tr;
+          const isOpen = open === id && !!w.root;
+          return (
+          <div key={i} className="border-b border-line4 last:border-b-0">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4">
             <div className="flex items-center gap-3 min-w-[180px] flex-1 sm:flex-none sm:w-[260px] justify-between sm:justify-start">
               <button type="button" data-say={w.ar} aria-label="Dinle" className="w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-full bg-chip border border-line3 text-acct hover:text-ink" dangerouslySetInnerHTML={{ __html: I.speaker(16) }} />
               <Raw html={tx.ar(w.ar, 'text-[26px] text-ink')} />
@@ -65,12 +77,53 @@ export default function DictionaryView({ topics, initialKonu }: { topics: Topic[
               <span className="text-[16px] font-semibold text-ink">{w.tr}</span>
               <span className="text-sm text-faint"><span className="tl">{w.tl || ''}</span>{w.en && <span className="en">{w.tl ? ' · ' : ''}EN: {w.en}</span>}</span>
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {w.root && (
+                <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : id)}
+                  className={`px-2.5 py-1 rounded-full border text-xs font-semibold inline-flex items-center gap-1.5 ${isOpen ? 'bg-acc text-onacc border-acc' : 'bg-chip border-chipln text-acct hover:text-ink'}`}>
+                  Kök <span lang="ar" dir="rtl" className="font-ar text-[13px]">{spaced(w.root.letters)}</span>
+                </button>
+              )}
               {w.topics.map((t) => <Link key={t.id} href={`/konu?id=${t.id}`} className="px-2.5 py-1 rounded-full bg-s5 border border-line2 text-xs font-semibold text-soft hover:text-ink">{t.name}</Link>)}
             </div>
           </div>
-        ))}
+          {isOpen && w.root && <RootPanel root={w.root} family={families.get(w.root.letters) || []} current={id} />}
+          </div>
+          );
+        })}
       </div>
+    </div>
+  );
+}
+
+/** Kök ailesi: kökün anlamı, sözlükte aynı kökten kelimeler ve Türkçedeki karşılıkları */
+function RootPanel({ root, family, current }: { root: Root; family: Row[]; current: string }) {
+  const { tx } = useApp();
+  return (
+    <div className="pop mx-5 mb-4 p-4 sm:p-5 rounded-2xl bg-s3 border border-line2 flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <span lang="ar" dir="rtl" className="font-ar text-[34px] leading-none text-acct tracking-wide">{spaced(root.letters)}</span>
+        <span className="flex flex-col"><span className="text-xs font-bold tracking-[.08em] uppercase text-lab">Kök anlamı</span><span className="text-[16px] font-semibold text-ink">{root.meaning}</span></span>
+      </div>
+      {root.note && <Raw as="p" className="m-0 text-[15px] leading-relaxed text-prose" html={tx.text(root.note)} />}
+      {family.length > 1 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-bold tracking-[.08em] uppercase text-lab">Derslerde bu kökten</span>
+          <div className="flex flex-wrap gap-2">
+            {family.map((f) => (
+              <button key={f.ar + f.tr} type="button" data-say={f.ar} className={`px-3 py-1.5 rounded-xl border inline-flex items-center gap-2 ${f.ar + '|' + f.tr === current ? 'bg-s5 border-lineh' : 'bg-s1 border-line2 hover:border-lineh'}`}>
+                <Raw html={tx.ar(f.ar, 'text-[20px] text-ink')} /><span className="text-sm text-soft">{f.tr}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {root.tr.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-bold tracking-[.08em] uppercase text-lab">Türkçede bu kökten</span>
+          <div className="flex flex-wrap gap-1.5">{root.tr.map((t) => <span key={t} className="px-2.5 py-1 rounded-full bg-chip border border-chipln text-[13px] font-semibold text-acct">{t}</span>)}</div>
+        </div>
+      )}
     </div>
   );
 }

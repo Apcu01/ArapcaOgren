@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { asc, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
+import { cached } from './cache';
 import type { Activity, ActType, Topic } from './types';
 
 type TopicRow = typeof schema.topics.$inferSelect;
@@ -43,7 +44,8 @@ export function toTopic(t: TopicRow, acts: ActRow[]): Topic {
   };
 }
 
-export const getTopics = cache(async (opts: { all?: boolean } = {}): Promise<Topic[]> => {
+// Sonuçlar önbellekten paylaşılır: çağıranlar dönen nesneleri değiştirmemeli
+export const getTopics = cache((opts: { all?: boolean } = {}): Promise<Topic[]> => cached('topics:' + (opts.all ? 'all' : 'pub'), async () => {
   const [rows, acts] = await Promise.all([
     opts.all
       ? db.select().from(schema.topics).orderBy(asc(schema.topics.n))
@@ -51,11 +53,14 @@ export const getTopics = cache(async (opts: { all?: boolean } = {}): Promise<Top
     db.select().from(schema.activities).orderBy(asc(schema.activities.position))
   ]);
   return rows.map((t) => toTopic(t, acts));
-});
+}));
 
 export async function getTopic(id: string, opts: { all?: boolean } = {}): Promise<Topic | null> {
-  const [t] = await db.select().from(schema.topics).where(eq(schema.topics.id, id)).limit(1);
-  if (!t || (!t.published && !opts.all)) return null;
-  const acts = await db.select().from(schema.activities).where(eq(schema.activities.topicId, id));
-  return toTopic(t, acts);
+  const t = await cached('topics:one:' + id, async () => {
+    const [row] = await db.select().from(schema.topics).where(eq(schema.topics.id, id)).limit(1);
+    if (!row) return null;
+    const acts = await db.select().from(schema.activities).where(eq(schema.activities.topicId, id));
+    return toTopic(row, acts);
+  });
+  return t && (t.published || opts.all) ? t : null;
 }

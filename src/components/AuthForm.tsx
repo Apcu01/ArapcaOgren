@@ -32,7 +32,7 @@ export async function mergeGuestProgress() {
       const r = await fetch('/api/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'merge', state: { progress: raw.progress || {}, last: raw.last ?? null, days: raw.days || [] } })
+        body: JSON.stringify({ action: 'merge', state: { progress: raw.progress || {}, last: raw.last ?? null, days: raw.days || [], counts: raw.counts || {} } })
       });
       if (r.ok) localStorage.setItem(LS_KEY, JSON.stringify({}));
       return has;
@@ -93,7 +93,7 @@ export default function AuthForm({ mode, google = false, error }: { mode: 'login
         </p>
         <div className="flex gap-3 p-4 sm:p-5 rounded-2xl bg-progbg/60 border border-progln">
           <span className="text-prog shrink-0 mt-0.5"><Raw html={I.bulb(20)} /></span>
-          <p className="m-0 text-[15px] leading-relaxed text-[#D8C9BA]">Bu tarayıcıda hesapsız çalıştıysan, {isReg ? 'hesap açtığında' : 'giriş yaptığında'} mevcut ilerlemen otomatik olarak hesabına aktarılır.</p>
+          <p className="m-0 text-[15px] leading-relaxed text-prose">Bu tarayıcıda hesapsız çalıştıysan, {isReg ? 'hesap açtığında' : 'giriş yaptığında'} mevcut ilerlemen otomatik olarak hesabına aktarılır.</p>
         </div>
       </div>
       <form onSubmit={submit} className="flex-[1_1_380px] max-w-[460px] flex flex-col gap-5 p-7 rounded-[22px] bg-s4 border border-line3" noValidate>

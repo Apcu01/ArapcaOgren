@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { adminOrFail } from '@/lib/admin';
 import { fail, ok } from '@/lib/api';
+import { invalidate } from '@/lib/cache';
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const a = await adminOrFail();
@@ -9,5 +10,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const id = Number((await params).id);
   if (!Number.isInteger(id)) return fail('Geçersiz kayıt.');
   await db.delete(schema.audio).where(eq(schema.audio.id, id));
+  invalidate('audio:');
   return ok();
 }

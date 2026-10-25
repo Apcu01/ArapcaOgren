@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import { db, schema } from '@/db';
+import { cached } from './cache';
 import { narrKey, synthesize } from './tts';
 import type { Topic } from './types';
 
@@ -12,7 +13,7 @@ export async function getNarrationIds(t: Pick<Topic, 'id' | 'lesson' | 'summaryN
   const sumKey = t.summaryNarr?.trim() ? narrKey(t.summaryNarr) : null;
   const wanted = [...keys, sumKey].filter((k): k is string => !!k);
   const rows = wanted.length
-    ? await db.select({ id: schema.narrationAudio.id, nkey: schema.narrationAudio.nkey }).from(schema.narrationAudio).where(inArray(schema.narrationAudio.nkey, wanted))
+    ? await cached('narr:' + t.id + ':' + wanted.join(','), () => db.select({ id: schema.narrationAudio.id, nkey: schema.narrationAudio.nkey }).from(schema.narrationAudio).where(inArray(schema.narrationAudio.nkey, wanted)))
     : [];
   const byKey = new Map(rows.map((r) => [r.nkey, r.id]));
   return { sections: keys.map((k) => (k ? byKey.get(k) ?? null : null)), summary: sumKey ? byKey.get(sumKey) ?? null : null };

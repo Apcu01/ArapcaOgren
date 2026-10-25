@@ -61,7 +61,7 @@ export default async function AdminHome() {
         <Card title="En çok zorlanılan etkinlikler" right={<span className="text-xs text-faint">en az 3 deneme</span>}>
           {!s.hardest.length && <p className="m-0 text-sm text-faint">Yeterli veri yok.</p>}
           {s.hardest.map((x, i) => (
-            <div key={i} className="flex items-center justify-between gap-3 text-sm border-b border-[#241B15] pb-2 last:border-0">
+            <div key={i} className="flex items-center justify-between gap-3 text-sm border-b border-line4 pb-2 last:border-0">
               <span className="min-w-0 flex flex-col"><span className="text-ink truncate">{x.title}</span><span className="text-xs text-faint">{x.topicName}{x.type ? ' · ' + x.type : ''} · {x.n} deneme</span></span>
               <b className={scoreColor(x.avg)}>{pct(x.avg)}</b>
             </div>
@@ -72,7 +72,7 @@ export default async function AdminHome() {
           {s.typeDist.map((x) => (
             <div key={x.label} className="flex items-center gap-3 text-sm">
               <span className="w-[38%] truncate text-soft">{x.label}</span>
-              <Bar value={x.n} max={maxType} color="#8FAE6B" />
+              <Bar value={x.n} max={maxType} color="rgb(var(--c-ok))" />
               <span className="w-12 text-right text-mute">{x.n}</span>
             </div>
           ))}
@@ -82,7 +82,7 @@ export default async function AdminHome() {
           {s.topPages.map((x) => (
             <div key={x.path} className="flex items-center gap-3 text-sm">
               <span className="w-[38%] truncate text-soft font-mono text-xs">{x.path}</span>
-              <Bar value={x.n} max={maxPage} color="#D9A066" />
+              <Bar value={x.n} max={maxPage} color="rgb(var(--c-acct))" />
               <span className="w-12 text-right text-mute">{x.n}</span>
             </div>
           ))}
@@ -92,7 +92,7 @@ export default async function AdminHome() {
       <Card title="En çok yanlış yapılan sorular" right={<span className="text-xs text-faint">ilk denemede doğru oranı · en az 5 deneme</span>}>
         {!hardQ.length && <p className="m-0 text-sm text-faint">Yeterli veri yok. Sorular cevaplandıkça burada görünecek.</p>}
         {hardQ.map((x, i) => (
-          <Link key={i} href={`/admin/dersler/${x.topicId}`} className="flex items-center justify-between gap-3 text-sm border-b border-[#241B15] pb-2 last:border-0 text-ink hover:text-ink">
+          <Link key={i} href={`/admin/dersler/${x.topicId}`} className="flex items-center justify-between gap-3 text-sm border-b border-line4 pb-2 last:border-0 text-ink hover:text-ink">
             <span className="min-w-0 flex flex-col"><span className="truncate">{x.label}</span><span className="text-xs text-faint">{x.topicName}{x.title ? ' · ' + x.title : ''} · {x.attempts} deneme</span></span>
             <b className={scoreColor(x.rate)}>{pct(x.rate)}</b>
           </Link>

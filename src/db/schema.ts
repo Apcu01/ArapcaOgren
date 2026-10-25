@@ -84,7 +84,9 @@ export const activityProgress = mysqlTable('activity_progress', {
 
 export const studyDays = mysqlTable('study_days', {
   userId: int('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  day: char('day', { length: 10 }).notNull()
+  day: char('day', { length: 10 }).notNull(),
+  // O gün okunan ders ve bitirilen etkinlik sayısı (çalışma takvimi için)
+  n: int('n').notNull().default(1)
 }, (t) => [primaryKey({ columns: [t.userId, t.day] })]);
 
 // Site istatistikleri: sayfa görüntüleme, ders okuma ve etkinlik bitirme (misafirler dahil)

@@ -7,18 +7,18 @@ export async function getUserProgress(userId: number): Promise<ProgressState> {
   const [lessons, acts, days, [u]] = await Promise.all([
     db.select().from(schema.topicProgress).where(eq(schema.topicProgress.userId, userId)),
     db.select().from(schema.activityProgress).where(eq(schema.activityProgress.userId, userId)),
-    db.select({ day: schema.studyDays.day }).from(schema.studyDays).where(eq(schema.studyDays.userId, userId)),
+    db.select({ day: schema.studyDays.day, n: schema.studyDays.n }).from(schema.studyDays).where(eq(schema.studyDays.userId, userId)),
     db.select({ lastTopic: schema.users.lastTopic }).from(schema.users).where(eq(schema.users.id, userId))
   ]);
-  const state: ProgressState = { progress: {}, last: u?.lastTopic ?? null, days: days.map((d) => d.day).sort() };
+  const state: ProgressState = { progress: {}, last: u?.lastTopic ?? null, days: days.map((d) => d.day).sort(), counts: Object.fromEntries(days.map((d) => [d.day, d.n])) };
   const tp = (id: string) => (state.progress[id] = state.progress[id] || { lesson: false, acts: {} });
   for (const l of lessons) tp(l.topicId).lesson = l.lessonRead;
   for (const a of acts) tp(a.topicId).acts[a.actKey] = { best: a.best, last: a.last, done: a.done, tries: a.tries };
   return state;
 }
 
-export async function markDay(userId: number, day: string) {
-  await db.insert(schema.studyDays).values({ userId, day }).onDuplicateKeyUpdate({ set: { day: sql`day` } });
+export async function markDay(userId: number, day: string, inc = 1) {
+  await db.insert(schema.studyDays).values({ userId, day, n: inc }).onDuplicateKeyUpdate({ set: { n: sql`n + VALUES(n)` } });
 }
 
 export async function saveLesson(userId: number, topicId: string) {
@@ -52,7 +52,7 @@ export async function mergeProgress(userId: number, state: ProgressState) {
       await saveAct(userId, topicId, actKey, a.best, a.done, Math.max(1, a.tries || 1));
     }
   }
-  for (const d of state.days || []) if (/^\d{4}-\d{2}-\d{2}$/.test(d)) await markDay(userId, d);
+  for (const d of state.days || []) if (/^\d{4}-\d{2}-\d{2}$/.test(d)) await markDay(userId, d, Math.max(1, Math.min(500, state.counts?.[d] || 1)));
   if (state.last) await setLastTopic(userId, state.last);
 }
 

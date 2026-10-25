@@ -5,9 +5,10 @@ import { useMemo } from 'react';
 import type { Topic } from '@/lib/types';
 import { actsOf, TYPE } from '@/lib/text';
 import { useApp } from './AppProvider';
+import StudyCalendar from './StudyCalendar';
 
 export default function ProgressView({ topics }: { topics: Topic[] }) {
-  const { topicStats, actState, streak, reset, toast, user } = useApp();
+  const { topicStats, actState, streak, reset, toast, user, state } = useApp();
   const actMap = useMemo(() => Object.fromEntries(topics.map((t) => [t.id, actsOf(t)])), [topics]);
 
   let doneActs = 0, totalActs = 0, sum = 0, tried = 0, doneTopics = 0;
@@ -48,6 +49,7 @@ export default function ProgressView({ topics }: { topics: Topic[] }) {
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {cards.map(([l, v]) => <div key={l} className="p-5 rounded-2xl bg-s3 border border-line2 flex flex-col gap-1"><span className="text-sm text-mute2">{l}</span><span className="text-[28px] font-bold">{v}</span></div>)}
       </div>
+      <StudyCalendar days={state.days} counts={state.counts} />
       <div className="flex flex-col gap-3">
         {topics.map((t) => {
           const st = topicStats(t.id, actMap[t.id]);
@@ -55,18 +57,18 @@ export default function ProgressView({ topics }: { topics: Topic[] }) {
             <div key={t.id} className="p-5 sm:p-6 rounded-[18px] bg-s3 border border-line flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-4 justify-between">
                 <Link href={`/konu?id=${t.id}`} className="flex items-center gap-4 text-ink hover:text-ink min-w-0">
-                  <span className="w-12 h-12 shrink-0 rounded-xl bg-chip border border-[#3E2D20] flex items-center justify-center font-ar text-[26px] text-acct" aria-hidden="true">{t.glyph}</span>
+                  <span className="w-12 h-12 shrink-0 rounded-xl bg-chip border border-chipln flex items-center justify-center font-ar text-[26px] text-acct" aria-hidden="true">{t.glyph}</span>
                   <span className="flex flex-col min-w-0"><span className="font-bold text-lg">{t.n}. {t.name}</span><span className="text-sm text-mute2">{st.lesson ? 'Konu okundu' : 'Konu okunmadı'} · {st.done}/{st.total} etkinlik</span></span>
                 </Link>
                 <div className="flex items-center gap-3 flex-[0_1_280px] min-w-[200px]">
-                  <div className="flex-1 h-2 rounded-full bg-line overflow-hidden"><div className="h-full rounded-full" style={{ width: st.pct + '%', background: st.pct === 100 ? '#8FAE6B' : '#C8894A' }} /></div>
+                  <div className="flex-1 h-2 rounded-full bg-line overflow-hidden"><div className="h-full rounded-full" style={{ width: st.pct + '%', background: st.pct === 100 ? 'rgb(var(--c-ok))' : 'rgb(var(--c-acc))' }} /></div>
                   <span className="text-sm font-semibold w-12 text-right">%{st.pct}</span>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 {actMap[t.id].map((a) => {
                   const s = actState(t.id, a.id);
-                  const cls = s && s.done ? 'bg-okbg text-okt border-okln' : s ? 'bg-progbg text-prog border-progln' : 'bg-[#1C1714] text-[#9C8B7E] border-[#2E2620]';
+                  const cls = s && s.done ? 'bg-okbg text-okt border-okln' : s ? 'bg-progbg text-prog border-progln' : 'bg-s0 text-dim border-edge';
                   return <span key={a.id} className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${cls}`} title={a.title}>{TYPE[a.type].label}{s ? ' · %' + Math.round(s.best * 100) : ''}</span>;
                 })}
               </div>

@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'gunler', n: 9, level: 'Başlangıç', glyph: 'ي',
+  id: 'gunler', n: 10, level: 'Başlangıç', glyph: 'ي',
   ar: 'الْأَيَّامُ وَالشُّهُورُ', name: 'Günler ve Aylar',
   desc: 'Haftanın günleri, miladi ve hicri aylar, dün–bugün–yarın ve tarih söyleme.',
   long: 'Haftanın günlerinin sayılardan nasıl türediğini, iki farklı miladi ay sistemini, hicri ayları ve “Bugün günlerden ne?” sorusunu öğren.',

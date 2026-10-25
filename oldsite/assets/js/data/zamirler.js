@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'zamirler', n: 2, level: 'Başlangıç', glyph: 'ض',
+  id: 'zamirler', n: 3, level: 'Başlangıç', glyph: 'ض',
   ar: 'الضَّمَائِرُ', name: 'Zamirler',
   desc: 'Şahıs zamirleri (ben, sen, o…) ve işaret zamirleri (bu, şu).',
   long: 'Arapçada “sen” ve “o”nun erkek ve kadın için ayrı biçimleri, ikili (dual) zamirler ve “bu / şu” işaret zamirleri. “Ben öğrenciyim” gibi ilk cümlelerini kur.',

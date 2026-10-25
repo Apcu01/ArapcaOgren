@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import './globals.css';
 import { AppProvider } from '@/components/AppProvider';
-import { DEFAULT_SETTINGS, SETTINGS_COOKIE, settingsClasses, type Settings } from '@/lib/settings';
+import { parseSettings, SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
 import ServiceWorker from '@/components/ServiceWorker';
 import { getAudioMap } from '@/lib/audio';
 import { getSessionUser } from '@/lib/auth';
@@ -29,16 +29,20 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false }
 };
 
-export const viewport: Viewport = { themeColor: '#0E0B09', colorScheme: 'dark' };
+// Tarayıcı çubuğunun rengi seçili temaya uyar; sistem temasında cihazın tercihine göre seçilir
+export async function generateViewport(): Promise<Viewport> {
+  const { theme } = await readSettings();
+  if (theme === 'system') {
+    return {
+      colorScheme: 'dark light',
+      themeColor: [{ media: '(prefers-color-scheme: dark)', color: THEME_COLOR.dark }, { media: '(prefers-color-scheme: light)', color: THEME_COLOR.light }]
+    };
+  }
+  return { themeColor: THEME_COLOR[theme], colorScheme: theme };
+}
 
 async function readSettings(): Promise<Settings> {
-  try {
-    const raw = (await cookies()).get(SETTINGS_COOKIE)?.value;
-    if (!raw) return DEFAULT_SETTINGS;
-    const s = { ...DEFAULT_SETTINGS, ...JSON.parse(decodeURIComponent(raw)) } as Settings;
-    s.arSize = [0, 1, 2].includes(s.arSize) ? s.arSize : 0;
-    return s;
-  } catch { return DEFAULT_SETTINGS; }
+  return parseSettings((await cookies()).get(SETTINGS_COOKIE)?.value);
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -46,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [initial, mistakes] = user ? await Promise.all([getUserProgress(user.id), getMistakes(user.id)]) : [null, null];
   const bodyCls = ['bg-bg text-ink font-sans min-h-screen flex flex-col', ...settingsClasses(settings)].join(' ');
   return (
-    <html lang="tr">
+    <html lang="tr" data-theme={settings.theme}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

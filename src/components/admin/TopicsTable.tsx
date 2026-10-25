@@ -44,7 +44,7 @@ export default function TopicsTable({ topics, usage }: { topics: Row[]; usage: R
                   <tr key={t.id}>
                     <td>
                       <Link href={`/admin/dersler/${t.id}`} className="flex items-center gap-3 text-ink hover:text-ink">
-                        <span className="w-11 h-11 shrink-0 rounded-xl bg-chip border border-[#3E2D20] flex items-center justify-center font-ar text-[22px] text-acct">{t.glyph}</span>
+                        <span className="w-11 h-11 shrink-0 rounded-xl bg-chip border border-chipln flex items-center justify-center font-ar text-[22px] text-acct">{t.glyph}</span>
                         <span className="flex flex-col"><span className="font-semibold">{t.n}. {t.name}</span><span className="text-xs text-faint font-mono">{t.id}</span></span>
                       </Link>
                     </td>
@@ -53,7 +53,7 @@ export default function TopicsTable({ topics, usage }: { topics: Row[]; usage: R
                     <td className="text-sm whitespace-nowrap">{u ? <>{u.n} · <b className={scoreColor(u.avg)}>{pct(u.avg)}</b></> : <span className="text-faint">-</span>}</td>
                     <td>
                       <button type="button" disabled={busy === t.id} onClick={() => call(t.id, 'PATCH', { published: !t.published })}
-                        className={`px-2.5 py-1 rounded-full border text-xs font-bold ${t.published ? 'bg-okbg text-okt border-okln' : 'bg-[#1C1714] text-[#9C8B7E] border-[#2E2620]'}`}
+                        className={`px-2.5 py-1 rounded-full border text-xs font-bold ${t.published ? 'bg-okbg text-okt border-okln' : 'bg-s0 text-dim border-edge'}`}
                         title="Yayın durumunu değiştir">
                         {t.published ? 'Yayında' : 'Taslak'}
                       </button>

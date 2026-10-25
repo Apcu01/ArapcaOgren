@@ -11,32 +11,33 @@ export function clockSVG(hm: string, size = 180) {
     const a = (i * 6 - 90) * (Math.PI / 180);
     const big = i % 5 === 0;
     const r1 = c - 10, r2 = c - (big ? 22 : 15);
-    ticks += `<line x1="${c + r1 * Math.cos(a)}" y1="${c + r1 * Math.sin(a)}" x2="${c + r2 * Math.cos(a)}" y2="${c + r2 * Math.sin(a)}" stroke="${big ? '#D9A066' : '#4A3424'}" stroke-width="${big ? 3 : 1.5}" stroke-linecap="round"/>`;
+    ticks += `<line x1="${c + r1 * Math.cos(a)}" y1="${c + r1 * Math.sin(a)}" x2="${c + r2 * Math.cos(a)}" y2="${c + r2 * Math.sin(a)}" style="stroke:${big ? 'rgb(var(--c-acct))' : 'rgb(var(--c-line3))'}" stroke-width="${big ? 3 : 1.5}" stroke-linecap="round"/>`;
   }
   let nums = '';
   for (let i = 1; i <= 12; i++) {
     const a = (i * 30 - 90) * (Math.PI / 180);
     const r = c - 38;
-    nums += `<text x="${c + r * Math.cos(a)}" y="${c + r * Math.sin(a)}" dy=".35em" text-anchor="middle" fill="#B8A595" font-size="${size / 13}" font-family="Manrope, sans-serif" font-weight="600">${i}</text>`;
+    nums += `<text x="${c + r * Math.cos(a)}" y="${c + r * Math.sin(a)}" dy=".35em" text-anchor="middle" style="fill:rgb(var(--c-mute))" font-size="${size / 13}" font-family="Manrope, sans-serif" font-weight="600">${i}</text>`;
   }
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="Saat ${hm}">
-    <circle cx="${c}" cy="${c}" r="${c - 3}" fill="#18120E" stroke="#4A3424" stroke-width="3"/>
+    <circle cx="${c}" cy="${c}" r="${c - 3}" style="fill:rgb(var(--c-s3));stroke:rgb(var(--c-line3))" stroke-width="3"/>
     ${ticks}${nums}
-    <line x1="${c}" y1="${c}" x2="${c + c * 0.45 * Math.cos(ha)}" y2="${c + c * 0.45 * Math.sin(ha)}" stroke="#F2E8DC" stroke-width="6" stroke-linecap="round"/>
-    <line x1="${c}" y1="${c}" x2="${c + c * 0.7 * Math.cos(ma)}" y2="${c + c * 0.7 * Math.sin(ma)}" stroke="#C8894A" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="${c}" cy="${c}" r="6" fill="#C8894A"/>
+    <line x1="${c}" y1="${c}" x2="${c + c * 0.45 * Math.cos(ha)}" y2="${c + c * 0.45 * Math.sin(ha)}" style="stroke:rgb(var(--c-ink))" stroke-width="6" stroke-linecap="round"/>
+    <line x1="${c}" y1="${c}" x2="${c + c * 0.7 * Math.cos(ma)}" y2="${c + c * 0.7 * Math.sin(ma)}" style="stroke:rgb(var(--c-acc))" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="${c}" cy="${c}" r="6" style="fill:rgb(var(--c-acc))"/>
   </svg>`;
 }
 
+// Renkler style ile verilir: SVG özniteliklerinde tema değişkenleri (var) çalışmaz
 /** İlerleme halkası (HTML dizesi) */
 export function ring(pct: number, size = 112, stroke = 10) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const on = (c * pct) / 100;
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="İlerleme yüzde ${pct}">
-    <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#2E231B" stroke-width="${stroke}"/>
-    <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${pct === 100 ? '#8FAE6B' : '#C8894A'}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${on} ${c}" transform="rotate(-90 ${size / 2} ${size / 2})"/>
-    <text x="50%" y="50%" dy=".35em" text-anchor="middle" fill="#F2E8DC" font-family="Manrope, sans-serif" font-size="${Math.round(size / 5)}" font-weight="700">%${pct}</text>
+    <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" style="stroke:rgb(var(--c-track))" stroke-width="${stroke}"/>
+    <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" style="stroke:${pct === 100 ? 'rgb(var(--c-ok))' : 'rgb(var(--c-acc))'}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${on} ${c}" transform="rotate(-90 ${size / 2} ${size / 2})"/>
+    <text x="50%" y="50%" dy=".35em" text-anchor="middle" style="fill:rgb(var(--c-ink))" font-family="Manrope, sans-serif" font-size="${Math.round(size / 5)}" font-weight="700">%${pct}</text>
   </svg>`;
 }
 

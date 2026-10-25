@@ -1,11 +1,164 @@
 /* Sıra eski siteyle aynı: Tailwind CDN yardımcı sınıfları özel CSS'ten sonra geliyordu */
 @tailwind base;
 
+/* Tema renkleri (r g b): Tailwind sınıfları ve aşağıdaki kurallar bunları kullanır.
+   Koyu tema eski sitedeki renklerle birebir aynı; açık tema sıcak kâğıt tonlarında. */
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: 14 11 9;
+  --c-head: 18 14 11;
+  --c-s1: 21 16 12;
+  --c-s2: 23 18 14;
+  --c-s3: 24 18 14;
+  --c-s4: 30 22 17;
+  --c-s5: 34 26 20;
+  --c-chip: 43 31 22;
+  --c-line: 42 32 25;
+  --c-line2: 51 39 30;
+  --c-line3: 74 52 36;
+  --c-lineh: 107 74 46;
+  --c-ink: 242 232 220;
+  --c-soft: 201 182 164;
+  --c-mute: 184 165 149;
+  --c-mute2: 168 149 138;
+  --c-faint: 143 125 110;
+  --c-acc: 200 137 74;
+  --c-acct: 217 160 102;
+  --c-accs: 227 181 131;
+  --c-lab: 192 138 85;
+  --c-onacc: 26 18 12;
+  --c-ok: 143 174 107;
+  --c-okt: 169 201 138;
+  --c-okbg: 31 42 23;
+  --c-okln: 52 71 42;
+  --c-bad: 229 154 140;
+  --c-badbg: 42 22 20;
+  --c-badln: 90 44 36;
+  --c-prog: 232 182 119;
+  --c-progbg: 51 35 15;
+  --c-progln: 90 62 28;
+  --c-line4: 36 27 21;
+  --c-prose: 216 201 186;
+  --c-dim: 156 139 126;
+  --c-chipln: 62 45 32;
+  --c-edge: 46 38 32;
+  --c-s0: 28 23 20;
+  --c-track: 46 35 27;
+  --c-pill: 28 21 17;
+  --c-okfg: 207 230 184;
+  --c-badfg: 242 192 182;
+  --c-okbd: 94 127 69;
+  --c-badbd: 138 61 49;
+  --c-acch: 235 192 143;
+  --c-thumb: 58 42 29;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --c-bg: 246 240 231;
+  --c-head: 251 247 241;
+  --c-s1: 255 252 247;
+  --c-s2: 251 246 238;
+  --c-s3: 248 241 230;
+  --c-s4: 255 255 255;
+  --c-s5: 243 234 221;
+  --c-chip: 240 229 214;
+  --c-line: 231 218 202;
+  --c-line2: 223 208 188;
+  --c-line3: 205 183 157;
+  --c-lineh: 169 128 90;
+  --c-ink: 42 29 19;
+  --c-soft: 85 65 47;
+  --c-mute: 99 79 62;
+  --c-mute2: 110 89 72;
+  --c-faint: 124 103 84;
+  --c-acc: 200 137 74;
+  --c-acct: 150 87 25;
+  --c-accs: 160 96 31;
+  --c-lab: 151 96 42;
+  --c-onacc: 26 18 12;
+  --c-ok: 95 139 59;
+  --c-okt: 61 106 31;
+  --c-okbg: 235 243 224;
+  --c-okln: 188 212 164;
+  --c-bad: 179 65 44;
+  --c-badbg: 252 234 229;
+  --c-badln: 237 187 175;
+  --c-prog: 143 90 18;
+  --c-progbg: 251 240 219;
+  --c-progln: 230 201 148;
+  --c-line4: 239 229 216;
+  --c-prose: 59 44 32;
+  --c-dim: 119 98 79;
+  --c-chipln: 220 198 172;
+  --c-edge: 229 215 197;
+  --c-s0: 244 236 224;
+  --c-track: 232 219 202;
+  --c-pill: 244 231 213;
+  --c-okfg: 44 87 20;
+  --c-badfg: 140 46 29;
+  --c-okbd: 134 173 99;
+  --c-badbd: 217 134 115;
+  --c-acch: 110 60 12;
+  --c-thumb: 213 193 168;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+    --c-bg: 246 240 231;
+    --c-head: 251 247 241;
+    --c-s1: 255 252 247;
+    --c-s2: 251 246 238;
+    --c-s3: 248 241 230;
+    --c-s4: 255 255 255;
+    --c-s5: 243 234 221;
+    --c-chip: 240 229 214;
+    --c-line: 231 218 202;
+    --c-line2: 223 208 188;
+    --c-line3: 205 183 157;
+    --c-lineh: 169 128 90;
+    --c-ink: 42 29 19;
+    --c-soft: 85 65 47;
+    --c-mute: 99 79 62;
+    --c-mute2: 110 89 72;
+    --c-faint: 124 103 84;
+    --c-acc: 200 137 74;
+    --c-acct: 150 87 25;
+    --c-accs: 160 96 31;
+    --c-lab: 151 96 42;
+    --c-onacc: 26 18 12;
+    --c-ok: 95 139 59;
+    --c-okt: 61 106 31;
+    --c-okbg: 235 243 224;
+    --c-okln: 188 212 164;
+    --c-bad: 179 65 44;
+    --c-badbg: 252 234 229;
+    --c-badln: 237 187 175;
+    --c-prog: 143 90 18;
+    --c-progbg: 251 240 219;
+    --c-progln: 230 201 148;
+    --c-line4: 239 229 216;
+    --c-prose: 59 44 32;
+    --c-dim: 119 98 79;
+    --c-chipln: 220 198 172;
+    --c-edge: 229 215 197;
+    --c-s0: 244 236 224;
+    --c-track: 232 219 202;
+    --c-pill: 244 231 213;
+    --c-okfg: 44 87 20;
+    --c-badfg: 140 46 29;
+    --c-okbd: 134 173 99;
+    --c-badbd: 217 134 115;
+    --c-acch: 110 60 12;
+    --c-thumb: 213 193 168;
+  }
+}
+
+
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: #0E0B09; color: #F2E8DC; font-family: Manrope, system-ui, sans-serif; }
-a { color: #D9A066; text-decoration: none; }
-a:hover { color: #EBC08F; }
-::selection { background: #6B4A2E; color: #F2E8DC; }
+body { margin: 0; background: rgb(var(--c-bg)); color: rgb(var(--c-ink)); font-family: Manrope, system-ui, sans-serif; }
+a { color: rgb(var(--c-acct)); text-decoration: none; }
+a:hover { color: rgb(var(--c-acch)); }
+::selection { background: rgb(var(--c-lineh)); color: rgb(var(--c-ink)); }
 
 .ar { font-family: 'Noto Sans Arabic', sans-serif; line-height: 1.7; unicode-bidi: isolate; }
 
@@ -15,38 +168,38 @@ body.no-en .en { display: none !important; }
 
 /* Kartlar */
 .cat, .act-card { transition: background .15s, border-color .15s, transform .15s; }
-.cat:hover { border-color: #6B4A2E !important; background: #221A14 !important; }
-.act-card:hover { border-color: #6B4A2E !important; }
+.cat:hover { border-color: rgb(var(--c-lineh)) !important; background: rgb(var(--c-s5)) !important; }
+.act-card:hover { border-color: rgb(var(--c-lineh)) !important; }
 
-.nav a { color: #B8A595; }
-.nav a:hover, .nav a.is-active { color: #F2E8DC; }
+.nav a { color: rgb(var(--c-mute)); }
+.nav a:hover, .nav a.is-active { color: rgb(var(--c-ink)); }
 
 .focus-ring:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 2px solid #D9A066; outline-offset: 2px;
+  outline: 2px solid rgb(var(--c-acct)); outline-offset: 2px;
 }
 
 /* Konu anlatımı içeriği */
-.prose-l p { margin: 0 0 14px; line-height: 1.75; color: #D8C9BA; font-size: 16.5px; }
+.prose-l p { margin: 0 0 14px; line-height: 1.75; color: rgb(var(--c-prose)); font-size: 16.5px; }
 .prose-l p:last-child { margin-bottom: 0; }
-.prose-l b, .prose-l strong { color: #F2E8DC; font-weight: 700; }
-.prose-l em { color: #E3B583; font-style: normal; }
-.prose-l .ar { font-size: 1.35em; color: #F2E8DC; }
-.prose-l ul { margin: 0 0 14px; padding-left: 20px; color: #D8C9BA; line-height: 1.7; }
+.prose-l b, .prose-l strong { color: rgb(var(--c-ink)); font-weight: 700; }
+.prose-l em { color: rgb(var(--c-accs)); font-style: normal; }
+.prose-l .ar { font-size: 1.35em; color: rgb(var(--c-ink)); }
+.prose-l ul { margin: 0 0 14px; padding-left: 20px; color: rgb(var(--c-prose)); line-height: 1.7; }
 .prose-l li { margin-bottom: 6px; }
 
 table.lt { width: 100%; border-collapse: collapse; font-size: 15px; }
-table.lt th { text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #C08A55; font-weight: 700; padding: 10px 14px; border-bottom: 1px solid #33271E; white-space: nowrap; }
-table.lt td { padding: 10px 14px; border-bottom: 1px solid #241B15; color: #D8C9BA; vertical-align: middle; }
+table.lt th { text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--c-lab)); font-weight: 700; padding: 10px 14px; border-bottom: 1px solid rgb(var(--c-line2)); white-space: nowrap; }
+table.lt td { padding: 10px 14px; border-bottom: 1px solid rgb(var(--c-line4)); color: rgb(var(--c-prose)); vertical-align: middle; }
 table.lt tr:last-child td { border-bottom: 0; }
-table.lt td .ar { font-size: 22px; color: #F2E8DC; }
+table.lt td .ar { font-size: 22px; color: rgb(var(--c-ink)); }
 
 /* Oyuncu */
 .opt { transition: background .12s, border-color .12s, transform .08s; }
-.opt:not(:disabled):hover { border-color: #6B4A2E; background: #221A14; }
+.opt:not(:disabled):hover { border-color: rgb(var(--c-lineh)); background: rgb(var(--c-s5)); }
 .opt:not(:disabled):active { transform: scale(.985); }
-.opt.is-right { background: #1F2A17 !important; border-color: #5E7F45 !important; color: #CFE6B8 !important; }
-.opt.is-wrong { background: #2A1614 !important; border-color: #8A3D31 !important; color: #F2C0B6 !important; }
-.opt.is-sel { border-color: #C8894A !important; background: #2B1F16 !important; }
+.opt.is-right { background: rgb(var(--c-okbg)) !important; border-color: rgb(var(--c-okbd)) !important; color: rgb(var(--c-okfg)) !important; }
+.opt.is-wrong { background: rgb(var(--c-badbg)) !important; border-color: rgb(var(--c-badbd)) !important; color: rgb(var(--c-badfg)) !important; }
+.opt.is-sel { border-color: rgb(var(--c-acc)) !important; background: rgb(var(--c-chip)) !important; }
 .opt.is-gone { opacity: .35; }
 
 @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
@@ -60,7 +213,7 @@ table.lt td .ar { font-size: 22px; color: #F2E8DC; }
 .flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .flip-back { position: absolute; inset: 0; transform: rotateY(180deg); }
 
-.blank { display: inline-block; min-width: 3.2em; border-bottom: 2px dashed #C8894A; color: #E3B583; padding: 0 .3em; text-align: center; }
+.blank { display: inline-block; min-width: 3.2em; border-bottom: 2px dashed rgb(var(--c-acc)); color: rgb(var(--c-accs)); padding: 0 .3em; text-align: center; }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
@@ -79,22 +232,22 @@ body.ar-1 .ar .ar, body.ar-2 .ar .ar { zoom: 1; }
 /* Kaydırma çubukları: sitenin sıcak koyu temasına uygun */
 /* Firefox (standart özellikler); Chrome/Edge aşağıdaki ::-webkit-scrollbar kurallarını kullanır */
 @supports not selector(::-webkit-scrollbar) {
-  html { scrollbar-color: #4A3424 #0E0B09; scrollbar-width: thin; }
-  * { scrollbar-color: #4A3424 transparent; scrollbar-width: thin; }
+  html { scrollbar-color: rgb(var(--c-line3)) rgb(var(--c-bg)); scrollbar-width: thin; }
+  * { scrollbar-color: rgb(var(--c-line3)) transparent; scrollbar-width: thin; }
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-html::-webkit-scrollbar-track, #player::-webkit-scrollbar-track { background: #0E0B09; }
-::-webkit-scrollbar-thumb { background: #3A2A1D; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: #6B4A2E; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:active { background: #C8894A; background-clip: padding-box; }
+html::-webkit-scrollbar-track, #player::-webkit-scrollbar-track { background: rgb(var(--c-bg)); }
+::-webkit-scrollbar-thumb { background: rgb(var(--c-thumb)); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-lineh)); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:active { background: rgb(var(--c-acc)); background-clip: padding-box; }
 ::-webkit-scrollbar-corner { background: transparent; }
 
 /* Tailwind CDN (v3) ile aynı davranış: düğmelerde el imleci */
 button:not(:disabled), [role="button"] { cursor: pointer; }
 
 /* Ders anlatımında çalan bölüm (yerleşimi kaydırmadan çerçeve) */
-.narr-on { outline: 2px solid #6B4A2E; outline-offset: 14px; border-radius: 18px; transition: outline-color .2s; }
+.narr-on { outline: 2px solid rgb(var(--c-lineh)); outline-offset: 14px; border-radius: 18px; transition: outline-color .2s; }
 
 @tailwind components;
 @tailwind utilities;

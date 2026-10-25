@@ -25,7 +25,8 @@ const Body = z.discriminatedUnion('action', [
         acts: z.record(z.string().max(64), ActRec).optional().default({})
       })),
       last: z.string().max(64).nullable().optional(),
-      days: z.array(day).max(2000).optional().default([])
+      days: z.array(day).max(2000).optional().default([]),
+      counts: z.record(day, z.number().int().min(0).max(100000)).optional()
     })
   })
 ]);
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
         lesson: v.lesson,
         acts: Object.fromEntries(Object.entries(v.acts).map(([a, r]) => [a, { ...r, last: r.last ?? r.best }]))
       }]));
-      await mergeProgress(user.id, { progress, last: b.state.last ?? null, days: b.state.days });
+      await mergeProgress(user.id, { progress, last: b.state.last ?? null, days: b.state.days, counts: b.state.counts });
       break;
     }
   }

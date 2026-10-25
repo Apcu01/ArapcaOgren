@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'renkler', n: 6, level: 'Başlangıç', glyph: 'ل',
+  id: 'renkler', n: 7, level: 'Başlangıç', glyph: 'ل',
   ar: 'الْأَلْوَانُ', name: 'Renkler',
   desc: 'Temel renkler, أَفْعَلُ / فَعْلَاءُ kalıbı ve renk sıfatlarının çekimi.',
   long: 'Kırmızı, mavi, yeşil… Temel renklerin erkek, dişil ve çoğul biçimleri; -î ekiyle yapılan renkler ve “Bu ne renk?” sorusu.',

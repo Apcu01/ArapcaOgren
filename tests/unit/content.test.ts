@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { clean, deepClean } from '../../scripts/typography';
 import { TopicInput } from '@/lib/topic-schema';
 
-// Eski sitedeki 12 dersin verisi: yönetim paneli şemasından geçmeli
+// Ders verisi (oldsite/assets/js/data): yönetim paneli şemasından geçmeli
 function oldTopics() {
   const dir = path.join(process.cwd(), 'oldsite', 'assets', 'js', 'data');
   const ctx: Record<string, unknown> = {};
@@ -33,8 +33,8 @@ describe('tipografi temizliği', () => {
 describe('ders verisi', () => {
   const topics = oldTopics().map((t) => deepClean(t));
 
-  it('12 ders yüklenir', () => {
-    expect(topics).toHaveLength(12);
+  it('13 ders yüklenir', () => {
+    expect(topics).toHaveLength(13);
   });
 
   it.each(topics.map((t) => [t.id as string, t]))('%s yönetim paneli şemasından geçer', (_id, t) => {

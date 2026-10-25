@@ -38,7 +38,7 @@ function NarrStatus({ part, text }: { part: number | 'summary'; text: string | n
   const badge = 'px-2.5 py-1 rounded-full border text-xs font-bold';
   return (
     <span className="flex flex-wrap items-center gap-2">
-      {empty ? <span className={badge + ' bg-[#1C1714] text-[#9C8B7E] border-[#2E2620]'}>Anlatım yok</span>
+      {empty ? <span className={badge + ' bg-s0 text-dim border-edge'}>Anlatım yok</span>
         : changed || narr.isNew ? <span className={badge + ' bg-progbg text-prog border-progln'}>Metin değişti: kaydedip sesi üret</span>
         : id ? <><span className={badge + ' bg-okbg text-okt border-okln'}>Ses hazır</span><button type="button" className="text-xs font-semibold text-acct" onClick={() => new Audio('/api/narration/' + id).play().catch(() => null)}>Dinle</button></>
         : <span className={badge + ' bg-badbg text-bad border-badln'}>Ses yok</span>}
@@ -306,7 +306,7 @@ function MetaTab({ d, up, isNew }: TabProps & { isNew: boolean }) {
         <F label="Okuma süresi (dk)"><TI type="number" value={d.readMins} onChange={(v) => up((x) => { x.readMins = Number(v) || 0; })} /></F>
         <F label="Yayın durumu">
           <span className="flex items-center gap-3 min-h-[44px]">
-            <input type="checkbox" checked={!!d.published} onChange={(e) => up((x) => { x.published = e.target.checked; })} className="w-5 h-5 accent-[#C8894A]" />
+            <input type="checkbox" checked={!!d.published} onChange={(e) => up((x) => { x.published = e.target.checked; })} className="w-5 h-5 accent-acc" />
             <span className="text-sm text-soft">{d.published ? 'Yayında: herkes görebilir' : 'Taslak: yalnızca yöneticiler görür'}</span>
           </span>
         </F>
@@ -380,7 +380,7 @@ function SectionEditor({ s, set, index }: { s: Section; set: (fn: (s: Section) =
         <PTA kind="paras" rows={6} joined={(s.p || []).join('\n\n')} onText={(v) => set((x) => { x.p = paras(v); })} />
       </F>
       <label className="flex items-center gap-3 text-sm text-soft">
-        <input type="checkbox" checked={tableOn} onChange={(e) => { setTableOn(e.target.checked); set((x) => { x.table = e.target.checked ? x.table || { cols: ['Sütun 1', 'Sütun 2'], rows: [['', '']] } : undefined; }); }} className="w-5 h-5 accent-[#C8894A]" />
+        <input type="checkbox" checked={tableOn} onChange={(e) => { setTableOn(e.target.checked); set((x) => { x.table = e.target.checked ? x.table || { cols: ['Sütun 1', 'Sütun 2'], rows: [['', '']] } : undefined; }); }} className="w-5 h-5 accent-acc" />
         Bu bölümde tablo var
       </label>
       {tableOn && s.table && (
@@ -476,7 +476,7 @@ function ActsTab({ d, up, onPreview }: TabProps & { onPreview: (i: number) => vo
         <div key={i} className="rounded-[20px] bg-s1 border border-line">
           <div className="flex items-center gap-3 p-4">
             <button type="button" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className="flex-1 min-w-0 text-left flex items-center gap-3">
-              <span className="w-10 h-10 shrink-0 rounded-xl bg-chip border border-[#3E2D20] flex items-center justify-center font-ar text-[16px] text-acct overflow-hidden">{a.glyph || d.glyph}</span>
+              <span className="w-10 h-10 shrink-0 rounded-xl bg-chip border border-chipln flex items-center justify-center font-ar text-[16px] text-acct overflow-hidden">{a.glyph || d.glyph}</span>
               <span className="min-w-0 flex flex-col">
                 <span className="font-bold truncate">{a.title || 'Başlıksız etkinlik'}</span>
                 <span className="text-xs text-faint">{TYPE[a.type].label}{a.items ? ` · ${a.items.length} ${a.type === 'match' ? 'çift' : 'soru'}` : a.type === 'clock' ? ' · sınırsız' : ' · kelimelerden'}{!a.id ? ' · yeni' : ''}</span>
@@ -531,7 +531,7 @@ function ActEditor({ a, set, words }: { a: Activity; set: (fn: (a: Activity) => 
       )}
       {['mc', 'fill', 'tf', 'order', 'test'].includes(a.type) && (
         <label className="flex items-center gap-3 text-sm text-soft">
-          <input type="checkbox" checked={!!a.keepOrder} onChange={(e) => set((x) => { x.keepOrder = e.target.checked || undefined; })} className="w-5 h-5 accent-[#C8894A]" />
+          <input type="checkbox" checked={!!a.keepOrder} onChange={(e) => set((x) => { x.keepOrder = e.target.checked || undefined; })} className="w-5 h-5 accent-acc" />
           Soruları karıştırma (bu sırayla sor)
         </label>
       )}
@@ -598,7 +598,7 @@ function QuestionEditor({ q, t, set }: { q: Question; t: QType; set: (fn: (q: Qu
           </select>
         </F>
         <label className="flex items-center gap-3 text-sm text-soft">
-          <input type="checkbox" checked={!!q.fixed} onChange={(e) => set((x) => { x.fixed = e.target.checked || undefined; })} className="w-5 h-5 accent-[#C8894A]" />
+          <input type="checkbox" checked={!!q.fixed} onChange={(e) => set((x) => { x.fixed = e.target.checked || undefined; })} className="w-5 h-5 accent-acc" />
           Seçenekleri karıştırma
         </label>
       </div>

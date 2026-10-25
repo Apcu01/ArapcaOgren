@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'soru', n: 4, level: 'Başlangıç', glyph: '؟',
+  id: 'soru', n: 5, level: 'Başlangıç', glyph: '؟',
   ar: 'أَدَوَاتُ الِاسْتِفْهَامِ', name: 'Soru Kelimeleri',
   desc: 'Ne, kim, nerede, ne zaman, nasıl, kaç, neden ve evet/hayır soruları.',
   long: 'مَا، مَنْ، أَيْنَ، مَتَى، كَيْفَ، كَمْ، لِمَاذَا ve هَلْ ile soru sormayı, cevap vermeyi öğren. Günlük konuşmanın kapısı.',

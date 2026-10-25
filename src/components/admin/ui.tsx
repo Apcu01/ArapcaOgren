@@ -23,7 +23,7 @@ export function Card({ title, children, right, className = '' }: { title?: React
   );
 }
 
-export function Bar({ value, max, color = '#C8894A' }: { value: number; max: number; color?: string }) {
+export function Bar({ value, max, color = 'rgb(var(--c-acc))' }: { value: number; max: number; color?: string }) {
   const pct = max ? Math.max(2, Math.round((value / max) * 100)) : 0;
   return <div className="h-2 rounded-full bg-line overflow-hidden flex-1"><div className="h-full rounded-full" style={{ width: pct + '%', background: color }} /></div>;
 }

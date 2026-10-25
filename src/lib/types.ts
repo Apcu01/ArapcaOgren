@@ -78,7 +78,8 @@ export type TopicSummary = Pick<Topic, 'id' | 'n' | 'level' | 'glyph' | 'ar' | '
 
 export type ActRec = { best: number; done: boolean; tries: number; last: number };
 export type TopicRec = { lesson: boolean; acts: Record<string, ActRec> };
-export type ProgressState = { progress: Record<string, TopicRec>; last: string | null; days: string[] };
+/** counts: gün -> o gün okunan ders ve bitirilen etkinlik sayısı (eski kayıtlarda olmayabilir) */
+export type ProgressState = { progress: Record<string, TopicRec>; last: string | null; days: string[]; counts?: Record<string, number> };
 
 export type SessionUser = { id: number; name: string; email: string; role: 'user' | 'admin' };
 

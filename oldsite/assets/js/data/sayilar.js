@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'sayilar', n: 7, level: 'Orta', glyph: 'ع',
+  id: 'sayilar', n: 8, level: 'Orta', glyph: 'ع',
   ar: 'الْأَعْدَادُ', name: 'Sayılar',
   desc: '0–1000 arası sayılar, Arap rakamları, sayı–sayılan uyumu ve sıra sayıları.',
   long: 'Sayıları say, Arap rakamlarını oku, “üç kitap” ve “yirmi öğrenci” gibi ifadeleri doğru kur. Saatler dersine hazırlık için sıra sayıları da burada.',

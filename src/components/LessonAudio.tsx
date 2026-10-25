@@ -142,7 +142,7 @@ export function NowPlaying({ la }: { la: LessonAudio }) {
       </div>
       <div className="flex items-center gap-3 text-xs text-faint">
         <span className="w-9 text-right tabular-nums">{fmtTime(la.pos)}</span>
-        <div className="flex-1 h-2 rounded-full bg-[#2E231B] cursor-pointer relative" role="slider" aria-label="Konum" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(frac * 100)} tabIndex={0}
+        <div className="flex-1 h-2 rounded-full bg-track cursor-pointer relative" role="slider" aria-label="Konum" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(frac * 100)} tabIndex={0}
           onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); la.seek((e.clientX - r.left) / r.width); }}
           onKeyDown={(e) => { if (e.key === 'ArrowRight') la.seek(Math.min(1, frac + 0.05)); if (e.key === 'ArrowLeft') la.seek(Math.max(0, frac - 0.05)); }}>
           <div className="h-full rounded-full bg-acc" style={{ width: frac * 100 + '%' }} />

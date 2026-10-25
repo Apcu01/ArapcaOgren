@@ -69,14 +69,14 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="font-semibold">{t.id === 'alfabe' ? 'Alfabe' : `${t.n}. ${t.name}`} <span className="text-xs text-faint font-normal">{p?.lesson ? '· konu okundu' : t.id === 'alfabe' ? '' : '· konu okunmadı'}</span></span>
                   <span className="flex items-center gap-3 flex-[0_1_240px] min-w-[180px]">
-                    <span className="flex-1 h-2 rounded-full bg-line overflow-hidden"><span className="block h-full rounded-full" style={{ width: pc + '%', background: pc === 100 ? '#8FAE6B' : '#C8894A' }} /></span>
+                    <span className="flex-1 h-2 rounded-full bg-line overflow-hidden"><span className="block h-full rounded-full" style={{ width: pc + '%', background: pc === 100 ? 'rgb(var(--c-ok))' : 'rgb(var(--c-acc))' }} /></span>
                     <span className="text-sm font-semibold w-11 text-right">%{pc}</span>
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {acts.map((a) => {
                     const s = p?.acts[a.id];
-                    const cls = s && s.done ? 'bg-okbg text-okt border-okln' : s ? 'bg-progbg text-prog border-progln' : 'bg-[#1C1714] text-[#9C8B7E] border-[#2E2620]';
+                    const cls = s && s.done ? 'bg-okbg text-okt border-okln' : s ? 'bg-progbg text-prog border-progln' : 'bg-s0 text-dim border-edge';
                     return <span key={a.id} className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${cls}`} title={`${a.title}${s ? ` · ${s.tries} deneme · son: ${pct(s.last)}` : ''}`}>{TYPE[a.type].label}{s ? ' · %' + Math.round(s.best * 100) : ''}</span>;
                   })}
                 </div>
@@ -90,7 +90,7 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
         {!events.length && <p className="m-0 text-sm text-faint">Henüz kayıtlı hareket yok.</p>}
         <div className="flex flex-col">
           {events.map((e) => (
-            <div key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-[#241B15] last:border-0 text-sm">
+            <div key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-line4 last:border-0 text-sm">
               <span className="text-soft">
                 {e.type === 'activity' ? <>Etkinlik: <b className="text-ink">{actTitle(e.topicId, e.actKey)}</b> <span className="text-faint">({nameOf(e.topicId)})</span></> : <>Konuyu okudu: <b className="text-ink">{nameOf(e.topicId)}</b></>}
               </span>

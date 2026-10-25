@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'fiiller', n: 11, level: 'Orta', glyph: 'ف',
+  id: 'fiiller', n: 12, level: 'Orta', glyph: 'ف',
   ar: 'الْأَفْعَالُ', name: 'Fiiller',
   desc: 'Kök sistemi, mazi (geçmiş) ve muzari (şimdiki/geniş) çekimi, olumsuzluk ve gelecek zaman.',
   long: 'Arapçanın kalbi olan üç harfli kök sistemini, كَتَبَ fiili üzerinden mazi ve muzari çekimlerini, olumsuz yapmayı ve gelecek zamanı öğren.',

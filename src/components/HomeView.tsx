@@ -66,7 +66,7 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex justify-between text-sm text-mute"><span>{cst.done} / {cst.total} etkinlik{cst.lesson ? ' · konu okundu' : ''}</span><span>%{cst.pct}</span></div>
-              <div className="h-2 rounded-full bg-[#2E231B] overflow-hidden"><div className="h-full rounded-full bg-acc" style={{ width: cst.pct + '%' }} /></div>
+              <div className="h-2 rounded-full bg-track overflow-hidden"><div className="h-full rounded-full bg-acc" style={{ width: cst.pct + '%' }} /></div>
             </div>
             <span className="self-start inline-flex items-center gap-2 px-5 h-[46px] rounded-xl bg-acc text-onacc font-bold text-[15px]">{cst.started ? 'Devam et' : 'Başla'} <Raw html={I.arrow()} /></span>
           </Link>
@@ -103,7 +103,7 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
             return (
               <Link key={t.id} className="cat flex flex-col gap-5 p-6 rounded-[18px] bg-s3 border border-line text-ink hover:text-ink" href={`/konu?id=${t.id}`}>
                 <div className="flex justify-between items-start gap-3">
-                  <span className="w-14 h-14 rounded-[14px] bg-chip border border-[#3E2D20] flex items-center justify-center font-ar text-[30px] text-acct" aria-hidden="true">{t.glyph}</span>
+                  <span className="w-14 h-14 rounded-[14px] bg-chip border border-chipln flex items-center justify-center font-ar text-[30px] text-acct" aria-hidden="true">{t.glyph}</span>
                   <div className="flex flex-col items-end gap-1.5">
                     <span className="px-2.5 py-[5px] rounded-full bg-s5 border border-line2 text-xs font-semibold text-mute">{t.level}</span>
                     <span className="text-xs text-faint">Ders {t.n}</span>
@@ -116,7 +116,7 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
                 </div>
                 <div className="flex flex-col gap-2 mt-auto">
                   <div className="flex justify-between text-[13px] text-mute2"><span>{actMap[t.id].length} etkinlik</span><span>{pctLabel(st)}</span></div>
-                  <div className="h-1.5 rounded-full bg-line overflow-hidden"><div className="h-full rounded-full" style={{ width: st.pct + '%', background: st.pct === 100 ? '#8FAE6B' : '#C8894A' }} /></div>
+                  <div className="h-1.5 rounded-full bg-line overflow-hidden"><div className="h-full rounded-full" style={{ width: st.pct + '%', background: st.pct === 100 ? 'rgb(var(--c-ok))' : 'rgb(var(--c-acc))' }} /></div>
                 </div>
               </Link>
             );

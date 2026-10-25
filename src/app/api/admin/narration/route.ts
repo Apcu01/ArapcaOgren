@@ -3,6 +3,7 @@ import { adminOrFail } from '@/lib/admin';
 import { fail, ok, parse } from '@/lib/api';
 import { ensureNarration, getNarrationIds, pruneNarration } from '@/lib/narration';
 import { getTopic } from '@/lib/topics';
+import { invalidate } from '@/lib/cache';
 
 // Yönetim panelinden bir bölümün (ya da özetin) anlatım sesini kayıtlı metne göre üret
 const Body = z.object({ topicId: z.string().min(1).max(64), part: z.union([z.number().int().min(0).max(200), z.literal('summary'), z.literal('all')]) });
@@ -30,5 +31,6 @@ export async function POST(req: Request) {
     return fail((e as Error).message, 502);
   }
   await pruneNarration(t);
+  invalidate('narr:');
   return ok({ ids: await getNarrationIds(t) });
 }

@@ -5,6 +5,7 @@ import { adminOrFail } from '@/lib/admin';
 import { fail, ok, parse } from '@/lib/api';
 import { TopicInput } from '@/lib/topic-schema';
 import { writeTopic } from '../write';
+import { invalidate } from '@/lib/cache';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -23,6 +24,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   if ('res' in p) return p.res;
   if (p.data.id !== id) return fail('Dersin kısa adı değiştirilemez.');
   const topic = await writeTopic(p.data, false);
+  invalidate('topics:');
   return ok({ topic });
 }
 
@@ -36,6 +38,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if ('res' in p) return p.res;
   if (!(await exists(id))) return fail('Ders bulunamadı.', 404);
   if (Object.keys(p.data).length) await db.update(schema.topics).set(p.data).where(eq(schema.topics.id, id));
+  invalidate('topics:');
   return ok();
 }
 
@@ -50,5 +53,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     await tx.delete(schema.topicProgress).where(eq(schema.topicProgress.topicId, id));
     await tx.delete(schema.topics).where(eq(schema.topics.id, id));
   });
+  invalidate('topics:');
   return ok();
 }

@@ -1,6 +1,6 @@
 window.TOPICS = window.TOPICS || [];
 TOPICS.push({
-  id: 'iyelik', n: 3, level: 'Başlangıç', glyph: 'ـي',
+  id: 'iyelik', n: 4, level: 'Başlangıç', glyph: 'ـي',
   ar: 'الضَّمَائِرُ الْمُتَّصِلَةُ', name: 'İyelik Ekleri',
   desc: 'Kitabım, kitabın, kitabı: bitişik zamirler ve “bende var”.',
   long: 'Türkçedeki -ım, -ın, -ı eklerinin Arapça karşılıkları olan bitişik zamirler. İsimde iyelik, harf-i cerde “bende / sende” ve fiilde “beni / seni” anlamları.',

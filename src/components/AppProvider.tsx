@@ -7,14 +7,14 @@ import { mistakeKey, type MistakeItem } from '@/lib/qkey';
 import { audioKey, dayKey, esc, makeText, streakOf, type ActView, type TextFns } from '@/lib/text';
 import { I } from './icons';
 
-import { SETTINGS_COOKIE, settingsClasses, type Settings } from '@/lib/settings';
+import { SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
 export type { Settings };
 const LS_KEY = 'arblearn:v1';
 const ANON_KEY = 'arblearn:anon';
 const MISTAKES_KEY = 'arblearn:mistakes';
 const MAX_LOCAL_MISTAKES = 300;
 
-const empty = (): ProgressState => ({ progress: {}, last: null, days: [] });
+const empty = (): ProgressState => ({ progress: {}, last: null, days: [], counts: {} });
 
 type Ctx = {
   user: SessionUser | null;
@@ -54,14 +54,15 @@ function readLocal(): ProgressState {
     return {
       progress: raw.progress && typeof raw.progress === 'object' ? raw.progress : {},
       last: raw.last ?? null,
-      days: Array.isArray(raw.days) ? raw.days : []
+      days: Array.isArray(raw.days) ? raw.days : [],
+      counts: raw.counts && typeof raw.counts === 'object' ? raw.counts : {}
     };
   } catch { return empty(); }
 }
 function writeLocal(s: ProgressState) {
   try {
     const prev = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
-    localStorage.setItem(LS_KEY, JSON.stringify({ ...prev, progress: s.progress, last: s.last, days: s.days }));
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...prev, progress: s.progress, last: s.last, days: s.days, counts: s.counts }));
   } catch { /* gizli pencere vb. */ }
 }
 export function anonId() {
@@ -148,6 +149,7 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
   const studied = (s: ProgressState) => {
     const k = dayKey(new Date());
     if (!s.days.includes(k)) s.days = [...s.days, k].slice(-500);
+    s.counts = { ...(s.counts || {}), [k]: (s.counts?.[k] || 0) + 1 };
     return s;
   };
 
@@ -203,6 +205,14 @@ export function AppProvider({ user, initial, initialSettings, initialMistakes, a
     const on = settingsClasses(settings);
     for (const c of ['no-tl', 'no-en', 'ar-1', 'ar-2']) document.body.classList.toggle(c, on.includes(c));
   }, [settings]);
+  // Tema: html etiketindeki data-theme ve tarayıcı çubuğu rengi
+  useEffect(() => {
+    const root = document.documentElement;
+    if (root.dataset.theme === settings.theme) return;
+    root.dataset.theme = settings.theme;
+    const light = settings.theme === 'light' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
+    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => { m.content = light ? THEME_COLOR.light : THEME_COLOR.dark; });
+  }, [settings.theme]);
   const tx = useMemo(() => makeText(settings.harakat), [settings.harakat]);
 
   /* ---------- Bildirim ---------- */

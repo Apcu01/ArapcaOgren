@@ -40,7 +40,7 @@ export default function AudioManager({ map: initial, records, topics }: { map: A
       </Card>
 
       <Card title={`Ders kelimeleri (${allWords.length - missing} / ${allWords.length} kelimenin sesi var)`}
-        right={<label className="flex items-center gap-2 text-sm text-soft"><input type="checkbox" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} className="w-4 h-4 accent-[#C8894A]" /> Yalnızca sesi olmayanlar</label>}>
+        right={<label className="flex items-center gap-2 text-sm text-soft"><input type="checkbox" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} className="w-4 h-4 accent-acc" /> Yalnızca sesi olmayanlar</label>}>
         <div className="flex flex-col gap-5">
           {topics.map((t) => {
             const words = t.words.filter((w) => !onlyMissing || !map[audioKey(w.ar)]);
@@ -50,7 +50,7 @@ export default function AudioManager({ map: initial, records, topics }: { map: A
                 <h3 className="m-0 text-base font-bold">{t.n}. {t.name}</h3>
                 <div className="flex flex-col">
                   {words.map((w, i) => (
-                    <div key={i} className="flex flex-wrap items-center justify-between gap-3 py-2 border-b border-[#241B15] last:border-0">
+                    <div key={i} className="flex flex-wrap items-center justify-between gap-3 py-2 border-b border-line4 last:border-0">
                       <span className="flex items-center gap-3 min-w-0">
                         <span className="ar text-[24px] text-ink" lang="ar" dir="rtl">{w.ar}</span>
                         <span className="text-sm text-mute2">{w.tr}</span>
@@ -70,7 +70,7 @@ export default function AudioManager({ map: initial, records, topics }: { map: A
         {!records.length && <p className="m-0 text-sm text-faint">Henüz ses yüklenmedi.</p>}
         <div className="flex flex-col">
           {records.map((r) => (
-            <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-[#241B15] last:border-0">
+            <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-line4 last:border-0">
               <span className="flex flex-col min-w-0">
                 <span className="ar text-[22px] text-ink" lang="ar" dir="rtl">{r.text}</span>
                 <span className="text-xs text-faint">{Math.round(r.size / 1024)} KB · {r.mime} · {dt(r.createdAt, true)}</span>

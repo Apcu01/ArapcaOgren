@@ -4,6 +4,7 @@ import { adminOrFail } from '@/lib/admin';
 import { fail, ok } from '@/lib/api';
 import { AUDIO_MAX_BYTES, AUDIO_MIMES } from '@/lib/audio';
 import { audioKey, isAr } from '@/lib/text';
+import { invalidate } from '@/lib/cache';
 
 // Ses yükle (dosya ya da tarayıcıda kaydedilmiş ses). Aynı metnin eski kaydı yenisiyle değişir.
 export async function POST(req: Request) {
@@ -27,5 +28,6 @@ export async function POST(req: Request) {
     const [r] = await tx.insert(schema.audio).values({ textKey: key, text, mime, size: data.length, data }).$returningId();
     return r.id;
   });
+  invalidate('audio:');
   return ok({ id, textKey: key });
 }
