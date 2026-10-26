@@ -87,6 +87,36 @@ test.describe.serial('kelime listeleri', () => {
       await expect(page.getByText(/4\s*tanıdık/)).toBeVisible();
     });
 
+    test('liste bağlantıyla paylaşılır, misafir görür ve üye kopyalar', async ({ page, browser }) => {
+      await page.goto(listUrl);
+      await page.getByRole('button', { name: 'Paylaş' }).click();
+      // Kutu sunucu cevabından sonra işaretlenir
+      await page.getByRole('checkbox').click();
+      await expect(page.getByLabel('Paylaşım bağlantısı')).toBeVisible();
+      const link = await page.getByLabel('Paylaşım bağlantısı').inputValue();
+      expect(link).toMatch(/\/liste\/[\w-]{16,}$/);
+      // Misafir: kelimeleri görür, kopyalamak için giriş ister
+      // Testin oturumu devralınmasın
+      const guest = await (await browser.newContext({ storageState: { cookies: [], origins: [] } })).newPage();
+      await guest.goto(link);
+      await expect(guest.getByRole('heading', { name: 'E2E listesi' })).toBeVisible();
+      await expect(guest.getByText('E2E paylaştı · 4 kelime')).toBeVisible();
+      await expect(guest.getByRole('link', { name: 'Giriş yap ve kopyala' })).toHaveAttribute('href', /next=%2Fliste%2F/);
+      // Üye kopyalar: yeni liste açılır
+      await page.goto(link);
+      await page.getByRole('button', { name: 'Listelerime kopyala' }).click();
+      await page.waitForURL((u) => /\/listelerim\/\d+$/.test(u.pathname) && u.pathname !== listUrl);
+      await expect(page.getByText('4 kelime').first()).toBeVisible();
+      // Paylaşım kapatılınca bağlantı çalışmaz
+      await page.goto(listUrl);
+      await page.getByRole('button', { name: 'Paylaş' }).click();
+      await page.getByRole('checkbox').click();
+      await expect(page.getByLabel('Paylaşım bağlantısı')).toHaveCount(0);
+      await guest.goto(link);
+      await expect(guest.getByRole('heading', { name: 'Bu liste artık paylaşılmıyor' })).toBeVisible();
+      await guest.context().close();
+    });
+
     test('eşleştirme oyunu biter ve en iyi süre kaydedilir', async ({ page }) => {
       await page.goto(listUrl + '/eslestir');
       await page.getByRole('button', { name: 'Oyunu başlat' }).click();

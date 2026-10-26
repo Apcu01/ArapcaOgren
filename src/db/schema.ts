@@ -216,6 +216,9 @@ export const wordLists = mysqlTable('word_lists', {
   // Oyunlardaki en iyi sonuçlar: eşleştirme süresi (ms), blast / bloklar / tılsım puanı
   best: json('best').$type<Partial<Record<'match' | 'blast' | 'blocks' | 'charms', number>>>().notNull(),
   studiedAt: timestamp('studied_at'),
+  // Paylaşım bağlantısı (/liste/[token]); null ise paylaşım kapalı. copies: bağlantıdan kaç kez kopyalandı
+  shareToken: varchar('share_token', { length: 32 }).unique(),
+  copies: int('copies').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow()
 }, (t) => [index('word_lists_user_idx').on(t.userId, t.updatedAt)]);

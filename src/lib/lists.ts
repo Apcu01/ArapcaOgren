@@ -1,7 +1,8 @@
 import 'server-only';
+import { randomBytes } from 'node:crypto';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
-import type { GameKey, ListItem, ListSummary, WordList } from './study';
+import { LISTS_MAX, type GameKey, type ListItem, type ListSummary, type SharedList, type WordList } from './study';
 
 const { wordLists: L, wordListItems: I } = schema;
 
@@ -35,7 +36,7 @@ export async function getList(userId: number, id: number): Promise<WordList | nu
   const [l] = await db.select().from(L).where(and(eq(L.id, id), eq(L.userId, userId)));
   if (!l) return null;
   const items = await db.select().from(I).where(eq(I.listId, id)).orderBy(asc(I.position), asc(I.id));
-  return { id: l.id, title: l.title, description: l.description, best: l.best || {}, items: items.map(toItem) };
+  return { id: l.id, title: l.title, description: l.description, best: l.best || {}, shareToken: l.shareToken, copies: l.copies, items: items.map(toItem) };
 }
 
 export async function createList(userId: number, title: string, description: string, items: ItemInput[]) {
@@ -125,4 +126,36 @@ export async function saveBest(userId: number, id: number, game: GameKey, value:
     await db.update(L).set({ best, studiedAt: new Date(), updatedAt: sql`${L.updatedAt}` }).where(eq(L.id, id));
   }
   return { record: better, best: best[game]! };
+}
+
+/* ---------- Paylaşım ---------- */
+
+/** Paylaşımı açar (bağlantı yoksa ya da yenilenmek isteniyorsa yeni bağlantı üretir) ya da kapatır */
+export async function setShare(userId: number, id: number, on: boolean, renew = false) {
+  const [l] = await db.select({ token: L.shareToken }).from(L).where(and(eq(L.id, id), eq(L.userId, userId)));
+  if (!l) return undefined;
+  const token = on ? (l.token && !renew ? l.token : randomBytes(16).toString('base64url')) : null;
+  if (token !== l.token) await db.update(L).set({ shareToken: token, updatedAt: sql`${L.updatedAt}` }).where(eq(L.id, id));
+  return token;
+}
+
+/** Bağlantıyla açılan liste; paylaşım kapatıldıysa null */
+export async function getShared(token: string): Promise<SharedList | null> {
+  if (!/^[A-Za-z0-9_-]{16,32}$/.test(token)) return null;
+  const [l] = await db.select({ id: L.id, title: L.title, description: L.description, owner: schema.users.name })
+    .from(L).innerJoin(schema.users, eq(schema.users.id, L.userId)).where(eq(L.shareToken, token));
+  if (!l) return null;
+  const items = await db.select({ ar: I.ar, tl: I.tl, tr: I.tr, note: I.note }).from(I).where(eq(I.listId, l.id)).orderBy(asc(I.position), asc(I.id));
+  // Paylaşanın yalnızca adı görünür (soyadı ve e-posta değil)
+  return { title: l.title, description: l.description, owner: l.owner.trim().split(/\s+/)[0] || 'Bir kullanıcı', count: items.length, items };
+}
+
+/** Paylaşılan listeyi kopyalar; kopya, kopyalayanın kendi listesidir (çalışma durumu sıfırdan başlar) */
+export async function copyShared(userId: number, token: string) {
+  const src = await getShared(token);
+  if (!src) return { error: 'missing' as const };
+  if ((await countLists(userId)) >= LISTS_MAX) return { error: 'full' as const };
+  const id = await createList(userId, src.title.slice(0, 80), src.description, src.items);
+  await db.update(L).set({ copies: sql`${L.copies} + 1`, updatedAt: sql`${L.updatedAt}` }).where(eq(L.shareToken, token));
+  return { id };
 }

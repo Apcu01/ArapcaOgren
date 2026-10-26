@@ -3,7 +3,7 @@
 import { useApp } from './AppProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { I, Raw } from './icons';
 
 const LS_KEY = 'arblearn:v1';
@@ -64,6 +64,9 @@ export default function AuthForm({ mode, google = false, error }: { mode: 'login
     return '/api/auth/google' + (next ? '?next=' + encodeURIComponent(next) : '');
   };
   const isReg = mode === 'register';
+  // Giriş ve kayıt arasında geçerken dönülecek sayfa korunur (paylaşılan liste gibi)
+  const [qs, setQs] = useState('');
+  useEffect(() => { const n = new URLSearchParams(location.search).get('next'); if (n) setQs('?next=' + encodeURIComponent(n)); }, []);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -126,7 +129,7 @@ export default function AuthForm({ mode, google = false, error }: { mode: 'login
           {busy ? 'Lütfen bekle' : isReg ? 'Hesabı oluştur' : 'Giriş yap'} {!busy && <Raw html={I.arrow()} />}
         </button>
         <p className="m-0 text-sm text-mute text-center">
-          {isReg ? <>Zaten hesabın var mı? <Link href="/giris">Giriş yap</Link></> : <>Hesabın yok mu? <Link href="/kayit">Hesap aç</Link></>}
+          {isReg ? <>Zaten hesabın var mı? <Link href={'/giris' + qs}>Giriş yap</Link></> : <>Hesabın yok mu? <Link href={'/kayit' + qs}>Hesap aç</Link></>}
         </p>
       </form>
     </div>

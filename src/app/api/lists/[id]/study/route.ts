@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getSessionUser } from '@/lib/auth';
 import { fail, ok, parse } from '@/lib/api';
-import { appendItem, recordAnswers, resetProgress, saveBest, setStar } from '@/lib/lists';
+import { appendItem, recordAnswers, resetProgress, saveBest, setShare, setStar } from '@/lib/lists';
 import { markDay } from '@/lib/progress';
 import { dayKey } from '@/lib/text';
 import { ItemZ, listId } from '../../schema';
@@ -17,7 +17,9 @@ const Body = z.discriminatedUnion('action', [
   z.object({ action: z.literal('reset') }),
   // Oyun sonucu: eşleştirme süresi (ms) ya da puan
   z.object({ action: z.literal('best'), game: z.enum(['match', 'blast', 'blocks', 'charms']), value: z.number().int().min(0).max(100_000_000), day }),
-  z.object({ action: z.literal('add'), item: ItemZ })
+  z.object({ action: z.literal('add'), item: ItemZ }),
+  // Paylaşım bağlantısını aç / kapat / yenile
+  z.object({ action: z.literal('share'), on: z.boolean(), renew: z.boolean().optional() })
 ]);
 
 export async function POST(req: Request, { params }: Ctx) {
@@ -44,6 +46,10 @@ export async function POST(req: Request, { params }: Ctx) {
       if (!r) return missing();
       await markDay(user.id, b.day || dayKey(new Date()));
       return ok(r);
+    }
+    case 'share': {
+      const token = await setShare(user.id, id, b.on, b.renew);
+      return token === undefined ? missing() : ok({ token });
     }
     case 'add': {
       const r = await appendItem(user.id, id, b.item);

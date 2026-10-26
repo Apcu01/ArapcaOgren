@@ -32,6 +32,8 @@ function label(p: string) {
   if (path.startsWith('/kelime/')) return 'Kelime: ' + decodeURIComponent(path.slice(8));
   // Kişisel liste adları gösterilmez, yalnızca mod
   const lm = path.match(/^\/listelerim\/\d+(?:\/([a-z]+))?$/);
+  // Paylaşım bağlantısı gizli kalsın
+  if (path.startsWith('/liste/')) return 'Paylaşılan liste';
   if (lm) return lm[1] ? 'Liste: ' + (lm[1] === 'duzenle' ? 'düzenleme' : lm[1]) : 'Liste';
   if (path === '/kelime-bul' && params.get('q')) return 'Kelime bul: ' + params.get('q');
   return PAGES[path] || decodeURIComponent(path);

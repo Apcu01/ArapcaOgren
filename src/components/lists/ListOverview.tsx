@@ -7,6 +7,7 @@ import { Ar, SayBtn, useApp } from '../AppProvider';
 import { I, Raw } from '../icons';
 import { jsonFetch, useList, useStudy } from './useList';
 import { Loading, LoginNeeded, Missing } from './parts';
+import ShareButton from './ShareDialog';
 import { fmtTime, MODES, STATUS_LABEL, statusOf, type ModeKey, type Status, type WordList } from '@/lib/study';
 
 /** Modların çalışması için gereken en az kelime sayısı */
@@ -55,7 +56,10 @@ function Overview({ list, update }: { list: WordList; update: (fn: (l: WordList)
             <h1 className="m-0 text-[30px] sm:text-[38px] leading-tight font-bold tracking-tight break-words">{list.title}</h1>
             <span className="text-mute">{n} kelime{list.description ? ' · ' + list.description : ''}</span>
           </div>
-          <Link href={`/listelerim/${list.id}/duzenle`} className="h-11 px-4 rounded-xl border border-line3 bg-s2 text-soft font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh"><Raw html={I.edit(16)} /> Düzenle</Link>
+          <div className="flex gap-2">
+            {n > 0 && <ShareButton list={list} update={update} />}
+            <Link href={`/listelerim/${list.id}/duzenle`} className="h-11 px-4 rounded-xl border border-line3 bg-s2 text-soft font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh"><Raw html={I.edit(16)} /> Düzenle</Link>
+          </div>
         </div>
       </div>
 

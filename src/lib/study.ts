@@ -7,7 +7,9 @@ export type ListItem = {
   starred: boolean; correct: number; wrong: number; streak: number;
 };
 export type ListSummary = { id: number; title: string; description: string; count: number; learned: number; learning: number; studiedAt: string | null; updatedAt: string };
-export type WordList = { id: number; title: string; description: string; best: Partial<Record<GameKey, number>>; items: ListItem[] };
+export type WordList = { id: number; title: string; description: string; best: Partial<Record<GameKey, number>>; shareToken: string | null; copies: number; items: ListItem[] };
+/** Paylaşılan liste: yalnızca kelimeler, sahibinin çalışma durumu yok */
+export type SharedList = { title: string; description: string; owner: string; count: number; items: Pick<ListItem, 'ar' | 'tl' | 'tr' | 'note'>[] };
 export type GameKey = 'match' | 'blast' | 'blocks' | 'charms';
 
 export const LIST_MAX_ITEMS = 300;
