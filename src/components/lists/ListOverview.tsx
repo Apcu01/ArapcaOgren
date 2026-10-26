@@ -8,6 +8,7 @@ import { I, Raw } from '../icons';
 import { jsonFetch, useList, useStudy } from './useList';
 import { Loading, LoginNeeded, Missing } from './parts';
 import ShareButton from './ShareDialog';
+import SourceUpdates from './SourceUpdates';
 import { fmtTime, MODES, STATUS_LABEL, statusOf, type ModeKey, type Status, type WordList } from '@/lib/study';
 
 /** Modların çalışması için gereken en az kelime sayısı */
@@ -21,14 +22,14 @@ export function bestLabel(list: WordList, mode: ModeKey) {
 }
 
 export default function ListOverview({ id }: { id: number }) {
-  const { state, update } = useList(id);
+  const { state, update, reload } = useList(id);
   if (state.status === 'loading') return <Loading />;
   if (state.status === 'login') return <LoginNeeded />;
   if (state.status !== 'ready') return <Missing />;
-  return <Overview list={state.list} update={update} />;
+  return <Overview list={state.list} update={update} reload={reload} />;
 }
 
-function Overview({ list, update }: { list: WordList; update: (fn: (l: WordList) => WordList) => void }) {
+function Overview({ list, update, reload }: { list: WordList; update: (fn: (l: WordList) => WordList) => void; reload: () => void }) {
   const { toast } = useApp();
   const { star } = useStudy(list.id, update);
   const [open, setOpen] = useState<Status | null>(null);
@@ -62,6 +63,8 @@ function Overview({ list, update }: { list: WordList; update: (fn: (l: WordList)
           </div>
         </div>
       </div>
+
+      {list.linked && <SourceUpdates listId={list.id} onApplied={reload} />}
 
       {n === 0 ? (
         <div className="p-8 rounded-2xl bg-s1 border border-line text-center flex flex-col items-center gap-3">

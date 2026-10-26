@@ -135,5 +135,53 @@ test.describe.serial('kelime listeleri', () => {
       await page.goto(listUrl);
       await expect(page.getByText(/En iyi süre: \d/)).toBeVisible();
     });
+
+    test('kopya, asıl listedeki yeni, düzeltilen ve silinen kelimeleri önerir', async ({ page }) => {
+      const srcId = Number(listUrl.split('/').pop());
+      await page.goto(listUrl);
+      // API ile: paylaşımı aç, kopyala
+      const copyId = await page.evaluate(async (id) => {
+        const post = (u: string, b?: unknown) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
+        const { token } = await post(`/api/lists/${id}/study`, { action: 'share', on: true });
+        return (await post(`/api/shared/${token}/copy`)).id as number;
+      }, srcId);
+      const api = (fn: string, ...args: unknown[]) => page.evaluate(async ([f, a]) => {
+        const get = async (id: number) => (await (await fetch(`/api/lists/${id}`)).json()).list;
+        if (f === 'get') return get(a[0] as number);
+        const [id, body] = a as [number, unknown];
+        return (await fetch(`/api/lists/${id}${f}`, { method: f ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).status;
+      }, [fn, args] as const);
+
+      // Asıl listenin sahibi çalışınca (içerik değişmeden) öneri çıkmaz
+      const src = await api('get', srcId);
+      await api('/study', srcId, { action: 'answers', results: [{ id: src.items[0].id, ok: true }] });
+      await page.goto(`/listelerim/${copyId}`);
+      await expect(page.getByText(/listesinden kopyalandı/)).toBeVisible();
+      await expect(page.getByText('Asıl listede değişiklik var', { exact: false })).toHaveCount(0);
+
+      // Asıl liste: "kapı" silinir, "ev" anlamı düzeltilir, yeni kelime eklenir
+      const items = src.items.filter((x: { tr: string }) => x.tr !== 'kapı').map((x: { id: number; ar: string; tl: string; tr: string; note: string }) => ({ ...x, tr: x.tr === 'ev' ? 'ev, konut' : x.tr }));
+      expect(await api('', srcId, { title: 'E2E listesi', description: '', items: [...items, { ar: 'مَسْجِدٌ', tl: 'mescidun', tr: 'cami', note: '' }] })).toBe(200);
+
+      await page.reload();
+      await expect(page.getByText('Asıl listede değişiklik var: 1 yeni, 1 düzeltilmiş, 1 silinmiş kelime')).toBeVisible();
+      await page.getByRole('button', { name: 'Gözden geçir' }).click();
+      const dlg = page.getByRole('dialog', { name: 'Asıl listedeki değişiklikler' });
+      await expect(dlg.getByText('ev, konut')).toBeVisible();
+      // Silineni kendi listesinde tutmak istiyor
+      await dlg.locator('label', { hasText: 'kapı' }).getByRole('checkbox').uncheck();
+      await dlg.getByRole('button', { name: 'Seçilenleri uygula (2)' }).click();
+      await expect(page.getByText('1 kelime eklendi, 1 kelime düzeltildi.')).toBeVisible();
+
+      const copy = await api('get', copyId);
+      const trs = copy.items.map((x: { tr: string }) => x.tr);
+      expect(trs).toContain('cami');
+      expect(trs).toContain('ev, konut');
+      expect(trs).toContain('kapı');
+      // Uygulanan ya da reddedilen değişiklikler bir daha önerilmez
+      await page.reload();
+      await expect(page.getByText(/listesinden kopyalandı/)).toBeVisible();
+      await expect(page.getByText('Asıl listede değişiklik var', { exact: false })).toHaveCount(0);
+    });
   });
 });

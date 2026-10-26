@@ -219,6 +219,10 @@ export const wordLists = mysqlTable('word_lists', {
   // Paylaşım bağlantısı (/liste/[token]); null ise paylaşım kapalı. copies: bağlantıdan kaç kez kopyalandı
   shareToken: varchar('share_token', { length: 32 }).unique(),
   copies: int('copies').notNull().default(0),
+  // Paylaşılan bir listeden kopyalandıysa asıl liste ve asıl listedeki değişikliklerin en son gözden geçirildiği an
+  // (asıl liste silinince bağ kopar: ON DELETE SET NULL, veritabanında tanımlı)
+  sourceListId: int('source_list_id'),
+  syncedAt: timestamp('synced_at', { fsp: 3 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow()
 }, (t) => [index('word_lists_user_idx').on(t.userId, t.updatedAt)]);
@@ -237,5 +241,9 @@ export const wordListItems = mysqlTable('word_list_items', {
   wrong: int('wrong').notNull().default(0),
   // Art arda doğru sayısı: son iki cevap doğruysa "öğrenildi"
   streak: int('streak').notNull().default(0),
-  seenAt: timestamp('seen_at')
+  seenAt: timestamp('seen_at'),
+  // Kopyadaki kelimenin asıl listedeki karşılığı; ekleme ve düzeltme anları değişiklikleri bulmak için
+  sourceItemId: int('source_item_id'),
+  createdAt: timestamp('created_at', { fsp: 3 }).notNull().default(sql`CURRENT_TIMESTAMP(3)`),
+  updatedAt: timestamp('updated_at', { fsp: 3 }).notNull().default(sql`CURRENT_TIMESTAMP(3)`).onUpdateNow()
 }, (t) => [index('word_list_items_list_idx').on(t.listId, t.position)]);

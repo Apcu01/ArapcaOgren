@@ -7,7 +7,15 @@ export type ListItem = {
   starred: boolean; correct: number; wrong: number; streak: number;
 };
 export type ListSummary = { id: number; title: string; description: string; count: number; learned: number; learning: number; studiedAt: string | null; updatedAt: string };
-export type WordList = { id: number; title: string; description: string; best: Partial<Record<GameKey, number>>; shareToken: string | null; copies: number; items: ListItem[] };
+export type WordList = { id: number; title: string; description: string; best: Partial<Record<GameKey, number>>; shareToken: string | null; copies: number; linked: boolean; items: ListItem[] };
+type Fields = Pick<ListItem, 'ar' | 'tl' | 'tr' | 'note'>;
+/** Kopyalanan listenin asıl listesindeki değişiklikler (kopya en son gözden geçirildiğinden beri) */
+export type SyncDiff = {
+  source: { title: string; owner: string };
+  added: (Fields & { sourceId: number })[];
+  changed: { id: number; from: Fields; to: Fields }[];
+  removed: (Fields & { id: number })[];
+};
 /** Paylaşılan liste: yalnızca kelimeler, sahibinin çalışma durumu yok */
 export type SharedList = { title: string; description: string; owner: string; count: number; items: Pick<ListItem, 'ar' | 'tl' | 'tr' | 'note'>[] };
 export type GameKey = 'match' | 'blast' | 'blocks' | 'charms';
