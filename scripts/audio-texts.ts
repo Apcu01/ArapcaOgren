@@ -40,5 +40,8 @@ export async function collectTexts(conn: mysql.Connection): Promise<AudioText[]>
   for (const l of LETTERS) add('Alfabe', l[2]);
   for (const h of HARAKAT) add('Alfabe', h[0]);
   for (const w of ALPHABET_TOPIC.words) add('Alfabe', w.ar);
+  // Yerleşik sözlük: kelime sayfaları, Kelime bul ve kelime listelerinde okunur (fiillerin şimdiki zaman hâli dahil)
+  const [lex] = await conn.query<mysql.RowDataPacket[]>('SELECT ar, mu_ar FROM lexicon ORDER BY id');
+  for (const r of lex) { add('Sözlük', r.ar); add('Sözlük', r.mu_ar); }
   return [...out.values()];
 }
