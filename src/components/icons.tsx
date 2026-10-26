@@ -52,6 +52,7 @@ export const I = {
   shuffle: (s?: number) => svg('<path d="M3 7h3c5 0 7 10 12 10h3M18 14l3 3-3 3M3 17h3c1.5 0 2.7-.9 3.7-2.2M13.3 9.2C14.3 7.9 15.5 7 17 7h4M18 4l3 3-3 3"/>', s || 18),
   play: (s?: number) => svg('<path d="M7 4v16l13-8z" fill="currentColor"/>', s || 18),
   list: (s?: number) => svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/>', s || 18),
+  chart: (s?: number) => svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', s || 18),
   heart: (s?: number) => svg('<path d="M12 20s-8-4.6-8-10.2A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 2.8C20 15.4 12 20 12 20z" fill="currentColor"/>', s || 18)
 };
 

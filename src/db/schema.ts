@@ -247,3 +247,19 @@ export const wordListItems = mysqlTable('word_list_items', {
   createdAt: timestamp('created_at', { fsp: 3 }).notNull().default(sql`CURRENT_TIMESTAMP(3)`),
   updatedAt: timestamp('updated_at', { fsp: 3 }).notNull().default(sql`CURRENT_TIMESTAMP(3)`).onUpdateNow()
 }, (t) => [index('word_list_items_list_idx').on(t.listId, t.position)]);
+
+// Kelime bul aramalarının günlüğü (yönetim paneli): her arama, nereden bulunduğuyla birlikte
+// source: lesson (derslerde), lexicon (yerleşik sözlük), cache (yapay zekâ önbelleği), ai (yapay zekâya soruldu),
+// login (ücretsiz kaynakta yok, misafir olduğu için yapay zekâya gidilemedi), none (yapay zekâ da bulamadı), error
+export const lookupLog = mysqlTable('lookup_log', {
+  id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+  query: varchar('query', { length: 80 }).notNull(),
+  qkey: varchar('qkey', { length: 120 }).notNull(),
+  source: varchar('source', { length: 12 }).notNull(),
+  near: boolean('near').notNull().default(false),
+  resultAr: varchar('result_ar', { length: 120 }),
+  resultTr: varchar('result_tr', { length: 300 }),
+  userId: int('user_id'),
+  anonId: varchar('anon_id', { length: 64 }),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (t) => [index('lookup_log_created_idx').on(t.createdAt), index('lookup_log_qkey_idx').on(t.qkey)]);

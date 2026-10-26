@@ -14,15 +14,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <>
       <Header />
       <main id="app" className="flex-1">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-8 pb-20 flex flex-col gap-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="flex flex-col gap-1.5">
+        {/* Geniş ekranda solda yapışkan yan menü, telefonda üstte yatay menü */}
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-8 pb-20 grid gap-6 lg:gap-8 lg:grid-cols-[236px_minmax(0,1fr)] items-start">
+          <aside className="flex flex-col gap-4 lg:sticky lg:top-6 min-w-0">
+            <div className="flex flex-col gap-1 lg:px-1">
               <span className="text-[13px] font-semibold tracking-[.12em] uppercase text-lab">Yönetim paneli</span>
-              <span className="text-sm text-faint">Yalnızca yöneticiler görebilir.</span>
+              <span className="text-xs text-faint">Yalnızca yöneticiler görebilir.</span>
             </div>
             <AdminNav openReports={n} />
-          </div>
-          {children}
+          </aside>
+          <div className="min-w-0 flex flex-col gap-8">{children}</div>
         </div>
       </main>
       <Footer />

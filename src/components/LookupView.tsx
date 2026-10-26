@@ -9,7 +9,7 @@ import { isAr, normAr, searchKey, strip } from '@/lib/text';
 import { LOOKUP_RE, sameSound } from '@/lib/translit';
 import { recognizer, type SR } from '@/lib/speech';
 import { rootOf, spaced } from '@/lib/roots';
-import { SayBtn, useApp } from './AppProvider';
+import { SayBtn, useApp, anonId } from './AppProvider';
 import { I, Raw } from './icons';
 import AddToList from './lists/AddToList';
 
@@ -84,7 +84,7 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
   const askAi = useCallback(async (text: string, forceAi = false) => {
     const id = ++reqId.current;
     setAi({ status: 'loading' });
-    const r = await fetch('/api/lookup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: text, ai: forceAi || undefined }) }).catch(() => null);
+    const r = await fetch('/api/lookup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: text, ai: forceAi || undefined, anonId: anonId() }) }).catch(() => null);
     if (id !== reqId.current) return;
     const j = (await r?.json().catch(() => null)) as (LookupResult & { source?: Source; match?: string; error?: string; needLogin?: boolean }) | null;
     if (r?.status === 401 && j?.needLogin) { setAi({ status: 'login' }); return; }
@@ -109,8 +109,13 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
     });
     // Derslerde okunuşuyla bulunduysa yapay zekâya otomatik gidilmez (ücretsiz ve kesin sonuç)
     setLex(null);
-    if (searchLocal(words, s).sound.length) { reqId.current++; setAi({ status: 'idle' }); }
-    else void askAi(s);
+    const hit = searchLocal(words, s).sound[0];
+    if (hit) {
+      reqId.current++;
+      setAi({ status: 'idle' });
+      // Sayfada bulunan arama sunucuya gitmediği için yönetim panelindeki arama günlüğüne ayrıca bildirilir
+      fetch('/api/lookup/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ q: s, ar: hit.ar, tr: hit.tr, anonId: anonId() }) }).catch(() => null);
+    } else void askAi(s);
   }, [words, askAi, metric]);
 
   // Adres çubuğundaki ?q= ile gelindiyse hemen ara

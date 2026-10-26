@@ -13,7 +13,10 @@ export const LIMITS = {
   metrics: { max: 300, windowMs: 60_000 },
   presence: { max: 400, windowMs: 60_000 },
   events: { max: 1500, windowMs: 60_000 },
-  lookup: { max: 300, windowMs: 60_000 }
+  lookup: { max: 300, windowMs: 60_000 },
+  // Canlı yarışma: 80 kişilik bir sınıf saniyede bir durum sorar
+  live: { max: 6000, windowMs: 60_000 },
+  liveCreate: { max: 30, windowMs: 3_600_000 }
 } as const;
 
 /** Sınır aşıldıysa 429 yanıtı, aşılmadıysa null döner */

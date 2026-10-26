@@ -58,6 +58,7 @@ function Overview({ list, update, reload }: { list: WordList; update: (fn: (l: W
             <span className="text-mute">{n} kelime{list.description ? ' · ' + list.description : ''}</span>
           </div>
           <div className="flex gap-2">
+            {n >= 4 && <Link href={`/canli?liste=${list.id}`} className="h-11 px-4 rounded-xl border border-line3 bg-s2 text-soft font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh"><Raw html={I.play(14)} /> Canlı yarışma</Link>}
             {n > 0 && <ShareButton list={list} update={update} />}
             <Link href={`/listelerim/${list.id}/duzenle`} className="h-11 px-4 rounded-xl border border-line3 bg-s2 text-soft font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh"><Raw html={I.edit(16)} /> Düzenle</Link>
           </div>

@@ -4,6 +4,7 @@ import DailyChart from '@/components/admin/DailyChart';
 import LivePresence from '@/components/admin/LivePresence';
 import RefreshSiteButton from '@/components/admin/RefreshSiteButton';
 import { snapshot } from '@/lib/presence';
+import { liveSummary } from '@/lib/live';
 import { getHardestQuestions, getStats } from '@/lib/stats';
 
 export const metadata = { title: 'Genel bakış' };
@@ -27,6 +28,7 @@ export default async function AdminHome() {
       </div>
 
       <LivePresence initial={snapshot()} />
+      <LiveGames />
 
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Stat label="Kullanıcı" value={t.users} sub={`Son 7 gün: +${t.new7} · son 30 gün: +${t.new30}`} />
@@ -105,5 +107,29 @@ export default async function AdminHome() {
         </div>
       </Card>
     </div>
+  );
+}
+
+const PHASE: Record<string, string> = { lobby: 'Katılım bekleniyor', question: 'Soru', reveal: 'Cevap gösteriliyor', board: 'Sıralama', end: 'Bitti' };
+
+/** Şu an süren canlı yarışmalar (sunucu belleğinde) */
+function LiveGames() {
+  const games = liveSummary().filter((g) => g.phase !== 'end');
+  if (!games.length) return null;
+  return (
+    <Card title={`Süren canlı yarışmalar (${games.length})`}>
+      <div className="flex flex-col">
+        {games.map((g) => (
+          <div key={g.code} className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-line4 last:border-0 text-sm">
+            <span className="text-soft"><b className="text-ink">{g.title}</b> <span className="text-faint">· PIN {g.code}</span></span>
+            <span className="flex items-center gap-3 text-xs text-faint whitespace-nowrap">
+              <span>{g.players} öğrenci</span>
+              <span>{PHASE[g.phase]}{g.phase === 'question' || g.phase === 'reveal' ? ` ${g.q + 1}/${g.total}` : ''}</span>
+              <span>{ago(new Date(g.createdAt))} açıldı</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

@@ -18,6 +18,7 @@ const NAV: [string, string, string][] = [
   ['/sozluk', 'Sözlük', 'dict'],
   ['/kelime-bul', 'Kelime bul', 'find'],
   ['/listelerim', 'Listelerim', 'lists'],
+  ['/canli', 'Yarışma', 'live'],
   ['/alfabe', 'Alfabe', 'abc'],
   ['/hatalarim', 'Hatalarım', 'mistakes']
 ];
@@ -27,6 +28,7 @@ function activeKey(path: string) {
   if (path.startsWith('/sozluk')) return 'dict';
   if (path.startsWith('/kelime-bul')) return 'find';
   if (path.startsWith('/listelerim')) return 'lists';
+  if (path.startsWith('/canli')) return 'live';
   if (path.startsWith('/alfabe')) return 'abc';
   if (path.startsWith('/hatalarim')) return 'mistakes';
   if (path === '/' || path.startsWith('/konu')) return 'home';
@@ -79,7 +81,7 @@ export default function Header() {
           <Logo size={44} className="shrink-0" />
           <span className="font-bold text-lg tracking-tight">{SITE}</span>
         </Link>
-        <nav className="nav hidden sm:flex flex-wrap gap-x-4 xl:gap-x-7 gap-y-2 text-[15px] font-medium" aria-label="Ana menü">
+        <nav className="nav hidden xl:flex flex-wrap gap-x-4 xl:gap-x-5 gap-y-2 text-[15px] font-medium" aria-label="Ana menü">
           {NAV.map(([h, l, k]) => (
             <Link key={k} href={h} className={`${k === active ? 'is-active' : ''} inline-flex items-center gap-1.5`} aria-current={k === active ? 'page' : undefined}>
               {l}
@@ -89,7 +91,7 @@ export default function Header() {
         </nav>
         <div className="flex items-center gap-2 sm:gap-3 relative" ref={wrap}>
           <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-pill border border-track text-sm text-acct font-semibold" title="Art arda çalıştığın gün sayısı">
-            <Raw html={I.flame()} /> {streak} gün<span className="hidden xl:inline"> seri</span>
+            <Raw html={I.flame()} /> {streak}<span className="hidden 2xl:inline"> gün</span>
           </div>
           <button
             type="button"
@@ -122,14 +124,14 @@ export default function Header() {
             aria-expanded={open === 'menu'}
             aria-controls="mobil-menu"
             onClick={() => setOpen(open === 'menu' ? null : 'menu')}
-            className="sm:hidden relative w-11 h-11 rounded-full bg-chip border border-line3 text-ink flex items-center justify-center hover:border-lineh"
+            className="xl:hidden relative w-11 h-11 rounded-full bg-chip border border-line3 text-ink flex items-center justify-center hover:border-lineh"
           >
             <Raw html={open === 'menu' ? I.x(18) : I.menu(20)} />
             {open !== 'menu' && mistakes.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-bad border-2 border-head" aria-hidden="true" />}
           </button>
 
           {open === 'menu' && (
-            <div id="mobil-menu" className="sm:hidden absolute right-0 top-14 z-50 w-[calc(100vw-32px)] max-w-[360px] p-2 rounded-2xl bg-s4 border border-line3 shadow-2xl">
+            <div id="mobil-menu" className="xl:hidden absolute right-0 top-14 z-50 w-[calc(100vw-32px)] max-w-[360px] p-2 rounded-2xl bg-s4 border border-line3 shadow-2xl">
               <nav aria-label="Ana menü" className="flex flex-col">
                 {NAV.map(([h, l, k]) => (
                   <Link key={k} href={h} aria-current={k === active ? 'page' : undefined}

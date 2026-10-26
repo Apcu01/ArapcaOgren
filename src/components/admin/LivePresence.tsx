@@ -23,7 +23,7 @@ export default function LivePresence({ initial }: { initial: PresenceSnapshot })
   return <Live s={s} at={at} />;
 }
 
-const PAGES: Record<string, string> = { '/': 'Ana sayfa', '/sozluk': 'Sözlük', '/kelime-bul': 'Kelime bul', '/alfabe': 'Alfabe', '/ilerleme': 'İlerlemem', '/hatalarim': 'Hatalarım', '/giris': 'Giriş', '/kayit': 'Kayıt', '/hesap': 'Hesabım', '/listelerim': 'Listelerim', '/listelerim/yeni': 'Yeni liste' };
+const PAGES: Record<string, string> = { '/': 'Ana sayfa', '/sozluk': 'Sözlük', '/kelime-bul': 'Kelime bul', '/alfabe': 'Alfabe', '/ilerleme': 'İlerlemem', '/hatalarim': 'Hatalarım', '/giris': 'Giriş', '/kayit': 'Kayıt', '/hesap': 'Hesabım', '/listelerim': 'Listelerim', '/listelerim/yeni': 'Yeni liste', '/canli': 'Canlı yarışma' };
 /** Sayfa adresini okunur ada çevirir: /konu/renkler -> Ders: renkler, /kelime/ketebe -> Kelime: ketebe */
 function label(p: string) {
   const [path, query = ''] = p.split('?');
@@ -34,6 +34,7 @@ function label(p: string) {
   const lm = path.match(/^\/listelerim\/\d+(?:\/([a-z]+))?$/);
   // Paylaşım bağlantısı gizli kalsın
   if (path.startsWith('/liste/')) return 'Paylaşılan liste';
+  if (path.startsWith('/canli/')) return path.endsWith('/sunucu') ? 'Canlı yarışma (öğretmen)' : 'Canlı yarışma';
   if (lm) return lm[1] ? 'Liste: ' + (lm[1] === 'duzenle' ? 'düzenleme' : lm[1]) : 'Liste';
   if (path === '/kelime-bul' && params.get('q')) return 'Kelime bul: ' + params.get('q');
   return PAGES[path] || decodeURIComponent(path);

@@ -36,7 +36,10 @@ export default async function SharedListPage({ params }: Params) {
           <span className="text-mute">{l.owner} paylaştı · {l.count} kelime{l.description ? ' · ' + l.description : ''}</span>
         </div>
         <p className="m-0 text-soft leading-relaxed max-w-[640px]">Listeyi kendi listelerine kopyala; kartlarla, adım adım öğrenerek, testlerle ve oyunlarla çalış. Kopya senin olur: istediğin gibi düzenleyebilirsin, ilerlemen yalnızca sende saklanır.</p>
-        <CopyShared token={token} />
+        <div className="flex flex-wrap items-center gap-3">
+          <CopyShared token={token} />
+          {l.count >= 4 && <Link href={`/canli?paylasim=${token}`} className="h-12 px-5 rounded-xl border border-line3 bg-s2 text-ink font-semibold inline-flex items-center hover:text-ink hover:border-lineh">Bu listeyle canlı yarışma aç</Link>}
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">

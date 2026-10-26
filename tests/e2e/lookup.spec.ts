@@ -34,6 +34,9 @@ test.describe.serial('kelime bul', () => {
     fs.rmSync(state, { force: true });
   });
 
+  // Sayfada bulunan aramaların günlüğe bildirimi: testler yönetim panelindeki istatistiği kirletmesin
+  test.beforeEach(async ({ page }) => { await page.route('**/api/lookup/log', (r) => r.fulfill({ json: { ok: true } })); });
+
   test('misafir sözlükte arayabilir, yapay zekâ için giriş istenir', async ({ page }) => {
     // Gerçek API: yerleşik sözlükte olan kelime herkese açık; olmayan kelimede yapay zekâya gidilmeden giriş istenir (ücret oluşmaz)
     await page.goto('/kelime-bul?q=sahifetun');

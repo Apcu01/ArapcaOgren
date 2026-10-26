@@ -306,6 +306,7 @@ function Words({ t }: { t: Topic }) {
         ))}
       </div>
       <Link href={`/sozluk?konu=${t.id}`} className="h-[46px] rounded-xl border border-line3 text-acct font-semibold text-[15px] inline-flex items-center justify-center hover:border-lineh">Sözlükte gör</Link>
+      {t.words.length >= 4 && <Link href={`/canli?konu=${t.id}`} className="h-[46px] rounded-xl border border-line3 text-acct font-semibold text-[15px] inline-flex items-center justify-center hover:border-lineh">Bu kelimelerle canlı yarışma</Link>}
     </aside>
   );
 }
