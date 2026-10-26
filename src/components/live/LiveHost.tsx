@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useApp } from '../AppProvider';
 import { I, Raw } from '../icons';
+import QrCode from './QrCode';
 import { hostKeyOf, OPTS, OptText, post, Prompt, Ring, Shape, store, useCountdown, usePoll } from './shared';
 
 type HostState = {
@@ -36,6 +37,9 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
   const left = useCountdown(s?.phase === 'question' ? s.remaining : 0, at);
   const [busy, setBusy] = useState(false);
   const [origin, setOrigin] = useState('');
+  const [qr, setQr] = useState(false);
+  // Karekod doğrudan ad yazma ekranını açar (PIN yazmaya gerek kalmaz)
+  const joinUrl = origin ? `${origin}/canli/${code}` : '';
   useEffect(() => { setOrigin(location.origin); }, []);
 
   async function act(action: 'start' | 'next' | 'skip' | 'kick' | 'end', pid?: string) {
@@ -65,7 +69,18 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm text-mute">{s.players.length} kişi</span>
+        {s.phase !== 'lobby' && s.phase !== 'end' && <button type="button" onClick={() => setQr(true)} className="h-10 px-4 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold hover:text-ink">Katılma karekodu</button>}
         {s.phase !== 'end' && <button type="button" disabled={busy} onClick={() => { if (confirm('Yarışma bitirilsin mi? Sonuçlar gösterilir.')) act('end'); }} className="h-10 px-4 rounded-xl text-soft text-sm font-semibold hover:text-ink">Yarışmayı bitir</button>}
+      </div>
+    </div>
+  );
+  // Yarışma sürerken geç gelenler için
+  const qrDialog = qr && joinUrl && (
+    <div className="fixed inset-0 z-[95] bg-black/70 flex items-center justify-center p-4" onClick={() => setQr(false)} onKeyDown={(e) => { if (e.key === 'Escape') setQr(false); }}>
+      <div role="dialog" aria-modal="true" aria-label="Katılma karekodu" className="pop flex flex-col items-center gap-4 p-8 rounded-[28px] bg-s4 border border-line3 text-center">
+        <QrCode text={joinUrl} size={360} label={`Yarışmaya katılma bağlantısı: ${joinUrl}`} />
+        <span className="text-[44px] font-bold tracking-[.12em] tabular-nums">{code.slice(0, 3)} {code.slice(3)}</span>
+        <button type="button" autoFocus onClick={() => setQr(false)} className="h-11 px-6 rounded-xl bg-acc text-onacc font-bold">Kapat</button>
       </div>
     </div>
   );
@@ -75,10 +90,19 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
     return (
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-6 pb-16 flex flex-col gap-8">
         {bar}
-        <section className="flex flex-col items-center text-center gap-3 py-8 rounded-[28px] bg-s4 border border-line3">
-          <span className="text-lg text-soft">Telefonundan <b className="text-ink">{join}</b> adresine gir ve PIN'i yaz</span>
-          <span className="text-[64px] sm:text-[96px] font-bold tracking-[.12em] leading-none tabular-nums text-ink" aria-label={`PIN ${code.split('').join(' ')}`}>{code.slice(0, 3)} {code.slice(3)}</span>
-          <span className="text-sm text-mute">{s.total} soru · her soru {s.seconds} saniye · hesap açmak gerekmez</span>
+        {qrDialog}
+        <section className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 py-8 px-6 rounded-[28px] bg-s4 border border-line3">
+          {joinUrl && (
+            <div className="flex flex-col items-center gap-2">
+              <QrCode text={joinUrl} size={260} label={`Yarışmaya katılma bağlantısı: ${joinUrl}`} />
+              <span className="text-sm text-soft">Telefonun kamerasıyla okut</span>
+            </div>
+          )}
+          <div className="flex flex-col items-center text-center gap-3">
+            <span className="text-lg text-soft">ya da <b className="text-ink">{join}</b> adresine gir ve PIN'i yaz</span>
+            <span className="text-[64px] sm:text-[96px] font-bold tracking-[.12em] leading-none tabular-nums text-ink" aria-label={`PIN ${code.split('').join(' ')}`}>{code.slice(0, 3)} {code.slice(3)}</span>
+            <span className="text-sm text-mute">{s.total} soru · her soru {s.seconds} saniye · hesap açmak gerekmez</span>
+          </div>
         </section>
         <section className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -104,6 +128,7 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
     return (
       <div className="max-w-[1000px] mx-auto px-4 sm:px-6 pt-6 pb-16 flex flex-col gap-8">
         {bar}
+        {qrDialog}
         <h1 className="m-0 text-center text-[34px] sm:text-[44px] font-bold">{s.phase === 'end' ? 'Kazananlar' : 'Sıralama'}</h1>
         {s.phase === 'end' ? (
           <div className="flex items-end justify-center gap-3 sm:gap-6">
@@ -151,6 +176,7 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
   return (
     <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-6 pb-16 flex flex-col gap-6">
       {bar}
+      {qrDialog}
       <div className="flex items-center justify-between gap-4">
         <span className="text-lg font-semibold text-soft">Soru {s.q + 1} / {s.total}</span>
         {reveal ? <span className="text-lg font-semibold text-soft">{s.answered} / {s.players.length} cevap</span> : <Ring left={left} total={s.seconds} />}
