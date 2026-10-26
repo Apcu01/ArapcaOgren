@@ -6,6 +6,7 @@ import type { Topic } from '@/lib/types';
 import { actsOf, isAr, normAr, searchKey } from '@/lib/text';
 import { Ar, useApp } from './AppProvider';
 import { I, Raw } from './icons';
+import { InstallCard } from './InstallApp';
 
 const LEVELS = ['Tümü', 'Başlangıç', 'Orta', 'İleri'];
 const STEPS: [string, string, string][] = [
@@ -72,6 +73,8 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
           </Link>
         )}
       </section>
+
+      <InstallCard />
 
       <section aria-label="Nasıl çalışılır" className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map(([n, h, p]) => (

@@ -23,13 +23,16 @@ export default function LivePresence({ initial }: { initial: PresenceSnapshot })
   return <Live s={s} at={at} />;
 }
 
-const PAGES: Record<string, string> = { '/': 'Ana sayfa', '/sozluk': 'Sözlük', '/kelime-bul': 'Kelime bul', '/alfabe': 'Alfabe', '/ilerleme': 'İlerlemem', '/hatalarim': 'Hatalarım', '/giris': 'Giriş', '/kayit': 'Kayıt', '/hesap': 'Hesabım' };
+const PAGES: Record<string, string> = { '/': 'Ana sayfa', '/sozluk': 'Sözlük', '/kelime-bul': 'Kelime bul', '/alfabe': 'Alfabe', '/ilerleme': 'İlerlemem', '/hatalarim': 'Hatalarım', '/giris': 'Giriş', '/kayit': 'Kayıt', '/hesap': 'Hesabım', '/listelerim': 'Listelerim', '/listelerim/yeni': 'Yeni liste' };
 /** Sayfa adresini okunur ada çevirir: /konu/renkler -> Ders: renkler, /kelime/ketebe -> Kelime: ketebe */
 function label(p: string) {
   const [path, query = ''] = p.split('?');
   const params = new URLSearchParams(query);
   if (path.startsWith('/konu/')) return 'Ders: ' + path.slice(6);
   if (path.startsWith('/kelime/')) return 'Kelime: ' + decodeURIComponent(path.slice(8));
+  // Kişisel liste adları gösterilmez, yalnızca mod
+  const lm = path.match(/^\/listelerim\/\d+(?:\/([a-z]+))?$/);
+  if (lm) return lm[1] ? 'Liste: ' + (lm[1] === 'duzenle' ? 'düzenleme' : lm[1]) : 'Liste';
   if (path === '/kelime-bul' && params.get('q')) return 'Kelime bul: ' + params.get('q');
   return PAGES[path] || decodeURIComponent(path);
 }

@@ -8,6 +8,7 @@ import { AR_SIZES, THEMES } from '@/lib/settings';
 import { I, Raw } from './icons';
 import Logo from './Logo';
 import { clearPageCache, precacheAll } from './ServiceWorker';
+import { InstallButton } from './InstallApp';
 
 export const SITE = 'ArapcaOgren';
 
@@ -16,6 +17,7 @@ const NAV: [string, string, string][] = [
   ['/ilerleme', 'İlerlemem', 'progress'],
   ['/sozluk', 'Sözlük', 'dict'],
   ['/kelime-bul', 'Kelime bul', 'find'],
+  ['/listelerim', 'Listelerim', 'lists'],
   ['/alfabe', 'Alfabe', 'abc'],
   ['/hatalarim', 'Hatalarım', 'mistakes']
 ];
@@ -24,6 +26,7 @@ function activeKey(path: string) {
   if (path.startsWith('/ilerleme')) return 'progress';
   if (path.startsWith('/sozluk')) return 'dict';
   if (path.startsWith('/kelime-bul')) return 'find';
+  if (path.startsWith('/listelerim')) return 'lists';
   if (path.startsWith('/alfabe')) return 'abc';
   if (path.startsWith('/hatalarim')) return 'mistakes';
   if (path === '/' || path.startsWith('/konu')) return 'home';
@@ -140,6 +143,7 @@ export default function Header() {
                 <Raw html={I.flame()} /> {streak} gün seri
                 {!user && <Link href="/giris" className="ml-auto text-soft hover:text-ink">Giriş yap</Link>}
               </div>
+              <InstallButton className="w-full flex items-center gap-3 px-4 h-12 rounded-xl border-t border-line text-[16px] font-semibold text-soft hover:text-ink hover:bg-s5" />
             </div>
           )}
 
@@ -175,6 +179,7 @@ export default function Header() {
               <p className="text-xs text-faint mt-3 leading-relaxed">
                 {user ? 'İlerlemen hesabına kaydediliyor; her cihazdan devam edebilirsin.' : 'İlerlemen yalnızca bu tarayıcıda saklanır. Hesap açarsan her cihazdan devam edebilirsin.'}
               </p>
+              <InstallButton className="mt-3 w-full h-10 rounded-xl bg-acc text-onacc text-sm font-bold inline-flex items-center justify-center gap-2" />
               <button type="button" onClick={downloadAll} disabled={offline === 'busy'} className="mt-3 w-full h-10 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold hover:border-lineh disabled:opacity-60">
                 {offline === 'busy' ? 'Dersler indiriliyor' : offline === 'done' ? 'Dersler çevrimdışı kullanılabilir' : 'Dersleri çevrimdışı için indir'}
               </button>
@@ -189,6 +194,7 @@ export default function Header() {
               </div>
               <Link href="/hesap" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.user(17)} /> Hesabım</Link>
               <Link href="/ilerleme" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.check(17)} /> İlerlemem</Link>
+              <Link href="/listelerim" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.list(17)} /> Listelerim</Link>
               {user.role === 'admin' && (
                 <Link href="/admin" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.shield(17)} /> Yönetim paneli</Link>
               )}

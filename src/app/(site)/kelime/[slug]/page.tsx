@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Ar, SayBtn } from '@/components/AppProvider';
+import AddToList from '@/components/lists/AddToList';
 import { I, Raw } from '@/components/icons';
 import { rootOf, spaced } from '@/lib/roots';
 import { SITE_NAME, siteOrigin } from '@/lib/site';
@@ -69,6 +70,9 @@ export default async function WordPageView({ params }: Props) {
             <Ar t={w.ar} className="text-[56px] leading-tight text-ink" />
             <SayBtn text={w.ar} cls="w-12 h-12" />
           </div>
+        </div>
+        <div className="-mt-2">
+          <AddToList word={w} />
         </div>
         <dl className="m-0 grid gap-3 sm:grid-cols-2">
           <div className="p-4 rounded-xl bg-s1 border border-line"><dt className="text-xs font-bold tracking-[.08em] uppercase text-lab">Okunuşu</dt><dd className="m-0 mt-1 text-lg font-semibold">{w.tl}</dd></div>

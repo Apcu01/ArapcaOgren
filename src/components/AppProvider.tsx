@@ -38,6 +38,8 @@ type Ctx = {
   actState: (topicId: string, actKey: string) => ActRec | null;
   topicStats: (topicId: string, acts: ActView[]) => { done: number; total: number; lesson: boolean; pct: number; started: boolean };
   setLast: (topicId: string) => void;
+  /** Kelime listesi çalışıldı: bugünü takvime ve seriye işler (sunucuya liste API'si kaydeder) */
+  noteStudy: () => void;
   streak: number;
   reset: () => Promise<void>;
   speak: (text: string, rate?: number) => boolean;
@@ -206,6 +208,8 @@ export function AppProvider({ audios, children }: {
     if (user) post('/api/progress', { action: 'act', topicId, actKey, score, done, day: dayKey(new Date()) });
   }, [commit, user]);
 
+  const noteStudy = useCallback(() => commit((s) => studied(s)), [commit]);
+
   const setLast = useCallback((topicId: string) => {
     if (stateRef.current.last === topicId) return;
     commit((s) => { s.last = topicId; return s; });
@@ -354,7 +358,7 @@ export function AppProvider({ audios, children }: {
 
   const value: Ctx = {
     user, session, hint, refreshSession, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
-    streak: streakOf(state.days), reset, speak, canSpeak, toast, track, metric,
+    streak: streakOf(state.days), noteStudy, reset, speak, canSpeak, toast, track, metric,
     mistakes, addMistake, resolveMistake, removeMistake, clearMistakes
   };
 

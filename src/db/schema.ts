@@ -206,3 +206,33 @@ export const dailyMetrics = mysqlTable('daily_metrics', {
   metric: varchar('metric', { length: 24 }).notNull(),
   n: int('n').notNull().default(0)
 }, (t) => [primaryKey({ columns: [t.day, t.metric] })]);
+
+// Kişisel kelime listeleri (Listelerim): yalnızca sahibi görür
+export const wordLists = mysqlTable('word_lists', {
+  id: int('id').autoincrement().primaryKey(),
+  userId: int('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 80 }).notNull(),
+  description: varchar('description', { length: 300 }).notNull().default(''),
+  // Oyunlardaki en iyi sonuçlar: eşleştirme süresi (ms), blast / bloklar / tılsım puanı
+  best: json('best').$type<Partial<Record<'match' | 'blast' | 'blocks' | 'charms', number>>>().notNull(),
+  studiedAt: timestamp('studied_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow()
+}, (t) => [index('word_lists_user_idx').on(t.userId, t.updatedAt)]);
+
+// Listedeki kelimeler ve her kelimenin çalışma durumu (Kartlar, Öğren ve Test cevaplarıyla güncellenir; oyunlar sayılmaz)
+export const wordListItems = mysqlTable('word_list_items', {
+  id: int('id').autoincrement().primaryKey(),
+  listId: int('list_id').notNull().references(() => wordLists.id, { onDelete: 'cascade' }),
+  position: int('position').notNull().default(0),
+  ar: varchar('ar', { length: 120 }).notNull(),
+  tl: varchar('tl', { length: 120 }).notNull().default(''),
+  tr: varchar('tr', { length: 300 }).notNull(),
+  note: varchar('note', { length: 300 }).notNull().default(''),
+  starred: boolean('starred').notNull().default(false),
+  correct: int('correct').notNull().default(0),
+  wrong: int('wrong').notNull().default(0),
+  // Art arda doğru sayısı: son iki cevap doğruysa "öğrenildi"
+  streak: int('streak').notNull().default(0),
+  seenAt: timestamp('seen_at')
+}, (t) => [index('word_list_items_list_idx').on(t.listId, t.position)]);

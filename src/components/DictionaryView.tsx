@@ -7,6 +7,7 @@ import { isAr, normAr, searchKey } from '@/lib/text';
 import { rootOf, spaced, type Root } from '@/lib/roots';
 import { useApp } from './AppProvider';
 import { I, Raw } from './icons';
+import AddToList from './lists/AddToList';
 
 type Row = Word & { topics: { id: string; name: string }[]; root: Root | null };
 
@@ -88,6 +89,7 @@ export default function DictionaryView({ topics, slugs = {} }: { topics: Topic[]
                 </button>
               )}
               {w.topics.map((t) => <Link key={t.id} href={`/konu/${t.id}`} className="px-2.5 py-1 rounded-full bg-s5 border border-line2 text-xs font-semibold text-soft hover:text-ink">{t.name}</Link>)}
+              <AddToList word={w} compact />
             </div>
           </div>
           {isOpen && w.root && <RootPanel root={w.root} family={families.get(w.root.letters) || []} current={id} />}

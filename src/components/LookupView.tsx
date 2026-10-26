@@ -11,6 +11,7 @@ import { recognizer, type SR } from '@/lib/speech';
 import { rootOf, spaced } from '@/lib/roots';
 import { SayBtn, useApp } from './AppProvider';
 import { I, Raw } from './icons';
+import AddToList from './lists/AddToList';
 
 export type DictWord = { ar: string; tr: string; tl: string; en: string; topics: { id: string; name: string }[] };
 type Card = { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; note?: string; example?: { ar: string; tr: string }; topics?: DictWord['topics']; slug?: string };
@@ -271,18 +272,17 @@ function ResultCard({ c }: { c: Card }) {
           <span className="text-[15px] text-soft">{c.example.tr}</span>
         </div>
       )}
-      {(rootLetters || c.topics?.length || c.slug) && (
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          {rootLetters && (
-            <span className="px-2.5 py-1 rounded-full bg-chip border border-chipln text-acct font-semibold inline-flex items-center gap-1.5">
-              Kök <span lang="ar" dir="rtl" className="font-ar text-[14px]">{rootLetters}</span>{known && <span className="text-soft font-normal">· {known.meaning}</span>}
-            </span>
-          )}
-          {known && known.tr.length > 0 && <span className="text-mute2">Türkçede: {known.tr.slice(0, 5).join(', ')}</span>}
-          {c.slug && <Link href={`/kelime/${c.slug}`} className="px-2.5 py-1 rounded-full bg-s2 border border-line3 text-soft text-xs font-semibold hover:text-ink hover:border-lineh">Kelime sayfası</Link>}
-          {c.topics?.map((t) => <Link key={t.id} href={`/konu/${t.id}`} className="px-2.5 py-1 rounded-full bg-okbg border border-okln text-okt text-xs font-semibold hover:text-ink">Derste: {t.name}</Link>)}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {rootLetters && (
+          <span className="px-2.5 py-1 rounded-full bg-chip border border-chipln text-acct font-semibold inline-flex items-center gap-1.5">
+            Kök <span lang="ar" dir="rtl" className="font-ar text-[14px]">{rootLetters}</span>{known && <span className="text-soft font-normal">· {known.meaning}</span>}
+          </span>
+        )}
+        {known && known.tr.length > 0 && <span className="text-mute2">Türkçede: {known.tr.slice(0, 5).join(', ')}</span>}
+        <AddToList word={c} />
+        {c.slug && <Link href={`/kelime/${c.slug}`} className="px-2.5 py-1 rounded-full bg-s2 border border-line3 text-soft text-xs font-semibold hover:text-ink hover:border-lineh">Kelime sayfası</Link>}
+        {c.topics?.map((t) => <Link key={t.id} href={`/konu/${t.id}`} className="px-2.5 py-1 rounded-full bg-okbg border border-okln text-okt text-xs font-semibold hover:text-ink">Derste: {t.name}</Link>)}
+      </div>
     </article>
   );
 }
