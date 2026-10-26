@@ -9,6 +9,7 @@ const ITEMS: [string, string][] = [
   ['/admin/dersler', 'Dersler ve etkinlikler'],
   ['/admin/sesler', 'Sesler'],
   ['/admin/kelime-aramalari', 'Kelime aramaları'],
+  ['/admin/listeler', 'Kelime listeleri'],
   ['/admin/bildirimler', 'Bildirimler']
 ];
 

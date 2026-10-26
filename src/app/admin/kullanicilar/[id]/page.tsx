@@ -8,6 +8,7 @@ import { getSessionUser } from '@/lib/auth';
 import { ALPHABET_TOPIC } from '@/lib/alphabet';
 import { getUserProgress } from '@/lib/progress';
 import { getUserEvents } from '@/lib/stats';
+import { userLists } from '@/lib/admin-lists';
 import { actsOf, streakOf, TYPE } from '@/lib/text';
 import { getTopics } from '@/lib/topics';
 
@@ -18,11 +19,12 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
   if (!Number.isInteger(id)) notFound();
   const [[u], me] = await Promise.all([db.select().from(schema.users).where(eq(schema.users.id, id)), getSessionUser()]);
   if (!u) notFound();
-  const [prog, topics, events, [sess]] = await Promise.all([
+  const [prog, topics, events, [sess], lists] = await Promise.all([
     getUserProgress(id),
     getTopics({ all: true }),
     getUserEvents(id),
-    db.select({ n: sql<number>`count(*)` }).from(schema.sessions).where(sql`${schema.sessions.userId} = ${id} AND ${schema.sessions.expiresAt} > NOW()`)
+    db.select({ n: sql<number>`count(*)` }).from(schema.sessions).where(sql`${schema.sessions.userId} = ${id} AND ${schema.sessions.expiresAt} > NOW()`),
+    userLists(id)
   ]);
   const alpha = { ...ALPHABET_TOPIC, autoListen: true, n: 0, level: '', published: true };
   const all = [...topics.map((t) => ({ t, acts: actsOf(t) })), { t: alpha, acts: actsOf(alpha) }];
@@ -83,6 +85,25 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
               </div>
             );
           })}
+        </div>
+      </Card>
+
+      <Card title={`Kelime listeleri (${lists.length})`}>
+        {!lists.length && <p className="m-0 text-sm text-faint">Bu üye henüz liste oluşturmadı.</p>}
+        <div className="flex flex-col">
+          {lists.map((l) => (
+            <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-line4 last:border-0 text-sm">
+              <span className="flex items-center gap-2 min-w-0">
+                <Link href={`/admin/listeler/${l.id}`} className="font-semibold truncate">{l.title}</Link>
+                {l.shared && <span className="px-2 py-0.5 rounded-full bg-okbg border border-okln text-okt text-[11px] font-bold">Paylaşılıyor</span>}
+                {l.sourceId && <span className="px-2 py-0.5 rounded-full bg-s2 border border-line3 text-soft text-[11px] font-semibold">Kopya</span>}
+              </span>
+              <span className="flex items-center gap-3 text-xs text-faint whitespace-nowrap">
+                <span>{l.count} kelime · {l.learned} öğrenildi · {l.answers} cevap{l.copies ? ` · ${l.copies} kez kopyalandı` : ''}</span>
+                <span>{l.studiedAt ? 'Son çalışma: ' + ago(l.studiedAt) : 'Henüz çalışılmadı'}</span>
+              </span>
+            </div>
+          ))}
         </div>
       </Card>
 
