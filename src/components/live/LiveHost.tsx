@@ -2,10 +2,13 @@
 
 /* Canlı yarışma: öğretmen ekranı (tahtaya yansıtılır) */
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../AppProvider';
 import { I, Raw } from '../icons';
 import QrCode from './QrCode';
+import ReportView from './ReportView';
+import { music, sfx, unlock } from './sound';
+import type { LiveReport } from '@/lib/live-report';
 import { hostKeyOf, OPTS, OptText, post, Prompt, Ring, Shape, store, useCountdown, usePoll } from './shared';
 
 type HostState = {
@@ -13,6 +16,7 @@ type HostState = {
   question: { prompt: string; promptTl: string; side: 'ar' | 'tr'; options: string[]; say: string; correct: number | null } | null;
   answered: number; counts: number[] | null;
   players: { id: string; name: string; score: number; streak: number; last: number | null }[];
+  report: LiveReport | null; saved: boolean;
 };
 
 export default function LiveHost({ code }: { code: string }) {
@@ -32,9 +36,10 @@ export default function LiveHost({ code }: { code: string }) {
 }
 
 function Host({ code, hostKey }: { code: string; hostKey: string }) {
-  const { speak, toast } = useApp();
+  const { speak, toast, user } = useApp();
   const { data: s, status, at, refresh } = usePoll<HostState>(`/api/live/${code}?k=${encodeURIComponent(hostKey)}`, 800);
   const left = useCountdown(s?.phase === 'question' ? s.remaining : 0, at);
+  const audio = useLiveAudio(s, left);
   const [busy, setBusy] = useState(false);
   const [origin, setOrigin] = useState('');
   const [qr, setQr] = useState(false);
@@ -69,6 +74,8 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm text-mute">{s.players.length} kişi</span>
+        <button type="button" onClick={() => audio.set('sfx', !audio.sfx)} aria-pressed={audio.sfx} title="Ses efektleri" className={`h-10 px-3 rounded-xl border text-sm font-semibold inline-flex items-center gap-1.5 ${audio.sfx ? 'border-line3 bg-s2 text-soft hover:text-ink' : 'border-line3 text-faint line-through'}`}><Raw html={I.speaker(15)} /> Ses</button>
+        <button type="button" onClick={() => audio.set('music', !audio.music)} aria-pressed={audio.music} title="Müzik" className={`h-10 px-3 rounded-xl border text-sm font-semibold ${audio.music ? 'border-line3 bg-s2 text-soft hover:text-ink' : 'border-line3 text-faint line-through'}`}>Müzik</button>
         {s.phase !== 'lobby' && s.phase !== 'end' && <button type="button" onClick={() => setQr(true)} className="h-10 px-4 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold hover:text-ink">Katılma karekodu</button>}
         {s.phase !== 'end' && <button type="button" disabled={busy} onClick={() => { if (confirm('Yarışma bitirilsin mi? Sonuçlar gösterilir.')) act('end'); }} className="h-10 px-4 rounded-xl text-soft text-sm font-semibold hover:text-ink">Yarışmayı bitir</button>}
       </div>
@@ -152,19 +159,20 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
             ))}
           </ol>
         )}
-        {s.phase === 'end' && s.players.length > 3 && (
-          <details className="max-w-[680px] w-full mx-auto">
-            <summary className="cursor-pointer text-soft font-semibold">Bütün sıralama ({s.players.length})</summary>
-            <ol className="m-0 mt-3 p-0 list-none flex flex-col gap-1.5">
-              {s.players.map((p, i) => <li key={p.id} className="flex justify-between px-4 py-2 rounded-xl bg-s2"><span>{i + 1}. {p.name}</span><b className="tabular-nums">{p.score}</b></li>)}
-            </ol>
-          </details>
-        )}
         <div className="flex justify-center gap-3">
           {s.phase === 'board'
             ? <button type="button" disabled={busy} onClick={() => act('next')} className="h-14 px-8 rounded-2xl bg-acc text-onacc text-lg font-bold">Sonraki soru</button>
             : <Link href="/canli" className="h-14 px-8 rounded-2xl bg-acc text-onacc text-lg font-bold inline-flex items-center hover:text-onacc">Yeni yarışma</Link>}
         </div>
+        {s.phase === 'end' && s.report && s.report.questions.length > 0 && (
+          <>
+            <p className="m-0 text-center text-sm text-mute">
+              {s.saved ? <>Sonuçlar <Link href="/canli/gecmis">Geçmiş yarışmalarım</Link> sayfasına kaydedildi.</>
+                : user ? 'Sonuçlar kaydediliyor.' : 'Giriş yapmadan açılan yarışmanın sonuçları saklanmaz; sayfadan çıkmadan önce Excel\'e indirebilirsin.'}
+            </p>
+            <ReportView report={s.report} />
+          </>
+        )}
       </div>
     );
   }
@@ -206,4 +214,50 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
       </div>
     </div>
   );
+}
+
+const AUDIO_KEY = 'arblearn:live-audio';
+
+/** Öğretmen ekranının sesleri: durum değiştikçe efekt, bekleme ve soru sırasında müzik */
+function useLiveAudio(s: HostState | null, left: number) {
+  const [pref, setPref] = useState({ sfx: true, music: true });
+  useEffect(() => { try { setPref({ sfx: true, music: true, ...JSON.parse(localStorage.getItem(AUDIO_KEY) || '{}') }); } catch { /* yok */ } }, []);
+  const set = (k: 'sfx' | 'music', v: boolean) => {
+    unlock();
+    const next = { ...pref, [k]: v };
+    setPref(next);
+    try { localStorage.setItem(AUDIO_KEY, JSON.stringify(next)); } catch { /* yok */ }
+  };
+  // Tarayıcı, ses için bir dokunuş bekler
+  useEffect(() => {
+    const h = () => unlock();
+    document.addEventListener('pointerdown', h);
+    return () => document.removeEventListener('pointerdown', h);
+  }, []);
+  const prev = useRef<{ phase?: string; q?: number; players?: number; sec?: number }>({});
+  useEffect(() => {
+    if (!s) return;
+    const p = prev.current;
+    if (pref.sfx) {
+      if (s.phase === 'lobby' && p.players != null && s.players.length > p.players) sfx.join();
+      if (s.phase === 'question' && (p.phase !== 'question' || p.q !== s.q)) sfx.start();
+      if (s.phase !== p.phase && p.phase) {
+        if (s.phase === 'reveal') sfx.reveal();
+        else if (s.phase === 'board') sfx.board();
+        else if (s.phase === 'end') sfx.fanfare();
+      }
+    }
+    prev.current = { ...p, phase: s.phase, q: s.q, players: s.players.length };
+  }, [s, pref.sfx]);
+  // Son 5 saniye
+  const sec = Math.ceil(left);
+  useEffect(() => {
+    if (!pref.sfx || s?.phase !== 'question' || sec > 5 || sec < 1 || prev.current.sec === sec) return;
+    prev.current.sec = sec;
+    sfx.tick(sec === 1);
+  }, [sec, s?.phase, pref.sfx]);
+  const playing = pref.music && (s?.phase === 'lobby' || s?.phase === 'question');
+  useEffect(() => { music(!!playing); }, [playing]);
+  useEffect(() => () => music(false), []);
+  return { ...pref, set };
 }

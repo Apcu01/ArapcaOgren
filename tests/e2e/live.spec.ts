@@ -62,6 +62,13 @@ test('canlı yarışma baştan sona oynanır', async ({ browser }) => {
     }
   }
   await expect(host.getByRole('heading', { name: 'Kazananlar' })).toBeVisible();
+  // Sonuç raporu: giriş yapmadan açıldığı için saklanmaz, Excel'e indirilebilir
+  await expect(host.getByRole('heading', { name: 'Sonuç raporu' })).toBeVisible();
+  await expect(host.getByText(/sonuçları saklanmaz/)).toBeVisible();
+  await host.getByRole('tab', { name: 'Öğrencilere göre' }).click();
+  await expect(host.getByRole('cell', { name: 'Ayşe 2' })).toBeVisible();
+  const [file] = await Promise.all([host.waitForEvent('download'), host.getByRole('button', { name: "Excel'e indir" }).click()]);
+  expect(file.suggestedFilename()).toMatch(/^yarisma-\d{4}-\d{2}-\d{2}-.+\.csv$/);
   await expect(a.getByText('Yarışma bitti')).toBeVisible();
   await expect(b.getByText('Yarışma bitti')).toBeVisible();
 

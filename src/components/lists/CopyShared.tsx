@@ -1,6 +1,6 @@
 'use client';
 
-/* Paylaşılan listeyi kendi listelerine kopyala; giriş yapılmamışsa giriş sonrası bu sayfaya dönülür */
+/* Paylaşılan ya da hazır bir listeyi kendi listelerine kopyala; giriş yapılmamışsa giriş sonrası bu sayfaya dönülür */
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -8,15 +8,15 @@ import { useApp } from '../AppProvider';
 import { I, Raw } from '../icons';
 import { jsonFetch } from './useList';
 
-export default function CopyShared({ token }: { token: string }) {
+export default function CopyShared({ copyUrl, back: backPath }: { copyUrl: string; back: string }) {
   const { user, session, toast } = useApp();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const back = encodeURIComponent(`/liste/${token}`);
+  const back = encodeURIComponent(backPath);
 
   async function copy() {
     setBusy(true);
-    const r = await jsonFetch<{ id: number }>(`/api/shared/${token}/copy`, { method: 'POST' });
+    const r = await jsonFetch<{ id: number }>(copyUrl, { method: 'POST' });
     setBusy(false);
     if (!r.ok) { toast(r.error); return; }
     toast('Liste kopyalandı. Artık senin listen.');

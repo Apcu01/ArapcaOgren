@@ -1,6 +1,7 @@
 'use client';
 
 /* Canlı yarışma giriş sayfası: PIN ile katıl ya da yarışma aç (hesap gerekmez) */
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useApp } from '../AppProvider';
@@ -10,9 +11,9 @@ import { hostKeyOf, post, save } from './shared';
 import { DIR_LABEL, type Dir, type ListSummary } from '@/lib/study';
 
 export type LiveTopic = { id: string; name: string; n: number; words: number };
-type Source = { type: 'topic'; id: string } | { type: 'list'; id: number } | { type: 'shared'; token: string };
+type Source = { type: 'topic'; id: string } | { type: 'list'; id: number } | { type: 'shared'; token: string } | { type: 'ready'; slug: string };
 
-export default function LiveLanding({ topics, shared }: { topics: LiveTopic[]; shared: { token: string; title: string; count: number } | null }) {
+export default function LiveLanding({ topics, shared, ready }: { topics: LiveTopic[]; shared: { token: string; title: string; count: number } | null; ready: { slug: string; title: string; count: number }[] }) {
   const router = useRouter();
   const { user, session, toast } = useApp();
   const [pin, setPin] = useState('');
@@ -29,9 +30,11 @@ export default function LiveLanding({ topics, shared }: { topics: LiveTopic[]; s
     if (p) setPin(p);
     const konu = u.get('konu');
     const liste = Number(u.get('liste'));
+    const hazir = u.get('hazir');
     if (konu && topics.some((t) => t.id === konu)) setSource({ type: 'topic', id: konu });
+    else if (hazir && ready.some((r) => r.slug === hazir)) setSource({ type: 'ready', slug: hazir });
     else if (liste > 0) setSource({ type: 'list', id: liste });
-  }, [topics]);
+  }, [topics, ready]);
   useEffect(() => {
     if (session === 'loading' || !user) return;
     jsonFetch<{ lists: ListSummary[] }>('/api/lists').then((r) => r.ok && setLists(r.data.lists));
@@ -108,6 +111,12 @@ export default function LiveLanding({ topics, shared }: { topics: LiveTopic[]; s
               {topics.filter((t) => t.words >= 4).map((t) => pick({ type: 'topic', id: t.id }, `${t.n}. ${t.name}`, `${t.words} kelime`, 't' + t.id))}
             </div>
           </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-bold tracking-[.1em] uppercase text-lab">Hazır listeler</span>
+            <div className="grid gap-2 sm:grid-cols-2 max-h-[260px] overflow-y-auto pr-1">
+              {ready.map((r) => pick({ type: 'ready', slug: r.slug }, r.title, `${r.count} kelime`, 'r' + r.slug))}
+            </div>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="flex flex-col gap-1.5">
@@ -132,7 +141,8 @@ export default function LiveLanding({ topics, shared }: { topics: LiveTopic[]; s
           <button type="button" onClick={create} disabled={busy || !source} className="self-start h-14 px-7 rounded-xl bg-acc text-onacc text-lg font-bold inline-flex items-center gap-2 disabled:opacity-50">
             <Raw html={I.play(18)} /> {busy ? 'Açılıyor' : 'Yarışmayı aç'}
           </button>
-          {!user && session === 'ready' && <p className="m-0 text-xs text-faint">Kendi kelime listenle yarışma açmak için giriş yapabilirsin; ders kelimeleri için gerekmez.</p>}
+          {!user && session === 'ready' && <p className="m-0 text-xs text-faint">Giriş yaparsan kendi listelerinle de yarışma açabilir, yarışma sonuçlarını saklayabilirsin; ders kelimeleri için gerekmez.</p>}
+          {user && <Link href="/canli/gecmis" className="self-start text-sm font-semibold">Geçmiş yarışmalarım</Link>}
         </section>
       </div>
     </div>

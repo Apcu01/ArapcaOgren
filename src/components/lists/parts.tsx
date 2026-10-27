@@ -17,6 +17,7 @@ export function LoginNeeded({ what = 'Kelime listeleri' }: { what?: string }) {
         <Link href="/giris" className="h-11 px-5 rounded-xl bg-acc text-onacc font-bold inline-flex items-center hover:text-onacc">Giriş yap</Link>
         <Link href="/kayit" className="h-11 px-5 rounded-xl border border-line3 bg-s2 text-ink font-semibold inline-flex items-center hover:text-ink hover:border-lineh">Hesap aç</Link>
       </div>
+      <Link href="/hazir-listeler" className="text-sm font-semibold">Hesapsız da göz at: hazır kelime listeleri</Link>
     </div>
   );
 }

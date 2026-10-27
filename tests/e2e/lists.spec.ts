@@ -39,6 +39,10 @@ test.describe.serial('kelime listeleri', () => {
   test('misafir giriş yapması gerektiğini görür', async ({ page }) => {
     await page.goto('/listelerim');
     await expect(page.getByRole('heading', { name: 'Kelime listeleri için giriş yap' })).toBeVisible();
+    // Hazır listeler hesapsız görülebilir, kopyalamak için giriş istenir
+    await page.getByRole('link', { name: /hazır kelime listeleri/ }).click();
+    await page.getByRole('link', { name: /Hayvanlar/ }).click();
+    await expect(page.getByRole('link', { name: 'Giriş yap ve kopyala' })).toHaveAttribute('href', /next=%2Fhazir-listeler%2Fhayvanlar/);
   });
 
   test.describe('üye', () => {
@@ -115,6 +119,17 @@ test.describe.serial('kelime listeleri', () => {
       await guest.goto(link);
       await expect(guest.getByRole('heading', { name: 'Bu liste artık paylaşılmıyor' })).toBeVisible();
       await guest.context().close();
+    });
+
+    test('hazır liste kopyalanır', async ({ page }) => {
+      await page.goto('/hazir-listeler');
+      await page.getByRole('link', { name: /Selamlaşma ve nezaket/ }).click();
+      await expect(page.getByRole('heading', { name: 'Selamlaşma ve nezaket' })).toBeVisible();
+      await expect(page.getByText('مَرْحَبًا')).toBeVisible();
+      await page.getByRole('button', { name: 'Listelerime kopyala' }).click();
+      await page.waitForURL(/\/listelerim\/\d+$/);
+      await expect(page.getByRole('heading', { name: 'Selamlaşma ve nezaket' })).toBeVisible();
+      await expect(page.getByText('25 kelime').first()).toBeVisible();
     });
 
     test('eşleştirme oyunu biter ve en iyi süre kaydedilir', async ({ page }) => {

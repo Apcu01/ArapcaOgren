@@ -1,6 +1,7 @@
 import LiveLanding from '@/components/live/LiveLanding';
 import { getShared } from '@/lib/lists';
 import { getTopics } from '@/lib/topics';
+import { READY_LISTS } from '@/lib/ready-lists';
 
 export const metadata = {
   title: 'Canlı yarışma',
@@ -16,6 +17,7 @@ export default async function LivePage({ searchParams }: { searchParams: Promise
     <LiveLanding
       topics={topics.map((t) => ({ id: t.id, name: t.name, n: t.n, words: (t.words || []).length }))}
       shared={s && sp.paylasim ? { token: sp.paylasim, title: s.title, count: s.count } : null}
+      ready={READY_LISTS.map((l) => ({ slug: l.slug, title: l.title, count: l.words.length }))}
     />
   );
 }

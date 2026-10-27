@@ -55,3 +55,12 @@ export async function getWord(slug: string) {
 export async function getWordSlugMap() {
   return Object.fromEntries((await getWordIndex()).map((w) => [w.ar, w.slug]));
 }
+
+/** Hazır listenin kelimeleri: okunuş, anlam ve kelime sayfası adresiyle (sözlükte bulunamayan atlanır) */
+export async function readyWords(words: string[]) {
+  const byAr = new Map((await getWordIndex()).map((w) => [w.ar, w]));
+  return words.flatMap((ar) => {
+    const w = byAr.get(ar);
+    return w ? [{ ar: w.ar, tl: w.tl, tr: w.tr, slug: w.slug }] : [];
+  });
+}

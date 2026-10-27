@@ -3,6 +3,7 @@ import {
   bigint, boolean, char, customType, datetime, double, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, varchar
 } from 'drizzle-orm/mysql-core';
 import type { Item, LookupResult, Mistake, Question, ReportContext, Section, Word } from '@/lib/types';
+import type { LiveReport } from '@/lib/live-report';
 
 // Ses dosyaları veritabanında saklanır (her barındırmada çalışsın, ayrı dosya depolaması gerekmesin)
 const mediumBlob = customType<{ data: Buffer }>({ dataType: () => 'mediumblob' });
@@ -263,3 +264,17 @@ export const lookupLog = mysqlTable('lookup_log', {
   anonId: varchar('anon_id', { length: 64 }),
   createdAt: timestamp('created_at').notNull().defaultNow()
 }, (t) => [index('lookup_log_created_idx').on(t.createdAt), index('lookup_log_qkey_idx').on(t.qkey)]);
+
+// Canlı yarışma sonuçları: giriş yapmış öğretmenin açtığı yarışmalar bitince saklanır ("Geçmiş yarışmalarım")
+export const liveResults = mysqlTable('live_results', {
+  id: int('id').autoincrement().primaryKey(),
+  userId: int('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 120 }).notNull(),
+  questions: int('questions').notNull(),
+  players: int('players').notNull(),
+  // Ortalama doğru oranı (0-1)
+  accuracy: double('accuracy').notNull().default(0),
+  report: json('report').$type<LiveReport>().notNull(),
+  startedAt: timestamp('started_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (t) => [index('live_results_user_idx').on(t.userId, t.createdAt)]);

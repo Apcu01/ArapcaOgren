@@ -29,9 +29,12 @@ export default function ListsView() {
           <h1 className="m-0 text-[34px] sm:text-[42px] leading-tight font-bold tracking-tight">Listelerim</h1>
           <p className="m-0 text-mute max-w-[560px] leading-relaxed">Kendi kelime listeni oluştur; kartlarla, adım adım öğrenerek, testlerle ve oyunlarla çalış.</p>
         </div>
-        <Link href="/listelerim/yeni" className="h-12 px-5 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2 hover:text-onacc">
-          <Raw html={I.plus(18)} /> Yeni liste
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/hazir-listeler" className="h-12 px-5 rounded-xl border border-line3 bg-s2 text-ink font-semibold inline-flex items-center hover:text-ink hover:border-lineh">Hazır listeler</Link>
+          <Link href="/listelerim/yeni" className="h-12 px-5 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2 hover:text-onacc">
+            <Raw html={I.plus(18)} /> Yeni liste
+          </Link>
+        </div>
       </div>
 
       {err && <p className="m-0 text-bad" role="alert">{err}</p>}
@@ -40,7 +43,7 @@ export default function ListsView() {
         <div className="flex flex-col items-center text-center gap-3 p-10 rounded-[22px] bg-s1 border border-line">
           <span className="w-14 h-14 rounded-2xl bg-chip border border-line3 text-acct flex items-center justify-center"><Raw html={I.cards(24)} /></span>
           <h2 className="m-0 text-xl font-bold">Henüz listen yok</h2>
-          <p className="m-0 text-mute max-w-[460px] leading-relaxed">Bir liste oluştur, kelimeleri ekle. Okunuşu ya da anlamı yazınca derslerdeki ve sözlükteki kelimeler önerilir. Kelime bul ve sözlükten de listene kelime ekleyebilirsin.</p>
+          <p className="m-0 text-mute max-w-[460px] leading-relaxed">Bir liste oluştur, kelimeleri ekle. Okunuşu ya da anlamı yazınca derslerdeki ve sözlükteki kelimeler önerilir. Kelime bul ve sözlükten de listene kelime ekleyebilirsin. Ya da <Link href="/hazir-listeler">hazır listelerden</Link> birini kopyala.</p>
           <Link href="/listelerim/yeni" className="mt-2 h-11 px-5 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2 hover:text-onacc"><Raw html={I.plus(17)} /> İlk listeni oluştur</Link>
         </div>
       )}
