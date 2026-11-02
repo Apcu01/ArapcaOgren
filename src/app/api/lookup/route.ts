@@ -5,6 +5,7 @@ import { getSessionUser } from '@/lib/auth';
 import { aiCallsToday, aiLookup, cachedLookup, lexiconLookup, LOOKUP_DAILY_LIMIT } from '@/lib/lookup';
 import { logLookup } from '@/lib/lookup-log';
 import { limitCheck, recordAttempt } from '@/lib/ratelimit';
+import { CONTEXT_MAX } from '@/lib/context';
 import { LOOKUP_RE } from '@/lib/translit';
 import { throttle } from '@/lib/throttle';
 import type { LookupResult } from '@/lib/types';
@@ -14,7 +15,9 @@ const Body = z.object({
   // true: yerleşik sözlüğü atla, doğrudan yapay zekâya sor ("Yapay zekâya sor" düğmesi)
   ai: z.boolean().optional(),
   // Yönetim panelindeki arama günlüğü için (misafirleri ayırt etmek)
-  anonId: z.string().max(64).nullable().optional()
+  anonId: z.string().max(64).nullable().optional(),
+  // "Bu kelime nerede geçiyor?" (isteğe bağlı): ünite, konu, ortam ya da kelimenin geçtiği cümle
+  ctx: z.string().trim().max(CONTEXT_MAX, `Bağlam en fazla ${CONTEXT_MAX} karakter olabilir.`).optional()
 });
 
 const first = (r: LookupResult) => ({ ar: r.results[0]?.ar, tr: r.results[0]?.tr });
@@ -27,17 +30,18 @@ export async function POST(req: Request) {
   const p = await parse(req, Body);
   if ('res' in p) return p.res;
   const { q, ai, anonId } = p.data;
+  const ctx = p.data.ctx || null;
   const user = await getSessionUser();
   const log = (source: Parameters<typeof logLookup>[0]['source'], extra: { near?: boolean; ar?: string; tr?: string } = {}) =>
-    logLookup({ q, source, userId: user?.id, anonId, ...extra });
+    logLookup({ q, ctx, source, userId: user?.id, anonId, ...extra });
 
   // 1) Yerleşik sözlük: ücretsiz ve anında
   if (!ai) {
-    const lex = await lexiconLookup(q);
+    const lex = await lexiconLookup(q, ctx);
     if (lex) { await log('lexicon', { near: lex.match === 'near', ...first(lex) }); return ok({ source: 'lexicon', ...lex }); }
   }
   // 2) Daha önce yapay zekâya sorulduysa önbellekten
-  const hit = await cachedLookup(q);
+  const hit = await cachedLookup(q, ctx);
   if (hit) { await log(hit.results.length ? 'cache' : 'none', first(hit)); return ok({ source: 'cache', ...hit }); }
 
   // 3) Yapay zekâ: giriş zorunlu
@@ -48,7 +52,7 @@ export async function POST(req: Request) {
   if ((await aiCallsToday()) >= LOOKUP_DAILY_LIMIT) return fail('Bugünkü arama sınırına ulaşıldı. Yarın tekrar dene ya da sözlüğe bak.', 503);
 
   try {
-    const result = await aiLookup(q);
+    const result = await aiLookup(q, ctx);
     await recordAttempt('lookup', req, null, true);
     await log(result.results.length ? 'ai' : 'none', first(result));
     return ok({ source: 'ai', ...result });

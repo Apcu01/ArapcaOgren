@@ -10,7 +10,8 @@ const Body = z.object({
   q: z.string().trim().min(1).max(40).regex(LOOKUP_RE),
   ar: z.string().max(120).optional(),
   tr: z.string().max(300).optional(),
-  anonId: z.string().max(64).nullable().optional()
+  anonId: z.string().max(64).nullable().optional(),
+  ctx: z.string().max(120).optional()
 });
 
 export async function POST(req: Request) {

@@ -35,7 +35,7 @@ export async function lookupStats(q: string) {
       found: sql<number>`SUM(${G.source} IN ('ai', 'cache'))`, lastAt: sql<Date>`MAX(${G.createdAt})`
     }).from(G).where(sql`${MISSING} AND ${search}`).groupBy(G.qkey).orderBy(desc(sql`COUNT(*)`), desc(sql`MAX(${G.createdAt})`)).limit(40),
     db.select({
-      id: G.id, query: G.query, source: G.source, near: G.near, ar: G.resultAr, tr: G.resultTr, createdAt: G.createdAt,
+      id: G.id, query: G.query, context: G.context, source: G.source, near: G.near, ar: G.resultAr, tr: G.resultTr, createdAt: G.createdAt,
       userId: G.userId, userName: schema.users.name
     }).from(G).leftJoin(schema.users, eq(schema.users.id, G.userId)).where(search).orderBy(desc(G.id)).limit(150)
   ]);

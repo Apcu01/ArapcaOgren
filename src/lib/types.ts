@@ -88,6 +88,6 @@ export type ReportContext = { label: string; question?: Question; word?: Word; s
 
 /** Kelime bul: yapay zekânın bulduğu kelimeler */
 export type LookupResult = {
-  results: { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; example?: { ar: string; tr: string }; note?: string }[];
+  results: { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; example?: { ar: string; tr: string }; note?: string; /** "Bu kelime nerede geçiyor?" bağlamına uyuyor */ fit?: boolean }[];
   note?: string;
 };

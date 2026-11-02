@@ -15,7 +15,7 @@ export default async function LookupPage() {
   const seen = new Map<string, DictWord>();
   for (const t of topics) for (const w of t.words || []) {
     const k = w.ar + '|' + w.tr;
-    const ref = { id: t.id, name: t.name };
+    const ref = { id: t.id, name: t.name, tags: t.tags || '' };
     if (seen.has(k)) seen.get(k)!.topics.push(ref);
     else seen.set(k, { ar: w.ar, tr: w.tr, tl: w.tl || '', en: w.en || '', topics: [ref] });
   }

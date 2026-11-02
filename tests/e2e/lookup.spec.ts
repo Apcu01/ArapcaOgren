@@ -64,6 +64,25 @@ test.describe.serial('kelime bul', () => {
     await ctx.close();
   });
 
+  test('"Bu kelime nerede geçiyor?" bağlamına uyan anlam öne çıkar', async ({ page }) => {
+    // Gerçek API (yerleşik sözlük): "ayn" hem "nerede" (eyne) hem "göz" (ayn); bağlam vücut olunca göz öne gelir
+    await page.goto('/kelime-bul');
+    await page.getByPlaceholder('Örnek: ketebe, afvan, müderris').fill('ayn');
+    await page.getByPlaceholder(/Örneğin: teknoloji ünitesi/).fill('vücut ünitesinde');
+    await page.getByRole('button', { name: 'Bul', exact: true }).click();
+    const lex = page.locator('section', { has: page.getByRole('heading', { name: 'Sözlüğümüzden' }) });
+    await expect(lex.getByText('Bağlama uygun')).toHaveCount(1);
+    // Uyan sonuç grubun ilk kartı
+    await expect(lex.getByText(/^(göz|nerede)$/).first()).toHaveText('göz');
+    await expect(page).toHaveURL(/\?q=ayn&b=v%C3%BCcut%20%C3%BCnitesinde$/);
+    // Sözlük grubu, bağlama uymayan ders sonuçlarının üstünde
+    const order = await page.locator('h2').allTextContents();
+    expect(order.indexOf('Sözlüğümüzden')).toBeLessThan(order.indexOf('Derslerde geçiyor'));
+    await page.getByRole('button', { name: 'Bağlamı kaldır' }).click();
+    await expect(page).toHaveURL(/\?q=ayn$/);
+    await expect(page.getByText('Bağlama uygun')).toHaveCount(0);
+  });
+
   test('yerleşik sözlükten ve yapay zekâdan gelen sonuçlar ayrı gösterilir', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: state });
     const page = await ctx.newPage();

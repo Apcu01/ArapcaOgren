@@ -11,16 +11,20 @@ import { recognizer, type SR } from '@/lib/speech';
 import { rootOf, spaced } from '@/lib/roots';
 import { SayBtn, useApp, anonId } from './AppProvider';
 import { I, Raw } from './icons';
+import { CONTEXT_MAX, contextFit, contextTerms, rankByContext, type ContextTerms } from '@/lib/context';
 import AddToList from './lists/AddToList';
 
-export type DictWord = { ar: string; tr: string; tl: string; en: string; topics: { id: string; name: string }[] };
-type Card = { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; note?: string; example?: { ar: string; tr: string }; topics?: DictWord['topics']; slug?: string };
+export type DictWord = { ar: string; tr: string; tl: string; en: string; topics: { id: string; name: string; tags?: string }[] };
+type Card = { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; note?: string; example?: { ar: string; tr: string }; topics?: DictWord['topics']; slug?: string; fit?: boolean };
 type Source = 'lexicon' | 'ai' | 'cache';
 type Ai = { status: 'idle' } | { status: 'loading' } | { status: 'login' } | { status: 'done'; data: LookupResult; source: Source; near: boolean } | { status: 'error'; msg: string };
 
 const RECENT_KEY = 'arblearn:lookup-recent';
 const EXAMPLES = ['ketebe', 'afvan', 'müderris', 'şukran', 'kitâb', 'كتب'];
 const arKey = (s: string) => normAr(strip(s)).replace(/^ال/, '').replace(/\s+/g, ' ').trim();
+
+/** Ders kelimesinin bağlama uygunluğu: geçtiği dersin adı ve etiketleri, anlamı */
+const localFit = (t: ContextTerms | null, w: DictWord) => contextFit(t, [...w.topics.flatMap((x) => [x.name, x.tags]), w.tr, w.en], w.ar);
 
 /** Derslerdeki kelimelerde arama: okunuş benzerliği, Arapça yazım ya da Türkçe anlam */
 function searchLocal(words: DictWord[], q: string) {
@@ -62,6 +66,10 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
   const { metric, toast } = useApp();
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
+  // "Bu kelime nerede geçiyor?" (isteğe bağlı): kutudaki metin ve son aramada kullanılan bağlam
+  const [ctxInput, setCtxInput] = useState('');
+  const [ctx, setCtx] = useState('');
+  const [ctxMiss, setCtxMiss] = useState(false);
   const [ai, setAi] = useState<Ai>({ status: 'idle' });
   // Yerleşik sözlük sonucu ayrı tutulur: yapay zekâya da sorulunca ikisi birlikte görünür
   const [lex, setLex] = useState<{ data: LookupResult; near: boolean } | null>(null);
@@ -70,7 +78,13 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
   const inputRef = useRef<HTMLInputElement>(null);
   const reqId = useRef(0);
 
-  const local = useMemo(() => searchLocal(words, q), [words, q]);
+  const terms = useMemo(() => contextTerms(ctx), [ctx]);
+  const local = useMemo(() => {
+    const r = searchLocal(words, q);
+    if (!terms) return r;
+    const rank = (list: DictWord[]) => rankByContext(list, (w) => localFit(terms, w));
+    return { sound: rank(r.sound), meaning: rank(r.meaning) };
+  }, [words, q, terms]);
   const dictByAr = useMemo(() => {
     const m = new Map<string, DictWord>();
     for (const w of words) if (!m.has(arKey(w.ar))) m.set(arKey(w.ar), w);
@@ -81,26 +95,29 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
     try { const r = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); if (Array.isArray(r)) setRecent(r.slice(0, 8)); } catch { /* yok */ }
   }, []);
 
-  const askAi = useCallback(async (text: string, forceAi = false) => {
+  const askAi = useCallback(async (text: string, forceAi = false, context = '') => {
     const id = ++reqId.current;
     setAi({ status: 'loading' });
-    const r = await fetch('/api/lookup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: text, ai: forceAi || undefined, anonId: anonId() }) }).catch(() => null);
+    const r = await fetch('/api/lookup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: text, ai: forceAi || undefined, anonId: anonId(), ctx: context || undefined }) }).catch(() => null);
     if (id !== reqId.current) return;
-    const j = (await r?.json().catch(() => null)) as (LookupResult & { source?: Source; match?: string; error?: string; needLogin?: boolean }) | null;
+    const j = (await r?.json().catch(() => null)) as (LookupResult & { source?: Source; match?: string; error?: string; needLogin?: boolean; ctxMiss?: boolean }) | null;
     if (r?.status === 401 && j?.needLogin) { setAi({ status: 'login' }); return; }
     if (!r || !r.ok || !j) { setAi({ status: 'error', msg: j?.error || 'Bağlantı kurulamadı. İnternetini kontrol et.' }); return; }
-    if (j.source === 'lexicon') { setLex({ data: { results: j.results || [], note: j.note }, near: j.match === 'near' }); setAi({ status: 'idle' }); return; }
+    if (j.source === 'lexicon') { setLex({ data: { results: j.results || [], note: j.note }, near: j.match === 'near' }); setCtxMiss(!!j.ctxMiss); setAi({ status: 'idle' }); return; }
     setAi({ status: 'done', data: { results: j.results || [], note: j.note }, source: j.source || 'ai', near: false });
   }, []);
 
-  const run = useCallback((text: string) => {
+  const run = useCallback((text: string, context?: string) => {
     const s = text.trim().replace(/\s+/g, ' ');
     if (!s) return;
     if (!LOOKUP_RE.test(s)) { setErr('Yalnızca harf kullan (en fazla 40 karakter).'); return; }
     setErr('');
     setInput(s);
     setQ(s);
-    try { history.replaceState(null, '', '?q=' + encodeURIComponent(s)); } catch { /* yok */ }
+    const c = (context ?? ctxInput).replace(/\s+/g, ' ').trim().slice(0, CONTEXT_MAX);
+    setCtx(c);
+    setCtxMiss(false);
+    try { history.replaceState(null, '', '?q=' + encodeURIComponent(s) + (c ? '&b=' + encodeURIComponent(c) : '')); } catch { /* yok */ }
     metric('lookup');
     setRecent((prev) => {
       const next = [s, ...prev.filter((x) => x !== s)].slice(0, 8);
@@ -109,14 +126,17 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
     });
     // Derslerde okunuşuyla bulunduysa yapay zekâya otomatik gidilmez (ücretsiz ve kesin sonuç)
     setLex(null);
-    const hit = searchLocal(words, s).sound[0];
+    // Bağlam verildiyse ders kelimelerinden bağlama uyan yoksa sözlüğe ve yapay zekâya da bakılır
+    const t = contextTerms(c);
+    const sound = searchLocal(words, s).sound;
+    const hit = t ? sound.find((w) => localFit(t, w) > 0) : sound[0];
     if (hit) {
       reqId.current++;
       setAi({ status: 'idle' });
       // Sayfada bulunan arama sunucuya gitmediği için yönetim panelindeki arama günlüğüne ayrıca bildirilir
-      fetch('/api/lookup/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ q: s, ar: hit.ar, tr: hit.tr, anonId: anonId() }) }).catch(() => null);
-    } else void askAi(s);
-  }, [words, askAi, metric]);
+      fetch('/api/lookup/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ q: s, ar: hit.ar, tr: hit.tr, anonId: anonId(), ctx: c || undefined }) }).catch(() => null);
+    } else void askAi(s, false, c);
+  }, [words, askAi, metric, ctxInput]);
 
   // Adres çubuğundaki ?q= ile gelindiyse hemen ara
   /* ---------- Söyleyerek ara: tarayıcının Arapça konuşma tanıması ---------- */
@@ -151,15 +171,36 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
   // Geliştirme modunda etkiler iki kez çalışır: ilk arama yalnızca bir kez yapılsın (ve bir kez sayılsın)
   const started = useRef(false);
   useEffect(() => {
-    const initialQ = (new URLSearchParams(location.search).get('q') || '').slice(0, 40);
-    if (initialQ && !started.current) { started.current = true; run(initialQ); }
+    const u = new URLSearchParams(location.search);
+    const initialQ = (u.get('q') || '').slice(0, 40);
+    const initialB = (u.get('b') || '').slice(0, CONTEXT_MAX);
+    if (initialB) setCtxInput(initialB);
+    if (initialQ && !started.current) { started.current = true; run(initialQ, initialB); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const markFit = (w: DictWord): Card => ({ ...w, root: '', slug: slugs[w.ar], fit: !!terms && localFit(terms, w) > 0 });
   const aiCards: Card[] = ai.status === 'done'
     ? ai.data.results.map((r) => ({ ...r, topics: dictByAr.get(arKey(r.ar))?.topics }))
     : [];
   const hasLocal = local.sound.length + local.meaning.length > 0;
   const lexCards: Card[] = (lex?.data.results || []).map((r) => ({ ...r, topics: dictByAr.get(arKey(r.ar))?.topics }));
+  // Bağlama uyan ders kelimesi yoksa ders sonuçları, bağlama uyan sözlük ya da yapay zekâ sonucunun altına iner
+  const localLast = !!terms && ![...local.sound, ...local.meaning].some((w) => localFit(terms, w) > 0)
+    && (lexCards.some((c) => c.fit) || (ai.status === 'done' && aiCards.length > 0));
+  const localGroups = (
+    <>
+      {local.sound.length > 0 && (
+        <Group title="Derslerde geçiyor" sub="Bu kelimeler derslerimizde var; anlamları kesin.">
+          {local.sound.map((w) => <ResultCard key={w.ar + w.tr} c={markFit(w)} />)}
+        </Group>
+      )}
+      {local.meaning.length > 0 && (
+        <Group title="Türkçe anlamı eşleşenler" sub={`"${q}" anlamına gelen ders kelimeleri.`}>
+          {local.meaning.map((w) => <ResultCard key={w.ar + w.tr} c={markFit(w)} />)}
+        </Group>
+      )}
+    </>
+  );
 
   return (
     <div className="max-w-[900px] mx-auto px-4 sm:px-6 pt-10 pb-20 flex flex-col gap-7">
@@ -184,6 +225,13 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
           </label>
           <button type="submit" disabled={ai.status === 'loading'} className="h-[58px] px-6 rounded-[14px] bg-acc text-onacc font-bold disabled:opacity-60">Bul</button>
         </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold text-soft">Bu kelime nerede geçiyor? <span className="font-normal text-faint">(isteğe bağlı)</span></span>
+          <input value={ctxInput} onChange={(e) => setCtxInput(e.target.value)} maxLength={CONTEXT_MAX} autoComplete="off" dir="auto" enterKeyHint="search"
+            placeholder="Örneğin: teknoloji ünitesi, hastanede, lokantada ya da geçtiği cümle"
+            className="h-12 px-4 rounded-xl bg-s2 border border-line2 text-ink outline-none focus:border-lineh placeholder:text-faint" />
+          <span className="text-xs text-faint">Yazarsan o konuya uyan anlam öne çıkar; kelimenin geçtiği cümleyi Arapça da yapıştırabilirsin.</span>
+        </label>
         {err && <p role="alert" className="m-0 text-sm text-bad">{err}</p>}
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-faint">{recent.length ? 'Son aramaların:' : 'Dene:'}</span>
@@ -195,16 +243,14 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
 
       {q && (
         <div className="flex flex-col gap-6" aria-live="polite">
-          {local.sound.length > 0 && (
-            <Group title="Derslerde geçiyor" sub="Bu kelimeler derslerimizde var; anlamları kesin.">
-              {local.sound.map((w) => <ResultCard key={w.ar + w.tr} c={{ ...w, root: '', slug: slugs[w.ar] }} />)}
-            </Group>
+          {ctx && (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-mute">Bağlam:</span>
+              <span className="px-3 py-1 rounded-full bg-chip border border-chipln text-acct font-semibold" dir="auto">{ctx}</span>
+              <button type="button" onClick={() => { setCtxInput(''); run(q, ''); }} className="text-faint hover:text-ink text-xs font-semibold">Bağlamı kaldır</button>
+            </div>
           )}
-          {local.meaning.length > 0 && (
-            <Group title="Türkçe anlamı eşleşenler" sub={`"${q}" anlamına gelen ders kelimeleri.`}>
-              {local.meaning.map((w) => <ResultCard key={w.ar + w.tr} c={{ ...w, root: '', slug: slugs[w.ar] }} />)}
-            </Group>
-          )}
+          {!localLast && localGroups}
 
           {lex && (
             <Group title={lex.near ? 'Bunu mu demek istedin?' : 'Sözlüğümüzden'} sub={lex.near ? 'Yazdığına tam uyan kelime yok; okunuşu en yakın olanlar.' : 'Kontrol edilmiş sözlüğümüzde bulundu.'}>
@@ -212,9 +258,11 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
             </Group>
           )}
           {ai.status === 'idle' && (hasLocal || lex) && (
-            <div className="flex flex-wrap items-center gap-3 p-4 rounded-2xl border border-dashed border-line3">
-              <span className="text-sm text-mute flex-1 min-w-[220px]">Aradığın bu değil mi? Yapay zekâ başka anlamları ve örnek cümleleri de bulabilir.</span>
-              <button type="button" onClick={() => askAi(q, true)} className="h-10 px-4 rounded-xl bg-s2 border border-line3 text-soft font-semibold hover:border-lineh hover:text-ink inline-flex items-center gap-2"><Raw html={I.bulb(16)} /> Yapay zekâya sor</button>
+            <div className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border border-dashed ${ctxMiss ? 'border-acc' : 'border-line3'}`}>
+              <span className="text-sm text-mute flex-1 min-w-[220px]">{ctxMiss
+                ? 'Bulunan sonuçlar verdiğin bağlamla eşleşmedi. Yapay zekâ, kelimeyi bu bağlama göre arayabilir.'
+                : 'Aradığın bu değil mi? Yapay zekâ başka anlamları ve örnek cümleleri de bulabilir.'}</span>
+              <button type="button" onClick={() => askAi(q, true, ctx)} className="h-10 px-4 rounded-xl bg-s2 border border-line3 text-soft font-semibold hover:border-lineh hover:text-ink inline-flex items-center gap-2"><Raw html={I.bulb(16)} /> Yapay zekâya sor</button>
             </div>
           )}
 
@@ -226,13 +274,14 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
           {ai.status === 'login' && <AiLoginCard />}
           {ai.status === 'error' && <p role="alert" className="m-0 px-4 py-3 rounded-xl bg-badbg border border-badln text-bad">{ai.msg}</p>}
           {ai.status === 'done' && (
-            <Group title="Yapay zekâ sonucu" sub={ai.source === 'cache' ? 'Bu kelime daha önce de arandı.' : undefined}>
+            <Group title="Yapay zekâ sonucu" sub={[ctx ? 'Verdiğin bağlam dikkate alındı.' : '', ai.source === 'cache' ? 'Bu kelime daha önce de arandı.' : ''].filter(Boolean).join(' ') || undefined}>
               {aiCards.map((c) => <ResultCard key={c.ar + c.tr} c={{ ...c, slug: slugs[c.ar] }} />)}
               {!aiCards.length && <p className="m-0 p-6 rounded-2xl bg-s1 border border-line text-mute">Bu yazıma uyan bir kelime bulunamadı. Farklı bir yazımla dene (örneğin harekeleri değiştirerek).</p>}
               {ai.data.note && <p className="m-0 flex gap-2 text-[15px] text-prose leading-relaxed"><span className="text-acct shrink-0 mt-0.5"><Raw html={I.bulb(17)} /></span>{ai.data.note}</p>}
               <p className="m-0 text-xs text-faint">Yapay zekâ ile bulundu; nadiren hatalı olabilir. Derslerde geçen kelimeler işaretlidir.</p>
             </Group>
           )}
+          {localLast && localGroups}
         </div>
       )}
     </div>
@@ -259,6 +308,7 @@ function ResultCard({ c }: { c: Card }) {
     <article className="pop p-5 sm:p-6 rounded-[20px] bg-s3 border border-line flex flex-col gap-4">
       <div className="flex flex-wrap items-start gap-4 justify-between">
         <div className="flex flex-col gap-1 min-w-0">
+          {c.fit && <span className="self-start px-2 py-0.5 rounded-full bg-okbg border border-okln text-okt text-[11px] font-bold">Bağlama uygun</span>}
           <span className="text-[22px] font-bold text-ink leading-snug">{c.tr}</span>
           <span className="text-sm text-mute2">
             <span className="tl">{c.tl}</span>{c.type && <>{c.tl ? ' · ' : ''}{c.type}</>}{c.en && <span className="en"> · EN: {c.en}</span>}

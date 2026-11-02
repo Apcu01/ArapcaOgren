@@ -198,7 +198,9 @@ export const lexicon = mysqlTable('lexicon', {
   variants: json('variants').$type<string[]>().notNull(),
   muAr: varchar('mu_ar', { length: 120 }),
   muTl: varchar('mu_tl', { length: 120 }),
-  note: varchar('note', { length: 400 })
+  note: varchar('note', { length: 400 }),
+  // Sözlük dosyasındaki bölüm başlığı (Sağlık, Okul ve sınıf...): "Bu kelime nerede geçiyor?" eşleştirmesi
+  topic: varchar('topic', { length: 80 })
 });
 
 // Günlük sayaçlar (yönetim panelindeki 14 günlük grafik): dinlenen ders anlatımı, dinlenen kelime sesi, kelime bul araması, doğru ve yanlış cevap
@@ -255,6 +257,8 @@ export const wordListItems = mysqlTable('word_list_items', {
 export const lookupLog = mysqlTable('lookup_log', {
   id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
   query: varchar('query', { length: 80 }).notNull(),
+  // "Bu kelime nerede geçiyor?" bağlamı (verildiyse)
+  context: varchar('context', { length: 120 }),
   qkey: varchar('qkey', { length: 120 }).notNull(),
   source: varchar('source', { length: 12 }).notNull(),
   near: boolean('near').notNull().default(false),

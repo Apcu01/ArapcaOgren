@@ -136,7 +136,7 @@ export default async function LookupsPage({ searchParams }: { searchParams: Prom
               {s.recent.map((r) => (
                 <tr key={r.id}>
                   <td className="whitespace-nowrap text-sm">{dt(r.createdAt, true)}</td>
-                  <td className="font-semibold">{r.query}</td>
+                  <td><span className="font-semibold">{r.query}</span>{r.context && <span className="block text-xs text-mute max-w-[260px] truncate" dir="auto" title={r.context}>Bağlam: {r.context}</span>}</td>
                   <td><Badge s={r.source} near={r.near} /></td>
                   <td className="text-sm">{r.ar ? <span className="inline-flex items-center gap-2"><Ar t={r.ar} className="text-[18px] text-ink" /><span className="text-mute">{r.tr}</span></span> : <span className="text-faint">-</span>}</td>
                   <td className="text-sm">{r.userId ? <Link href={`/admin/kullanicilar/${r.userId}`}>{r.userName}</Link> : <span className="text-faint">Misafir</span>}</td>

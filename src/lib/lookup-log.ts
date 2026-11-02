@@ -9,10 +9,10 @@ export type LogSource = 'lesson' | 'lexicon' | 'cache' | 'ai' | 'login' | 'none'
 export const logKey = (q: string) => (isAr(q) ? 'ar:' + normAr(q).replace(/\s+/g, '') : 'tl:' + (phonKey(q) || q.trim().toLocaleLowerCase('tr'))).slice(0, 120);
 
 /** Aramayı günlüğe yazar; hata aramayı bozmasın diye yutulur */
-export async function logLookup(e: { q: string; source: LogSource; near?: boolean; ar?: string; tr?: string; userId?: number | null; anonId?: string | null }) {
+export async function logLookup(e: { q: string; ctx?: string | null; source: LogSource; near?: boolean; ar?: string; tr?: string; userId?: number | null; anonId?: string | null }) {
   try {
     await db.insert(schema.lookupLog).values({
-      query: e.q.trim().slice(0, 80), qkey: logKey(e.q), source: e.source, near: !!e.near,
+      query: e.q.trim().slice(0, 80), context: e.ctx?.trim().slice(0, 120) || null, qkey: logKey(e.q), source: e.source, near: !!e.near,
       resultAr: e.ar?.slice(0, 120) ?? null, resultTr: e.tr?.slice(0, 300) ?? null,
       userId: e.userId ?? null, anonId: e.anonId?.slice(0, 64) ?? null
     });
