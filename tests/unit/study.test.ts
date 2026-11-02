@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTest, fmtTime, gradeAr, gradeTr, meanings, mcQ, nextRound, statusOf, type ListItem } from '@/lib/study';
+import { buildTest, deck, fmtTime, gradeAr, gradeTr, meanings, mcQ, nextRound, statusOf, type ListItem } from '@/lib/study';
 
 const mk = (id: number, ar: string, tl: string, tr: string): ListItem => ({ id, ar, tl, tr, note: '', starred: false, correct: 0, wrong: 0, streak: 0 });
 const items = [
@@ -72,4 +72,23 @@ describe('soru üretimi', () => {
 it('süre biçimi', () => {
   expect(fmtTime(12345)).toBe('12,3 sn');
   expect(fmtTime(65200)).toBe('1:05,2');
+});
+
+describe('tekrarsız deste', () => {
+  it('her tur bütün kelimeleri birer kez verir, turlar arasında art arda aynı kelime gelmez', () => {
+    for (let run = 0; run < 50; run++) {
+      const next = deck(items);
+      let prev: ListItem | undefined;
+      for (let round = 0; round < 5; round++) {
+        const seen = items.map(() => next());
+        expect(new Set(seen.map((x) => x.id)).size).toBe(items.length);
+        expect(seen[0]).not.toBe(prev);
+        prev = seen[seen.length - 1];
+      }
+    }
+  });
+  it('tek kelimede de çalışır', () => {
+    const next = deck([items[0]]);
+    expect([next(), next()]).toEqual([items[0], items[0]]);
+  });
 });

@@ -6,7 +6,7 @@ import { useMemo, useRef, useState } from 'react';
 import { I, Raw } from '../../icons';
 import { AnyQuestion, GameOver } from '../parts';
 import type { ModeProps } from '../StudyShell';
-import { mcQ, pickDir, type McQ, type WriteQ } from '@/lib/study';
+import { deck, mcQ, pickDir, type McQ, type WriteQ } from '@/lib/study';
 
 const N = 7;
 const START_MOVES = 15;
@@ -85,8 +85,10 @@ export default function Charms({ list, items, opts, study }: ModeProps) {
   // Kaydırmadan sonra gelen tıklama seçim yapmasın
   const swiped = useRef(false);
 
+  // Sorulan kelime desteden sırayla gelir: her kelime bir kez sorulmadan aynısı tekrar gelmez
+  const nextItem = useRef(deck(items));
   const q: McQ | WriteQ = useMemo(() => {
-    const it = items[Math.floor(Math.random() * items.length)];
+    const it = nextItem.current();
     return opts.write && Math.random() < 0.35 ? { kind: 'write', item: it, dir: pickDir(opts.dir) } : mcQ(it, items, opts.dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qn]);

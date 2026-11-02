@@ -7,7 +7,7 @@ import { Ar } from '../../AppProvider';
 import { I, Raw } from '../../icons';
 import { Face, GameOver } from '../parts';
 import type { ModeProps } from '../StudyShell';
-import { distractors, pickDir, type ListItem, type Side } from '@/lib/study';
+import { deck, distractors, pickDir, type ListItem, type Side } from '@/lib/study';
 import { shuffle } from '@/lib/text';
 
 type Rock = { item: ListItem; x: number; y: number; vx: number; state: 'fly' | 'hit' | 'bad' };
@@ -26,13 +26,14 @@ export default function Blast({ list, items, opts, study }: ModeProps) {
   const [record, setRecord] = useState(false);
   const area = useRef<HTMLDivElement>(null);
   const els = useRef<(HTMLButtonElement | null)[]>([]);
-  const st = useRef({ wave: null as Wave | null, speed: 0, last: 0, lock: false, lives: LIVES, score: 0, hits: 0, paused: false });
+  // Hedef kelime desteden sırayla gelir: her kelime bir kez sorulmadan aynısı tekrar gelmez
+  const st = useRef({ next: deck(items), wave: null as Wave | null, speed: 0, last: 0, lock: false, lives: LIVES, score: 0, hits: 0, paused: false });
 
   const level = Math.floor(hits / 5) + 1;
 
   const newWave = useCallback(() => {
     const w = area.current?.clientWidth || 360;
-    const target = shuffle(items)[0];
+    const target = st.current.next();
     const opts4 = shuffle([target, ...distractors(target, items, 3)]);
     const ROCK = rockSize(w);
     const lane = (w - ROCK) / Math.max(1, opts4.length - 1);
@@ -91,7 +92,7 @@ export default function Blast({ list, items, opts, study }: ModeProps) {
   useEffect(() => { st.current.speed = 38 + (level - 1) * 9; }, [level]);
 
   const start = () => {
-    Object.assign(st.current, { lives: LIVES, score: 0, hits: 0, last: 0, speed: 38 });
+    Object.assign(st.current, { next: deck(items), lives: LIVES, score: 0, hits: 0, last: 0, speed: 38 });
     setLives(LIVES); setScore(0); setHits(0); setRecord(false); setPhase('play');
     setTimeout(newWave, 50);
   };

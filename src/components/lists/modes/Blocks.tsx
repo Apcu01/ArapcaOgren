@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { I, Raw } from '../../icons';
 import { AnyQuestion, GameOver } from '../parts';
 import type { ModeProps } from '../StudyShell';
-import { mcQ, pickDir, type McQ, type WriteQ } from '@/lib/study';
+import { deck, mcQ, pickDir, type McQ, type WriteQ } from '@/lib/study';
 
 const N = 8;
 const COLORS = ['#e0a458', '#7fb77e', '#6aa5d8', '#c07ad6', '#e07a6a'];
@@ -51,8 +51,10 @@ export default function Blocks({ list, items, opts, study }: ModeProps) {
   const drag = useRef<{ i: number; touch: boolean } | null>(null);
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
 
+  // Sorulan kelime desteden sırayla gelir: her kelime bir kez sorulmadan aynısı tekrar gelmez
+  const nextItem = useRef(deck(items));
   const q: McQ | WriteQ = useMemo(() => {
-    const it = items[Math.floor(Math.random() * items.length)];
+    const it = nextItem.current();
     return opts.write && Math.random() < 0.35 ? { kind: 'write', item: it, dir: pickDir(opts.dir) } : mcQ(it, items, opts.dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qn]);

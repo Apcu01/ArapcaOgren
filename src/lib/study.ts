@@ -161,6 +161,23 @@ export function nextRound(items: ListItem[], st: LearnState) {
   return [...fam, ...neu].slice(0, ROUND_SIZE);
 }
 
+/**
+ * Tekrarsız sıra: kelimeler karışık bir destede sırayla gelir; hepsi bir kez sorulmadan aynı kelime gelmez.
+ * Deste bitince yeniden karılır ve yeni tur, önceki turun son kelimesiyle başlamaz (art arda aynı kelime çıkmaz).
+ */
+export function deck<T>(items: T[]) {
+  let bag: T[] = [];
+  let last: T | undefined;
+  return () => {
+    if (!bag.length) {
+      bag = shuffle(items);
+      if (bag.length > 1 && bag[0] === last) bag.push(bag.shift()!);
+    }
+    last = bag.shift()!;
+    return last;
+  };
+}
+
 /** Süre biçimi: 12,3 sn ya da 1:05,2 */
 export function fmtTime(ms: number) {
   const s = ms / 1000;
