@@ -72,6 +72,7 @@ export default function LiveLanding({ topics, shared, ready }: { topics: LiveTop
         <span className="text-[13px] font-semibold tracking-[.12em] uppercase text-lab">Sınıfça yarış</span>
         <h1 className="m-0 text-[34px] sm:text-[44px] leading-tight font-bold tracking-tight">Canlı yarışma</h1>
         <p className="m-0 text-mute max-w-[640px] leading-relaxed">Öğretmen yarışmayı açıp tahtaya yansıtır; öğrenciler telefonlarından PIN ile katılır. Sorular herkese aynı anda gelir, hızlı ve doğru cevap daha çok puan getirir. Kimsenin hesap açması gerekmez.</p>
+        <p className="m-0 text-sm text-faint">Öğrencilerine ödev verip kimin bitirdiğini takip etmek istersen <Link href="/siniflar">sınıf aç</Link>.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] items-start">

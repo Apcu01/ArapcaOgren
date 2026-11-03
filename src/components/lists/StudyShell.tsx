@@ -23,6 +23,7 @@ const VIEWS: Record<ModeKey, React.ComponentType<ModeProps>> = {
   kartlar: dynamic(() => import('./modes/Flashcards'), { loading: Loader }),
   ogren: dynamic(() => import('./modes/Learn'), { loading: Loader }),
   test: dynamic(() => import('./modes/TestMode'), { loading: Loader }),
+  dikte: dynamic(() => import('./modes/ListDictation'), { loading: Loader }),
   eslestir: dynamic(() => import('./modes/Match'), { loading: Loader }),
   blast: dynamic(() => import('./modes/Blast'), { loading: Loader }),
   bloklar: dynamic(() => import('./modes/Blocks'), { loading: Loader }),
@@ -93,7 +94,7 @@ function Shell({ list, update, mode }: { list: WordList; update: (fn: (l: WordLi
                   </Link>
                 ))}
               </nav>
-              <div className="flex flex-col gap-2 border-t border-line pt-3">
+              {mode !== 'dikte' && <div className="flex flex-col gap-2 border-t border-line pt-3">
                 <span className="text-xs font-bold tracking-[.1em] uppercase text-lab">Soru yönü</span>
                 <div role="radiogroup" aria-label="Soru yönü" className="grid gap-1 p-1 rounded-xl bg-s2 border border-line3">
                   {(Object.keys(DIR_LABEL) as Dir[]).map((d) => (
@@ -101,7 +102,7 @@ function Shell({ list, update, mode }: { list: WordList; update: (fn: (l: WordLi
                       className={`h-9 rounded-lg text-[13px] font-semibold ${opts.dir === d ? 'bg-acc text-onacc' : 'text-soft hover:text-ink'}`}>{DIR_LABEL[d]}</button>
                   ))}
                 </div>
-              </div>
+              </div>}
               <label className="flex items-center justify-between gap-3 cursor-pointer">
                 <span className="flex flex-col"><span className="text-[15px] font-semibold text-ink">Yalnız yıldızlılar</span>
                   <span className="text-xs text-faint">{starredItems.length} yıldızlı kelime{starredItems.length < MIN_ITEMS[mode] ? ` (en az ${MIN_ITEMS[mode]} gerekir)` : ''}</span></span>

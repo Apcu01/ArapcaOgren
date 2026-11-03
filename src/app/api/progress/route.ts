@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { getSessionUser } from '@/lib/auth';
 import { fail, ok, parse } from '@/lib/api';
-import { markDay, mergeProgress, resetProgress, saveAct, saveLesson, setLastTopic } from '@/lib/progress';
+import { markDay, mergeProgress, resetProgress, saveAct, saveLesson, setLastTopic, wasActDone, wasLessonRead } from '@/lib/progress';
+import { actXp, XP } from '@/lib/league';
+import { addXp } from '@/lib/xp';
 
 const id = z.string().min(1).max(64);
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -38,14 +40,21 @@ export async function POST(req: Request) {
   if ('res' in p) return p.res;
   const b = p.data;
   switch (b.action) {
-    case 'lesson':
+    case 'lesson': {
+      // Haftalık lig puanı: ders yalnızca ilk okunuşta puan kazandırır
+      const before = await wasLessonRead(user.id, b.topicId);
       await saveLesson(user.id, b.topicId);
+      if (!before) await addXp(user.id, XP.lesson);
       await markDay(user.id, b.day);
       break;
-    case 'act':
+    }
+    case 'act': {
+      const before = await wasActDone(user.id, b.topicId, b.actKey);
       await saveAct(user.id, b.topicId, b.actKey, b.score, b.done);
+      await addXp(user.id, actXp(b.score, b.done && !before));
       await markDay(user.id, b.day);
       break;
+    }
     case 'last':
       await setLastTopic(user.id, b.topicId);
       break;

@@ -221,6 +221,11 @@ table.lt td .ar { font-size: 22px; color: rgb(var(--c-ink)); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+/* Ayarlardaki "Canlandırmaları azalt" */
+body.no-motion *, body.no-motion *::before, body.no-motion *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+/* Ayarlardaki yazı boyutu: bütün sayfa oranla büyür (düzen dar ekranda da taşmaz) */
+body.txt-1 { zoom: 1.1; }
+body.txt-2 { zoom: 1.22; }
 
 /* Latin metin içindeki satır içi Arapça biraz büyük görünsün */
 .ar:not([class*="text-"]) { font-size: 1.22em; line-height: 1.4; }

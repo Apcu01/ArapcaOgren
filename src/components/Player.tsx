@@ -4,7 +4,8 @@
    doğru/yanlış, cümle kurma, dinleme, karma konu testi ve sınırsız saat pratiği */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Pair, Question, QType, Word } from '@/lib/types';
-import { esc, isAr, shuffle, SPEAK_MAX, TYPE, type ActView } from '@/lib/text';
+import { DICTATE_MAX, esc, isAr, shuffle, SPEAK_MAX, TYPE, type ActView } from '@/lib/text';
+import Dictation from './Dictation';
 import { pronScore, pronVerdict, type PronVerdict } from '@/lib/pron';
 import { recognizer, type SR } from '@/lib/speech';
 import { clockSVG, distractors, fmt, hmKey, nextH, randTime, ring, timeAr, timeTr, timeWhy, type HM } from '@/lib/clock';
@@ -104,6 +105,11 @@ export default function Player({ topic, act, list, onClose, onSwitch, preview = 
   function onKey(e: React.KeyboardEvent) {
     if (!root.current) return;
     if (e.key === 'Escape') close();
+    // Boşluk: dinleme ve dikte sorularında sesi tekrar çalar
+    if (e.key === ' ' && !(e.target as HTMLElement).matches('input,textarea,button,a')) {
+      const r = root.current.querySelector<HTMLButtonElement>('[data-replay]');
+      if (r) { e.preventDefault(); r.click(); }
+    }
     if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const opts = [...root.current.querySelectorAll<HTMLButtonElement>('.opt[data-v]:not(:disabled)')];
       const o = opts[+e.key - 1];
@@ -139,6 +145,7 @@ export default function Player({ topic, act, list, onClose, onSwitch, preview = 
             : act.type === 'match' ? <Match {...props} />
             : act.type === 'clock' ? <ClockPractice {...props} />
             : act.type === 'speak' ? <Speak {...props} />
+            : act.type === 'dictate' ? <Dictate {...props} />
             : <Quiz {...props} />}
         </div>
       </div>
@@ -427,7 +434,7 @@ function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview, tall
   if (q.t === 'listen') {
     prompt = (
       <div className="flex flex-col items-center gap-4">
-        <button type="button" data-say={q.ar} aria-label="Kelimeyi dinle" className="w-24 h-24 rounded-full bg-acc text-onacc flex items-center justify-center hover:brightness-110" dangerouslySetInnerHTML={{ __html: I.speaker(40) }} />
+        <button type="button" data-say={q.ar} data-replay aria-label="Kelimeyi dinle" className="w-24 h-24 rounded-full bg-acc text-onacc flex items-center justify-center hover:brightness-110" dangerouslySetInnerHTML={{ __html: I.speaker(40) }} />
         <span className="text-sm text-faint">Tekrar dinlemek için dokun</span>
         {(!voice || res) && <div className="flex flex-col items-center gap-1"><Raw html={tx.ar(q.ar || '', 'text-[44px] text-ink')} />{q.tl && <span className="tl text-mute">{q.tl}</span>}</div>}
         {!voice && <span className="text-xs text-faint max-w-[360px] text-center">Arapça ses bulunamadığı için kelime yazılı gösteriliyor.</span>}
@@ -541,6 +548,29 @@ function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview, tall
       <div ref={fb} aria-live="polite">{feedback}</div>
       {!preview && <div className="flex justify-center"><ReportButton topicId={topic.id} kind="question" label="Bu soruda hata mı var?" context={{ label: questionLabel(q), question: cleanQ(q), act: act.title }} /></div>}
     </div>
+  );
+}
+
+/* ================= Dikte ================= */
+function Dictate({ topic, act, finish, setHdr, toTop, miss, hit, tally }: SubProps) {
+  const { tx, hasAudio } = useApp();
+  const src = useMemo(() => ((act.items as Word[] | null | undefined)?.length ? (act.items as Word[]) : topic.words).filter((w) => w.ar), [act.items, topic.words]);
+  // Önce ses kaydı olan kelimeler (tarayıcı sesi her cihazda yok); yetmezse diğerleri
+  const items = useMemo(() => {
+    const rec = shuffle(src.filter((w) => hasAudio(w.ar)));
+    const rest = shuffle(src.filter((w) => !hasAudio(w.ar)));
+    return [...rec, ...rest].slice(0, DICTATE_MAX).map((w, i) => ({ ...w, id: i }));
+  }, [src, hasAudio]);
+  return (
+    <Dictation
+      items={items}
+      onProgress={(d, t) => { setHdr(d / t, `${Math.min(d + 1, t)} / ${t}`); toTop(); }}
+      onAnswer={(it, ok) => { tally(ok); const w = items[it.id as number]; (ok ? hit : miss)(wordQ(w, src)); }}
+      onFinish={(r) => finish(r.right / r.total, r.right / r.total >= 0.7, r.wrong.map((w) => ({
+        prompt: tx.ar(w.ar, 'text-2xl') + (w.tl ? ' <span class="tl text-mute">' + esc(w.tl) + '</span>' : ''),
+        right: esc(w.tr), given: w.given ? esc(w.given) : 'boş bırakıldı'
+      })))}
+    />
   );
 }
 
@@ -865,7 +895,8 @@ function Result({ score, done, wrong, endless, act, list, onAgain, onBack, onNex
 }) {
   const pct = Math.round(score * 100);
   const idx = list.findIndex((a) => a.id === act.id);
-  const next = list[idx + 1];
+  // Listede olmayan ek etkinlikte (dikte) sonraki etkinlik önerilmez
+  const next = idx === -1 ? undefined : list[idx + 1];
   const nextRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { nextRef.current?.focus({ preventScroll: true }); }, []);
   const msg = pct >= 90 ? ['Harika!', 'Bu etkinliği çok iyi kavradın.'] : pct >= 70 ? ['Tamamlandı', 'İyi iş. Yanlışlarını aşağıda gözden geçir.'] : ['Biraz daha pratik', 'Konu anlatımına göz atıp tekrar dene; %70 ve üstü tamamlanmış sayılır.'];

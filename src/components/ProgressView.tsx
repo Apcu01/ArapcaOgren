@@ -6,6 +6,8 @@ import type { Topic } from '@/lib/types';
 import { actsOf, TYPE } from '@/lib/text';
 import { useApp } from './AppProvider';
 import StudyCalendar from './StudyCalendar';
+import BadgeGrid from './Badges';
+import { I, Raw } from './icons';
 
 export default function ProgressView({ topics }: { topics: Topic[] }) {
   const { topicStats, actState, streak, reset, toast, user, state } = useApp();
@@ -50,6 +52,12 @@ export default function ProgressView({ topics }: { topics: Topic[] }) {
         {cards.map(([l, v]) => <div key={l} className="p-5 rounded-2xl bg-s3 border border-line2 flex flex-col gap-1"><span className="text-sm text-mute2">{l}</span><span className="text-[28px] font-bold">{v}</span></div>)}
       </div>
       <StudyCalendar days={state.days} counts={state.counts} />
+      <Link href="/lig" className="flex flex-wrap items-center gap-4 p-5 rounded-2xl bg-s4 border border-line3 text-ink hover:text-ink hover:border-lineh">
+        <span className="w-12 h-12 rounded-xl bg-chip border border-chipln text-acct inline-flex items-center justify-center"><Raw html={I.trophy(24)} /></span>
+        <span className="flex-1 min-w-[200px] flex flex-col"><span className="font-bold text-lg">Haftalık lig</span><span className="text-sm text-mute2">Çalıştıkça puan kazan, haftanın sıralamasında yerini gör.</span></span>
+        <Raw html={I.arrow()} />
+      </Link>
+      <BadgeGrid />
       <div className="flex flex-col gap-3">
         {topics.map((t) => {
           const st = topicStats(t.id, actMap[t.id]);

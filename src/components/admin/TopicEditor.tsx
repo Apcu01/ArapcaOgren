@@ -159,7 +159,7 @@ function validate(d: Topic): string[] {
   d.acts.forEach((a, ai) => {
     const at = `Etkinlik ${ai + 1} (${a.title || TYPE[a.type].label})`;
     if (!a.title.trim()) e.push(`${at}: başlık boş.`);
-    if ((a.type === 'flash' || a.type === 'listen' || a.type === 'speak') && !(a.items && a.items.length) && d.words.length < (a.type === 'listen' ? 4 : 1))
+    if ((a.type === 'flash' || a.type === 'listen' || a.type === 'speak' || a.type === 'dictate') && !(a.items && a.items.length) && d.words.length < (a.type === 'listen' ? 4 : 1))
       e.push(`${at}: bu etkinlik kelimeler bölümünü kullanır; ${a.type === 'listen' ? 'en az 4' : 'en az 1'} kelime ekle.`);
     if (a.type === 'match') {
       const items = (a.items || []) as Pair[];
@@ -463,6 +463,7 @@ const NEW_ACT: Record<ActType, () => Activity> = {
   listen: () => ({ id: '', type: 'listen', title: 'Dinle ve anlamını seç', desc: 'Kelimeyi dinle, Türkçe anlamını bul.', glyph: 'اِسْمَعْ' }),
   test: () => ({ id: '', type: 'test', title: 'Konu testi', desc: 'Dersin tamamını kapsayan karma değerlendirme.', glyph: '؟', items: [{ t: 'mc', q: '', options: ['', ''], a: '' }] }),
   speak: () => ({ id: '', type: 'speak', title: 'Telaffuz alıştırması', desc: 'Kelimeyi dinle, sonra sen söyle. Tarayıcı söylediğini kontrol eder.', glyph: 'تَكَلَّمْ' }),
+  dictate: () => ({ id: '', type: 'dictate', title: 'Dikte: dinle ve yaz', desc: 'Kelimeyi dinle, duyduğunu Arapça ya da okunuşuyla yaz.', glyph: 'اُكْتُبْ' }),
   clock: () => ({ id: '', type: 'clock', mode: 'mix', title: 'Sınırsız saat pratiği', desc: 'Rastgele saatlerle bitmeyen pratik.', glyph: '∞' })
 };
 
@@ -526,8 +527,8 @@ function ActEditor({ a, set, words }: { a: Activity; set: (fn: (a: Activity) => 
           </select>
         </F>
       )}
-      {(a.type === 'flash' || a.type === 'listen' || a.type === 'speak') && (
-        <p className="m-0 px-4 py-3 rounded-xl bg-s3 border border-line text-sm text-mute">Bu etkinlik dersin "Kelimeler" bölümündeki {words} kelimeyi kullanır{a.type === 'listen' ? ' (rastgele 10 tanesi sorulur)' : a.type === 'speak' ? ' (rastgele 8 tanesi söyletilir)' : ''}.</p>
+      {(a.type === 'flash' || a.type === 'listen' || a.type === 'speak' || a.type === 'dictate') && (
+        <p className="m-0 px-4 py-3 rounded-xl bg-s3 border border-line text-sm text-mute">Bu etkinlik dersin "Kelimeler" bölümündeki {words} kelimeyi kullanır{a.type === 'listen' ? ' (rastgele 10 tanesi sorulur)' : a.type === 'speak' ? ' (rastgele 8 tanesi söyletilir)' : a.type === 'dictate' ? ' (rastgele 10 tanesi yazdırılır)' : ''}.</p>
       )}
       {['mc', 'fill', 'tf', 'order', 'test'].includes(a.type) && (
         <label className="flex items-center gap-3 text-sm text-soft">

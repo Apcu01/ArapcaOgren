@@ -3,6 +3,7 @@
 /* Kelime listesi verisi ve çalışma sonuçlarının kaydı */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../AppProvider';
+import { enqueue, send } from '@/lib/outbox';
 import { dayKey } from '@/lib/text';
 import type { GameKey, ListItem, WordList } from '@/lib/study';
 
@@ -45,19 +46,18 @@ export function useList(id: number) {
 
 /** Çalışma kaydı: cevaplar biriktirilip toplu gönderilir (sayfa kapanırken de) */
 export function useStudy(listId: number, update: (fn: (l: WordList) => WordList) => void) {
-  const { noteStudy, metric } = useApp();
+  const { noteStudy, metric, user } = useApp();
+  const uid = user?.id ?? null;
   const buf = useRef<{ id: number; ok: boolean }[]>([]);
   const noted = useRef(false);
 
   const flush = useCallback(() => {
     if (!buf.current.length) return;
     const results = buf.current.splice(0, 300);
-    const req = fetch(`/api/lists/${listId}/study`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
-      body: JSON.stringify({ action: 'answers', results, day: dayKey(new Date()) })
-    }).catch(() => null);
+    // Bağlantı yoksa çevrimdışı kuyruğa alınır, bağlantı gelince gönderilir
+    const req = send(`/api/lists/${listId}/study`, { action: 'answers', results, day: dayKey(new Date()) }, uid);
     pending = Promise.all([pending, req]);
-  }, [listId]);
+  }, [listId, uid]);
 
   useEffect(() => {
     const t = setInterval(flush, 8000);
@@ -97,13 +97,12 @@ export function useStudy(listId: number, update: (fn: (l: WordList) => WordList)
   /** Oyun sonucu; yeni rekorsa true */
   const best = useCallback(async (game: GameKey, value: number) => {
     touch();
-    const r = await jsonFetch<{ record: boolean; best: number }>(`/api/lists/${listId}/study`, {
-      method: 'POST', body: JSON.stringify({ action: 'best', game, value: Math.round(value), day: dayKey(new Date()) })
-    });
-    if (!r.ok) return null;
+    const body = { action: 'best', game, value: Math.round(value), day: dayKey(new Date()) };
+    const r = await jsonFetch<{ record: boolean; best: number }>(`/api/lists/${listId}/study`, { method: 'POST', body: JSON.stringify(body) });
+    if (!r.ok) { if (r.status === 0 && uid) enqueue(`/api/lists/${listId}/study`, body, uid); return null; }
     update((l) => ({ ...l, best: { ...l.best, [game]: r.data.best } }));
     return r.data;
-  }, [listId, touch, update]);
+  }, [listId, touch, update, uid]);
 
   return { answer, gameAnswer, star, best, flush };
 }

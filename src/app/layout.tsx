@@ -36,7 +36,7 @@ export const viewport: Viewport = {
 export const revalidate = 3600;
 
 // Görünüm ayarlarını (tema, yazı boyutu, okunuş, İngilizce) sayfa çizilmeden önce çerezden uygular: renk ya da düzen sıçraması olmaz
-const SETTINGS_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${SETTINGS_COOKIE}=([^;]*)/);if(!m)return;var s=JSON.parse(decodeURIComponent(m[1]));var b=document.body;if(['dark','light','system'].indexOf(s.theme)>=0)document.documentElement.setAttribute('data-theme',s.theme);if(s.tl===false)b.classList.add('no-tl');if(s.en===false)b.classList.add('no-en');if(s.arSize===1||s.arSize===2)b.classList.add('ar-'+s.arSize)}catch(e){}})()`;
+const SETTINGS_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${SETTINGS_COOKIE}=([^;]*)/);if(!m)return;var s=JSON.parse(decodeURIComponent(m[1]));var b=document.body;if(['dark','light','system'].indexOf(s.theme)>=0)document.documentElement.setAttribute('data-theme',s.theme);if(s.tl===false)b.classList.add('no-tl');if(s.en===false)b.classList.add('no-en');if(s.arSize===1||s.arSize===2)b.classList.add('ar-'+s.arSize);if(s.txtSize===1||s.txtSize===2)b.classList.add('txt-'+s.txtSize);if(s.motion===false)b.classList.add('no-motion')}catch(e){}})()`;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const audios = await getAudioMap();

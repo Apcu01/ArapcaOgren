@@ -4,6 +4,7 @@ import { db, schema } from '@/db';
 import { siteOrigin } from '@/lib/site';
 import { getWordIndex } from '@/lib/words';
 import { READY_LISTS } from '@/lib/ready-lists';
+import { READINGS } from '@/lib/readings';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/kelime-bul`, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${base}/canli`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${base}/hazir-listeler`, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${base}/okuma`, changeFrequency: 'monthly', priority: 0.7 },
+    ...READINGS.map((r) => ({ url: `${base}/okuma/${r.slug}`, changeFrequency: 'monthly' as const, priority: 0.6 })),
     ...READY_LISTS.map((l) => ({ url: `${base}/hazir-listeler/${l.slug}`, changeFrequency: 'monthly' as const, priority: 0.5 })),
     { url: `${base}/kelime`, changeFrequency: 'weekly', priority: 0.6 },
     ...words.map((w) => ({ url: `${base}/kelime/${w.slug}`, changeFrequency: 'monthly' as const, priority: 0.5 }))

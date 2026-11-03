@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Example, Section, Topic } from '@/lib/types';
-import { actsOf, esc, isAr, TYPE, type ActView, type TextFns } from '@/lib/text';
+import { actsOf, DICTATE_KEY, DICTATE_MAX, esc, isAr, TYPE, type ActView, type TextFns } from '@/lib/text';
 import { ring } from '@/lib/clock';
 import { useApp, SayBtn } from './AppProvider';
 import { I, Raw } from './icons';
@@ -18,6 +18,12 @@ export default function TopicView({ topic: t, prev, next, narr }: { topic: Topic
   const app = useApp();
   const { tx, topicStats, actState, setLast, setLesson, track } = app;
   const list = useMemo(() => actsOf(t), [t]);
+  // Ek dikte: etkinlik listesinde yoksa kelimelerden açılır; dersin ilerleme yüzdesine sayılmaz
+  const dictAct = useMemo<ActView | null>(() => {
+    if (t.words.length < 4 || list.some((a) => a.type === 'dictate')) return null;
+    const count = Math.min(DICTATE_MAX, t.words.length);
+    return { id: DICTATE_KEY, type: 'dictate', title: 'Dikte: dinle ve yaz', desc: 'Kelimeyi dinle, duyduğunu Arapça harflerle ya da okunuşuyla yaz.', glyph: 'اُكْتُبْ', auto: true, count, meta: count + ' kelime', mins: 5 };
+  }, [t.words.length, list]);
   const [tab, setTab] = useState<'lesson' | 'acts'>('lesson');
   const [kind, setKind] = useState('Tümü');
   const [playing, setPlaying] = useState<{ act: ActView; nonce: number } | null>(null);
@@ -100,14 +106,14 @@ export default function TopicView({ topic: t, prev, next, narr }: { topic: Topic
           <div id="pane">
             {tab === 'lesson'
               ? <Lesson t={t} tx={tx} lessonRead={st.lesson} onDone={readDone} la={la} />
-              : <Activities t={t} list={list} kind={kind} setKind={setKind} nextId={nextAct?.id} onOpen={openAct} />}
+              : <Activities t={t} list={list} kind={kind} setKind={setKind} nextId={nextAct?.id} onOpen={openAct} extra={dictAct} />}
           </div>
           <div className="flex flex-wrap justify-between gap-3 pt-4 border-t border-line">
             {prev ? <Link href={`/konu/${prev.id}`} className="inline-flex items-center gap-2 text-mute hover:text-ink"><Raw html={I.back()} /> {prev.name}</Link> : <span />}
             {next && <Link href={`/konu/${next.id}`} className="inline-flex items-center gap-2 text-acct">Sonraki ders: {next.name} <Raw html={I.arrow(16)} /></Link>}
           </div>
         </section>
-        <Words t={t} />
+        <Words t={t} onDictate={dictAct ? () => openAct(dictAct) : undefined} />
       </div>
 
       <NowPlaying la={la} />
@@ -236,8 +242,8 @@ function Lesson({ t, tx, lessonRead, onDone, la }: { t: Topic; tx: TextFns; less
 }
 
 /* ---------- Etkinlik kartları ---------- */
-function Activities({ t, list, kind, setKind, nextId, onOpen }: {
-  t: Topic; list: ActView[]; kind: string; setKind: (k: string) => void; nextId?: string; onOpen: (a: ActView) => void;
+function Activities({ t, list, kind, setKind, nextId, onOpen, extra }: {
+  t: Topic; list: ActView[]; kind: string; setKind: (k: string) => void; nextId?: string; onOpen: (a: ActView) => void; extra: ActView | null;
 }) {
   const { tx, actState } = useApp();
   const kinds = ['Tümü', ...new Set(list.map((a) => TYPE[a.type].kind))];
@@ -281,12 +287,22 @@ function Activities({ t, list, kind, setKind, nextId, onOpen }: {
           );
         })}
       </div>
+      {extra && (
+        <div className="flex flex-wrap items-center gap-4 p-5 rounded-[18px] border border-dashed border-line3">
+          <span className="flex-none w-[52px] h-[52px] rounded-[14px] bg-chip border border-chipln flex items-center justify-center text-acct" aria-hidden="true"><Raw html={I.pen(22)} /></span>
+          <span className="flex-1 min-w-[200px] flex flex-col gap-0.5">
+            <span className="font-bold">Ek pratik: {extra.title}</span>
+            <span className="text-sm text-mute2">Bu dersin kelimelerini dinleyip yaz. Ders ilerlemene sayılmaz.{actState(t.id, extra.id) ? ` En iyi: %${Math.round(actState(t.id, extra.id)!.best * 100)}` : ''}</span>
+          </span>
+          <button type="button" onClick={() => onOpen(extra)} className="h-11 px-5 rounded-xl bg-s2 border border-line3 text-soft font-semibold hover:border-lineh hover:text-ink">Dikteye başla</button>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ---------- Kelime paneli ---------- */
-function Words({ t }: { t: Topic }) {
+function Words({ t, onDictate }: { t: Topic; onDictate?: () => void }) {
   const { tx } = useApp();
   return (
     <aside className="flex-[1_1_320px] min-w-0 flex flex-col gap-4 p-6 rounded-[20px] bg-s1 border border-line lg:sticky lg:top-6">
@@ -306,6 +322,7 @@ function Words({ t }: { t: Topic }) {
         ))}
       </div>
       <Link href={`/sozluk?konu=${t.id}`} className="h-[46px] rounded-xl border border-line3 text-acct font-semibold text-[15px] inline-flex items-center justify-center hover:border-lineh">Sözlükte gör</Link>
+      {onDictate && <button type="button" onClick={onDictate} className="h-[46px] rounded-xl border border-line3 text-acct font-semibold text-[15px] inline-flex items-center justify-center gap-2 hover:border-lineh"><Raw html={I.pen(17)} /> Dikte: dinle ve yaz</button>}
       {t.words.length >= 4 && <Link href={`/canli?konu=${t.id}`} className="h-[46px] rounded-xl border border-line3 text-acct font-semibold text-[15px] inline-flex items-center justify-center hover:border-lineh">Bu kelimelerle canlı yarışma</Link>}
     </aside>
   );

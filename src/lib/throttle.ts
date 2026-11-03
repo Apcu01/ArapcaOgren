@@ -16,7 +16,9 @@ export const LIMITS = {
   lookup: { max: 300, windowMs: 60_000 },
   // Canlı yarışma: 80 kişilik bir sınıf saniyede bir durum sorar
   live: { max: 6000, windowMs: 60_000 },
-  liveCreate: { max: 30, windowMs: 3_600_000 }
+  liveCreate: { max: 30, windowMs: 3_600_000 },
+  // Sınıf açma ve kodla katılma: bütün sınıf aynı ağdan katılabilir, kod tahmini ise yavaşlar
+  classes: { max: 200, windowMs: 600_000 }
 } as const;
 
 /** Sınır aşıldıysa 429 yanıtı, aşılmadıysa null döner */

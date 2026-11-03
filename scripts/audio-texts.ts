@@ -2,6 +2,7 @@
 import type mysql from 'mysql2/promise';
 import { ALPHABET_TOPIC, HARAKAT, LETTERS } from '../src/lib/alphabet';
 import { timeAr } from '../src/lib/clock';
+import { bareWord, READINGS, sentenceAr } from '../src/lib/readings';
 import { audioKey, isAr } from '../src/lib/text';
 import type { Item, Section, Word } from '../src/lib/types';
 
@@ -37,6 +38,11 @@ export async function collectTexts(conn: mysql.Connection): Promise<AudioText[]>
     }
   }
   for (let h = 1; h <= 12; h++) for (let m = 0; m < 60; m += 5) add('Saat pratiği', 'السَّاعَةُ ' + timeAr(h, m));
+  // Okuma metinleri: cümleler (baştan sona dinleme) ve kelimeye dokununca okunan tek kelimeler
+  for (const r of READINGS) {
+    add('Okuma metinleri', r.ar);
+    for (const x of r.sentences) { add('Okuma metinleri', sentenceAr(x)); for (const t of x.w) add('Okuma kelimeleri', bareWord(t[0])); }
+  }
   for (const l of LETTERS) add('Alfabe', l[2]);
   for (const h of HARAKAT) add('Alfabe', h[0]);
   for (const w of ALPHABET_TOPIC.words) add('Alfabe', w.ar);

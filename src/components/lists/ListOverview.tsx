@@ -12,7 +12,7 @@ import SourceUpdates from './SourceUpdates';
 import { fmtTime, MODES, STATUS_LABEL, statusOf, type ModeKey, type Status, type WordList } from '@/lib/study';
 
 /** Modların çalışması için gereken en az kelime sayısı */
-export const MIN_ITEMS: Record<ModeKey, number> = { kartlar: 1, ogren: 2, test: 2, eslestir: 3, blast: 4, bloklar: 4, tilsim: 4 };
+export const MIN_ITEMS: Record<ModeKey, number> = { kartlar: 1, ogren: 2, test: 2, dikte: 1, eslestir: 3, blast: 4, bloklar: 4, tilsim: 4 };
 
 export function bestLabel(list: WordList, mode: ModeKey) {
   const b = list.best;

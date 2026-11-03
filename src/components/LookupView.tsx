@@ -214,7 +214,7 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
         <div className="flex gap-2">
           <label className="flex-1 flex items-center gap-3 px-[18px] h-[58px] rounded-[14px] bg-s2 border border-line2 text-faint focus-within:border-lineh">
             <Raw html={I.search()} /><span className="sr-only">Kelime</span>
-            <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} maxLength={40} autoComplete="off" autoCapitalize="none" spellCheck={false} enterKeyHint="search"
+            <input ref={inputRef} data-search value={input} onChange={(e) => setInput(e.target.value)} maxLength={40} autoComplete="off" autoCapitalize="none" spellCheck={false} enterKeyHint="search"
               placeholder="Örnek: ketebe, afvan, müderris" className="flex-1 min-w-0 bg-transparent border-0 outline-none text-ink font-semibold text-lg placeholder:text-faint placeholder:font-medium" />
             {canVoice && (
               <button type="button" onClick={voice} aria-label={listening ? 'Dinleniyor, durdurmak için dokun' : 'Söyleyerek ara'} title="Söyleyerek ara"

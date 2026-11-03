@@ -53,6 +53,15 @@ export const I = {
   play: (s?: number) => svg('<path d="M7 4v16l13-8z" fill="currentColor"/>', s || 18),
   list: (s?: number) => svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/>', s || 18),
   chart: (s?: number) => svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', s || 18),
+  keyboard: (s?: number) => svg('<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>', s || 18),
+  pen: (s?: number) => svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>', s || 18),
+  read: (s?: number) => svg('<path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2zM22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/>', s || 18),
+  users: (s?: number) => svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/>', s || 18),
+  trophy: (s?: number) => svg('<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/>', s || 18),
+  medal: (s?: number) => svg('<circle cx="12" cy="15" r="6"/><path d="M8.5 10 6 3h4l2 4 2-4h4l-2.5 7"/><path d="m12 12.5.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3z"/>', s || 18),
+  download: (s?: number) => svg('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', s || 18),
+  wifiOff: (s?: number) => svg('<path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-2-1.5M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.7 5M12 20h.01"/>', s || 18),
+  slow: (s?: number) => svg('<circle cx="12" cy="12" r="9"/><path d="M12 12 8.5 8.5M12 7v1M7 12h1M16 12h1"/>', s || 18),
   heart: (s?: number) => svg('<path d="M12 20s-8-4.6-8-10.2A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 2.8C20 15.4 12 20 12 20z" fill="currentColor"/>', s || 18)
 };
 

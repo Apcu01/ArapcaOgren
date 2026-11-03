@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from './AppProvider';
-import { AR_SIZES, THEMES } from '@/lib/settings';
+import { AR_SIZES, RATES, THEMES, TXT_SIZES } from '@/lib/settings';
+import { OPEN_SHORTCUTS } from './Shortcuts';
 import { I, Raw } from './icons';
 import Logo from './Logo';
-import { clearPageCache, precacheAll } from './ServiceWorker';
+import { clearPageCache } from './ServiceWorker';
+import { OPEN_OFFLINE } from './Offline';
 import { InstallButton } from './InstallApp';
 
 export const SITE = 'ArapcaOgren';
@@ -17,6 +19,7 @@ const NAV: [string, string, string][] = [
   ['/ilerleme', 'İlerlemem', 'progress'],
   ['/sozluk', 'Sözlük', 'dict'],
   ['/kelime-bul', 'Kelime bul', 'find'],
+  ['/okuma', 'Okuma', 'read'],
   ['/listelerim', 'Listelerim', 'lists'],
   ['/canli', 'Yarışma', 'live'],
   ['/alfabe', 'Alfabe', 'abc'],
@@ -27,6 +30,7 @@ function activeKey(path: string) {
   if (path.startsWith('/ilerleme')) return 'progress';
   if (path.startsWith('/sozluk')) return 'dict';
   if (path.startsWith('/kelime-bul')) return 'find';
+  if (path.startsWith('/okuma')) return 'read';
   if (path.startsWith('/listelerim')) return 'lists';
   if (path.startsWith('/canli')) return 'live';
   if (path.startsWith('/alfabe')) return 'abc';
@@ -36,13 +40,7 @@ function activeKey(path: string) {
 }
 
 export default function Header() {
-  const { streak, settings, setSetting, user, mistakes, toast, refreshSession, session, hint } = useApp();
-  const [offline, setOffline] = useState<'idle' | 'busy' | 'done'>('idle');
-  async function downloadAll() {
-    setOffline('busy');
-    const okStart = await precacheAll((n, total) => { setOffline('done'); toast(`${n} / ${total} sayfa çevrimdışı kullanım için kaydedildi.`); }).catch(() => false);
-    if (!okStart) { setOffline('idle'); toast('Çevrimdışı kullanım için siteyi bir kez yayındaki adresinden (https) açman gerekir.'); }
-  }
+  const { streak, settings, setSetting, user, mistakes, refreshSession, session, hint } = useApp();
   const path = usePathname() || '/';
   const router = useRouter();
   const active = activeKey(path);
@@ -141,6 +139,10 @@ export default function Header() {
                   </Link>
                 ))}
               </nav>
+              <div className="mt-1 pt-1 border-t border-line grid grid-cols-2 gap-1">
+                <Link href="/siniflar" className="flex items-center gap-2 px-4 h-11 rounded-xl text-[15px] font-semibold text-soft hover:text-ink hover:bg-s5"><Raw html={I.users(16)} /> Sınıflar</Link>
+                <Link href="/lig" className="flex items-center gap-2 px-4 h-11 rounded-xl text-[15px] font-semibold text-soft hover:text-ink hover:bg-s5"><Raw html={I.trophy(16)} /> Haftalık lig</Link>
+              </div>
               <div className="mt-1 px-4 h-12 border-t border-line flex items-center gap-2 text-sm text-acct font-semibold">
                 <Raw html={I.flame()} /> {streak} gün seri
                 {!user && <Link href="/giris" className="ml-auto text-soft hover:text-ink">Giriş yap</Link>}
@@ -150,7 +152,7 @@ export default function Header() {
           )}
 
           {open === 'settings' && (
-            <div className="absolute right-0 top-14 z-50 w-[290px] p-5 rounded-2xl bg-s4 border border-line3 shadow-2xl">
+            <div className="absolute right-0 top-14 z-50 w-[300px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-96px)] overflow-y-auto p-5 rounded-2xl bg-s4 border border-line3 shadow-2xl">
               <p className="text-xs font-bold tracking-[.1em] uppercase text-lab mb-3">Görünüm</p>
               <div className="pb-2">
                 <span className="text-[15px] font-semibold text-ink">Tema</span>
@@ -178,12 +180,38 @@ export default function Header() {
                   ))}
                 </div>
               </div>
+              <div className="pt-3 pb-1">
+                <span className="text-[15px] font-semibold text-ink">Sayfa yazı boyutu</span>
+                <div role="radiogroup" aria-label="Sayfa yazı boyutu" className="mt-2 grid grid-cols-3 gap-1 p-1 rounded-xl bg-s2 border border-line3">
+                  {TXT_SIZES.map((l, i) => (
+                    <button key={l} type="button" role="radio" aria-checked={settings.txtSize === i} onClick={() => setSetting('txtSize', i)}
+                      className={`h-9 rounded-lg text-[13px] font-semibold ${settings.txtSize === i ? 'bg-acc text-onacc' : 'text-soft hover:text-ink'}`}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-3 pb-1">
+                <span className="flex flex-col"><span className="text-[15px] font-semibold text-ink">Ses hızı</span><span className="text-xs text-faint">Kelime sesleri ve sesli okuma</span></span>
+                <div role="radiogroup" aria-label="Ses hızı" className="mt-2 grid grid-cols-3 gap-1 p-1 rounded-xl bg-s2 border border-line3">
+                  {RATES.map(([r, l]) => (
+                    <button key={r} type="button" role="radio" aria-checked={settings.rate === r} onClick={() => setSetting('rate', r)} title={r + 'x'}
+                      className={`h-9 rounded-lg text-[13px] font-semibold ${settings.rate === r ? 'bg-acc text-onacc' : 'text-soft hover:text-ink'}`}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center justify-between gap-3 pt-4 pb-1 cursor-pointer">
+                <span className="flex flex-col"><span className="text-[15px] font-semibold text-ink">Canlandırmaları azalt</span><span className="text-xs text-faint">Geçiş ve hareket efektleri kapanır</span></span>
+                <input type="checkbox" checked={!settings.motion} onChange={(e) => setSetting('motion', !e.target.checked)} className="w-5 h-5 accent-acc" />
+              </label>
+              <button type="button" onClick={() => { setOpen(null); window.dispatchEvent(new Event(OPEN_SHORTCUTS)); }}
+                className="mt-2 w-full h-10 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold hover:border-lineh hover:text-ink inline-flex items-center justify-center gap-2">
+                <Raw html={I.keyboard(16)} /> Klavye kısayolları <kbd className="px-1.5 rounded bg-s4 border border-line3 text-xs">?</kbd>
+              </button>
               <p className="text-xs text-faint mt-3 leading-relaxed">
                 {user ? 'İlerlemen hesabına kaydediliyor; her cihazdan devam edebilirsin.' : 'İlerlemen yalnızca bu tarayıcıda saklanır. Hesap açarsan her cihazdan devam edebilirsin.'}
               </p>
               <InstallButton className="mt-3 w-full h-10 rounded-xl bg-acc text-onacc text-sm font-bold inline-flex items-center justify-center gap-2" />
-              <button type="button" onClick={downloadAll} disabled={offline === 'busy'} className="mt-3 w-full h-10 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold hover:border-lineh disabled:opacity-60">
-                {offline === 'busy' ? 'Dersler indiriliyor' : offline === 'done' ? 'Dersler çevrimdışı kullanılabilir' : 'Dersleri çevrimdışı için indir'}
+              <button type="button" onClick={() => { setOpen(null); window.dispatchEvent(new Event(OPEN_OFFLINE)); }} className="mt-3 w-full h-10 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold hover:border-lineh hover:text-ink inline-flex items-center justify-center gap-2">
+                <Raw html={I.download(16)} /> Çevrimdışı kullanım
               </button>
             </div>
           )}
@@ -197,6 +225,8 @@ export default function Header() {
               <Link href="/hesap" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.user(17)} /> Hesabım</Link>
               <Link href="/ilerleme" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.check(17)} /> İlerlemem</Link>
               <Link href="/listelerim" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.list(17)} /> Listelerim</Link>
+              <Link href="/siniflar" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.users(17)} /> Sınıflarım</Link>
+              <Link href="/lig" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.trophy(17)} /> Haftalık lig</Link>
               {user.role === 'admin' && (
                 <Link href="/admin" className="flex items-center gap-3 px-3 h-11 rounded-xl text-soft hover:text-ink hover:bg-s5"><Raw html={I.shield(17)} /> Yönetim paneli</Link>
               )}

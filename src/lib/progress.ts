@@ -21,6 +21,18 @@ export async function markDay(userId: number, day: string, inc = 1) {
   await db.insert(schema.studyDays).values({ userId, day, n: inc }).onDuplicateKeyUpdate({ set: { n: sql`n + VALUES(n)` } });
 }
 
+/** Puan için: ders daha önce okunmuş mu, etkinlik daha önce tamamlanmış mı */
+export async function wasLessonRead(userId: number, topicId: string) {
+  const [r] = await db.select({ v: schema.topicProgress.lessonRead }).from(schema.topicProgress)
+    .where(and(eq(schema.topicProgress.userId, userId), eq(schema.topicProgress.topicId, topicId))).limit(1);
+  return !!r?.v;
+}
+export async function wasActDone(userId: number, topicId: string, actKey: string) {
+  const [r] = await db.select({ v: schema.activityProgress.done }).from(schema.activityProgress)
+    .where(and(eq(schema.activityProgress.userId, userId), eq(schema.activityProgress.topicId, topicId), eq(schema.activityProgress.actKey, actKey))).limit(1);
+  return !!r?.v;
+}
+
 export async function saveLesson(userId: number, topicId: string) {
   await db.insert(schema.topicProgress).values({ userId, topicId, lessonRead: true })
     .onDuplicateKeyUpdate({ set: { lessonRead: true } });

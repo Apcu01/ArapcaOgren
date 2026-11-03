@@ -17,6 +17,8 @@ export const users = mysqlTable('users', {
   googleSub: varchar('google_sub', { length: 64 }).unique(),
   role: mysqlEnum('role', ['user', 'admin']).notNull().default('user'),
   lastTopic: varchar('last_topic', { length: 64 }),
+  // Haftalık ligde adı görünmesin (sınıf ligi hariç)
+  leagueHidden: boolean('league_hidden').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   lastSeenAt: timestamp('last_seen_at')
 });
@@ -282,3 +284,36 @@ export const liveResults = mysqlTable('live_results', {
   startedAt: timestamp('started_at').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow()
 }, (t) => [index('live_results_user_idx').on(t.userId, t.createdAt)]);
+
+// Haftalık lig puanları: gün başına toplanır (Türkiye saatiyle gün; hafta pazartesi başlar)
+export const xpLog = mysqlTable('xp_log', {
+  userId: int('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  day: char('day', { length: 10 }).notNull(),
+  xp: int('xp').notNull().default(0)
+}, (t) => [primaryKey({ columns: [t.userId, t.day] }), index('xp_log_day_idx').on(t.day)]);
+
+// Sınıflar: öğretmen sınıf açar, öğrenciler kodla katılır, öğretmen ders / okuma / liste ödevi verir
+export const classes = mysqlTable('classes', {
+  id: int('id').autoincrement().primaryKey(),
+  ownerId: int('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 80 }).notNull(),
+  code: char('code', { length: 6 }).notNull().unique(),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (t) => [index('classes_owner_idx').on(t.ownerId)]);
+
+export const classMembers = mysqlTable('class_members', {
+  classId: int('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  userId: int('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  joinedAt: timestamp('joined_at').notNull().defaultNow()
+}, (t) => [primaryKey({ columns: [t.classId, t.userId] }), index('class_members_user_idx').on(t.userId)]);
+
+// kind: topic (ders kimliği), reading (okuma metni slug), list (öğretmenin kelime listesi numarası); due: son gün (YYYY-AA-GG)
+export const classTasks = mysqlTable('class_tasks', {
+  id: int('id').autoincrement().primaryKey(),
+  classId: int('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  kind: varchar('kind', { length: 10 }).notNull(),
+  ref: varchar('ref', { length: 64 }).notNull(),
+  title: varchar('title', { length: 120 }).notNull(),
+  due: char('due', { length: 10 }),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (t) => [index('class_tasks_class_idx').on(t.classId, t.createdAt)]);

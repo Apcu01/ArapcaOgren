@@ -8,7 +8,8 @@ import { audioKey, dayKey, esc, makeText, streakOf, type ActView, type TextFns }
 import { I } from './icons';
 
 import type { Metric } from '@/lib/metrics';
-import { DEFAULT_SETTINGS, parseSettings, SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
+import { flushOutbox, send } from '@/lib/outbox';
+import { DEFAULT_SETTINGS, parseSettings, SETTINGS_CLASSES, SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
 export type { Settings };
 const LS_KEY = 'arblearn:v1';
 const ANON_KEY = 'arblearn:anon';
@@ -42,7 +43,16 @@ type Ctx = {
   noteStudy: () => void;
   streak: number;
   reset: () => Promise<void>;
-  speak: (text: string, rate?: number) => boolean;
+  /** Arapça metni seslendirir; slow: ayarlardaki hızın da yavaşı (dikte, "yavaş dinle") */
+  speak: (text: string, opts?: { slow?: boolean }) => boolean;
+  /** Bu metnin yönetim panelinden yüklenmiş gerçek ses kaydı var mı */
+  hasAudio: (text: string) => boolean;
+  /** Seslendirir; ses bitince (ya da başka ses başlayınca) tamamlanır */
+  playUntilEnd: (text: string, opts?: { slow?: boolean }) => Promise<void>;
+  /** Çalan sesi durdurur */
+  stopSay: () => void;
+  /** Tarayıcı çevrimiçi mi */
+  online: boolean;
   canSpeak: () => boolean;
   toast: (msg: string) => void;
   track: (type: 'view' | 'lesson' | 'activity', data?: Record<string, unknown>) => void;
@@ -142,6 +152,16 @@ export function AppProvider({ audios, children }: {
   }, []);
   useEffect(() => { void refreshSession(); }, [refreshSession]);
 
+  /* ---------- Çevrimdışı kuyruk: bağlantı gelince ve oturum açılınca bekleyen kayıtlar gönderilir ---------- */
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const on = () => setOnline(navigator.onLine);
+    on();
+    window.addEventListener('online', on);
+    window.addEventListener('offline', on);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', on); };
+  }, []);
+
   const saveLocalMistakes = (list: MistakeItem[]) => { try { localStorage.setItem(MISTAKES_KEY, JSON.stringify(list)); } catch { /* yok */ } };
   const mistakesRef = useRef(mistakes);
   mistakesRef.current = mistakes;
@@ -157,12 +177,12 @@ export function AppProvider({ audios, children }: {
       if (!user) saveLocalMistakes(next);
       return next;
     });
-    if (user) post('/api/mistakes', { action: 'add', mkey, topicId: tid, question: clean });
+    if (user) send('/api/mistakes', { action: 'add', mkey, topicId: tid, question: clean }, user.id);
   }, [user]);
   const removeMistake = useCallback((mkey: string) => {
     if (!mistakesRef.current.some((m) => m.mkey === mkey)) return;
     setMistakes((prev) => { const next = prev.filter((m) => m.mkey !== mkey); if (!user) saveLocalMistakes(next); return next; });
-    if (user) post('/api/mistakes', { action: 'resolve', mkey });
+    if (user) send('/api/mistakes', { action: 'resolve', mkey }, user.id);
   }, [user]);
   const resolveMistake = useCallback((topicId: string, q: Question) => {
     const { _retry, _topic, ...clean } = q as Question & { _retry?: boolean; _topic?: string };
@@ -171,7 +191,7 @@ export function AppProvider({ audios, children }: {
   }, [removeMistake]);
   const clearMistakes = useCallback(() => {
     setMistakes([]);
-    if (user) post('/api/mistakes', { action: 'clear' }); else saveLocalMistakes([]);
+    if (user) send('/api/mistakes', { action: 'clear' }, user.id); else saveLocalMistakes([]);
   }, [user]);
 
   const commit = useCallback((fn: (s: ProgressState) => ProgressState) => {
@@ -195,7 +215,7 @@ export function AppProvider({ audios, children }: {
       s.progress[topicId].lesson = true;
       return studied(s);
     });
-    if (user) post('/api/progress', { action: 'lesson', topicId, day: dayKey(new Date()) });
+    if (user) send('/api/progress', { action: 'lesson', topicId, day: dayKey(new Date()) }, user.id);
   }, [commit, user]);
 
   const setAct = useCallback((topicId: string, actKey: string, score: number, done: boolean) => {
@@ -205,7 +225,7 @@ export function AppProvider({ audios, children }: {
       p.acts[actKey] = { best: Math.max(prev.best, score), done: prev.done || done, tries: prev.tries + 1, last: score };
       return studied(s);
     });
-    if (user) post('/api/progress', { action: 'act', topicId, actKey, score, done, day: dayKey(new Date()) });
+    if (user) send('/api/progress', { action: 'act', topicId, actKey, score, done, day: dayKey(new Date()) }, user.id);
   }, [commit, user]);
 
   const noteStudy = useCallback(() => commit((s) => studied(s)), [commit]);
@@ -213,11 +233,11 @@ export function AppProvider({ audios, children }: {
   const setLast = useCallback((topicId: string) => {
     if (stateRef.current.last === topicId) return;
     commit((s) => { s.last = topicId; return s; });
-    if (user) post('/api/progress', { action: 'last', topicId });
+    if (user) send('/api/progress', { action: 'last', topicId }, user.id);
   }, [commit, user]);
 
   const reset = useCallback(async () => {
-    if (user) await post('/api/progress', { action: 'reset' });
+    if (user) await send('/api/progress', { action: 'reset' }, user.id);
     commit(() => empty());
   }, [commit, user]);
 
@@ -242,7 +262,7 @@ export function AppProvider({ audios, children }: {
   useEffect(() => {
     if (!settingsReady) return; // ilk çizimde çerezi uygulayan betiğin eklediği sınıflara dokunma
     const on = settingsClasses(settings);
-    for (const c of ['no-tl', 'no-en', 'ar-1', 'ar-2']) document.body.classList.toggle(c, on.includes(c));
+    for (const c of SETTINGS_CLASSES) document.body.classList.toggle(c, on.includes(c));
   }, [settings, settingsReady]);
   // Tema: html etiketindeki data-theme ve tarayıcı çubuğu rengi
   useEffect(() => {
@@ -262,6 +282,13 @@ export function AppProvider({ audios, children }: {
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToastMsg(null), 4200);
   }, []);
+
+  useEffect(() => {
+    if (!user || !online) return;
+    let live = true;
+    flushOutbox(user.id).then((n) => { if (live && n > 0) toast('Çevrimdışıyken yaptığın çalışmalar hesabına kaydedildi.'); });
+    return () => { live = false; };
+  }, [user, online, toast]);
 
   /* ---------- Günlük sayaçlar: 20 saniyede bir ve sekme gizlenirken toplu gönderilir ---------- */
   const counts = useRef<Partial<Record<Metric, number>>>({});
@@ -296,37 +323,58 @@ export function AppProvider({ audios, children }: {
   }, []);
   const canSpeak = useCallback(() => !!voice.current, []);
   const audioEl = useRef<HTMLAudioElement | null>(null);
-  const speak = useCallback((text: string, rate = 0.8) => {
+  const rateRef = useRef(settings.rate);
+  rateRef.current = settings.rate;
+  const hasAudio = useCallback((text: string) => !!audios[audioKey(text)], [audios]);
+  /* Seslendirme: biten ya da yerine yenisi başlayan sesin sözü tamamlanır (art arda okuma için) */
+  const ended = useRef<(() => void) | null>(null);
+  const stopSay = useCallback(() => {
+    ended.current?.(); ended.current = null;
+    audioEl.current?.pause();
+    try { speechSynthesis.cancel(); } catch { /* yok */ }
+  }, []);
+  const say = useCallback((text: string, opts: { slow?: boolean } = {}): { ok: boolean; done: Promise<void> } => {
     metric('word_listen');
+    stopSay();
+    const rate = rateRef.current * (opts.slow ? 0.7 : 1);
+    let finish = () => {};
+    const done = new Promise<void>((res) => { finish = () => { if (ended.current === finish) ended.current = null; res(); }; });
+    ended.current = finish;
     // Önce yönetim panelinden yüklenmiş gerçek ses kaydı
     const rec = audios[audioKey(text)];
     if (rec) {
-      try { speechSynthesis.cancel(); } catch { /* yok */ }
-      audioEl.current?.pause();
-      audioEl.current = new Audio('/api/audio/' + rec);
-      audioEl.current.play().catch(() => null);
-      return true;
+      const el = new Audio('/api/audio/' + rec);
+      audioEl.current = el;
+      el.playbackRate = rate;
+      el.onended = finish; el.onerror = finish;
+      el.play().catch(finish);
+      return { ok: true, done };
     }
-    if (!('speechSynthesis' in window)) { toast('Tarayıcın sesli okumayı desteklemiyor.'); return false; }
+    if (!('speechSynthesis' in window)) { toast('Tarayıcın sesli okumayı desteklemiyor.'); finish(); return { ok: false, done }; }
     try {
-      speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'ar-SA';
       if (voice.current) u.voice = voice.current;
-      u.rate = rate;
+      // Tarayıcı sesleri normal hızda zaten hızlı: 0.8 temel hız
+      u.rate = 0.8 * rate;
+      u.onend = finish; u.onerror = finish;
       speechSynthesis.speak(u);
-    } catch { return false; }
+      // Bazı tarayıcılar bitiş olayını hiç göndermez: metin uzunluğuna göre bir üst süre
+      setTimeout(finish, (2500 + text.length * 160) / rate);
+    } catch { finish(); return { ok: false, done }; }
     if (!voice.current && !warned.current) {
       warned.current = true;
       toast('Bu cihazda Arapça ses bulunamadı. Edge tarayıcısı ya da işletim sisteminin Arapça ses paketi en iyi sonucu verir.');
     }
-    return true;
-  }, [toast, audios, metric]);
+    return { ok: true, done };
+  }, [toast, audios, metric, stopSay]);
+  const speak = useCallback((text: string, opts: { slow?: boolean } = {}) => say(text, opts).ok, [say]);
+  const playUntilEnd = useCallback((text: string, opts: { slow?: boolean } = {}) => say(text, opts).done, [say]);
   // data-say özniteliği taşıyan her düğme (zengin içerikteki tablolar dahil) sesli okur
   useEffect(() => {
     const h = (e: MouseEvent) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-say]');
-      if (b) { e.preventDefault(); e.stopPropagation(); speak(b.dataset.say || ''); }
+      if (b) { e.preventDefault(); e.stopPropagation(); speak(b.dataset.say || '', { slow: b.dataset.slow === '1' }); }
     };
     document.addEventListener('click', h);
     return () => document.removeEventListener('click', h);
@@ -358,7 +406,7 @@ export function AppProvider({ audios, children }: {
 
   const value: Ctx = {
     user, session, hint, refreshSession, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
-    streak: streakOf(state.days), noteStudy, reset, speak, canSpeak, toast, track, metric,
+    streak: streakOf(state.days), noteStudy, reset, speak, hasAudio, playUntilEnd, stopSay, online, canSpeak, toast, track, metric,
     mistakes, addMistake, resolveMistake, removeMistake, clearMistakes
   };
 

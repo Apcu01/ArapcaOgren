@@ -91,6 +91,26 @@ test.describe.serial('kelime listeleri', () => {
       await expect(page.getByText(/4\s*tanıdık/)).toBeVisible();
     });
 
+    test('dikte modunda bilinmeyen kelimeler sonda tekrar sorulur', async ({ page }) => {
+      await page.goto(listUrl + '/dikte');
+      const fb = page.locator('[aria-live="polite"]');
+      const seen: string[][] = [];
+      for (let i = 0; i < WORDS.length; i++) {
+        await page.getByRole('button', { name: 'Bilmiyorum' }).click();
+        seen.push(meaningOf((await fb.locator('.ar').first().textContent()) || '')!);
+        await page.getByRole('button', { name: /Devam/ }).click();
+      }
+      for (const w of seen) {
+        await expect(page.getByText('Tekrar soru')).toBeVisible();
+        await page.getByLabel('Duyduğun kelime').fill(w[1]);
+        await page.getByRole('button', { name: 'Kontrol et' }).click();
+        await expect(fb.getByText(/Doğru!|Neredeyse/)).toBeVisible();
+        await page.getByRole('button', { name: /Devam/ }).click();
+      }
+      await expect(page.getByText('Dikte bitti')).toBeVisible();
+      await expect(page.getByText(`0 / ${WORDS.length}`)).toBeVisible();
+    });
+
     test('liste bağlantıyla paylaşılır, misafir görür ve üye kopyalar', async ({ page, browser }) => {
       await page.goto(listUrl);
       await page.getByRole('button', { name: 'Paylaş' }).click();

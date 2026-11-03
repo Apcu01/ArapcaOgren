@@ -17,6 +17,10 @@ self.addEventListener('activate', (e) => {
 });
 
 const isFont = (u) => u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com';
+// Değişmeyen dosyalar: derlenmiş betikler, simgeler, kelime sesleri ve ders anlatımı sesleri (numara değişince adres de değişir)
+const isStatic = (p) => p.startsWith('/_next/static/') || p.startsWith('/icons/') || p.startsWith('/api/audio/') || p.startsWith('/api/narration/');
+// Kişisel kelime listeleri: çevrimdışıyken son alınan hâli (çıkış yapınca silinir)
+const isListApi = (p) => p === '/api/lists' || /^\/api\/lists\/\d+$/.test(p);
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
@@ -35,15 +39,30 @@ self.addEventListener('fetch', (e) => {
   }
   if (!same) return;
 
-  // Ses kayıtları ve derlenmiş statik dosyalar: önce önbellek
-  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/') || url.pathname.startsWith('/api/audio/')) {
+  // Değişmeyen dosyalar: önce önbellek
+  if (isStatic(url.pathname)) {
     e.respondWith(caches.open(STATIC).then(async (c) => {
-      const hit = await c.match(req);
+      const hit = await c.match(req, { ignoreVary: true });
       if (hit) return hit;
       const r = await fetch(req);
-      if (r.ok) c.put(req, r.clone());
+      // Ses dosyalarının parça (206) yanıtları saklanmaz; tamamı indirme sırasında saklanır
+      if (r.ok && r.status === 200) c.put(req, r.clone());
       return r;
     }));
+    return;
+  }
+  // Liste verisi: önce ağ, bağlantı yoksa son kaydedilen
+  if (isListApi(url.pathname)) {
+    e.respondWith((async () => {
+      const c = await caches.open(PAGES);
+      try {
+        const r = await fetch(req);
+        if (r.ok) c.put(url.pathname, r.clone());
+        return r;
+      } catch {
+        return (await c.match(url.pathname)) || new Response(JSON.stringify({ error: 'Çevrimdışısın.' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+      }
+    })());
     return;
   }
   // Diğer API'ler ve yönetim paneli asla önbelleğe alınmaz
@@ -58,26 +77,66 @@ self.addEventListener('fetch', (e) => {
         return r;
       } catch {
         const c = await caches.open(PAGES);
-        return (await c.match(req)) || (await c.match(OFFLINE)) || Response.error();
+        return (await c.match(req, { ignoreSearch: true })) || (await c.match(OFFLINE)) || Response.error();
       }
     })());
   }
 });
 
+/** Sayfanın kullandığı derlenmiş dosyalar (betik ve stiller): sayfa çevrimdışı açılınca çalışsın diye */
+const assetsOf = (html) => [...new Set((html.match(/\/_next\/static\/[^"'\s\\)]+/g) || []).map((u) => u.replace(/&amp;/g, '&')))];
+
+async function precache(job, client) {
+  const { id, urls, kind } = job;
+  const pages = await caches.open(PAGES);
+  const stat = await caches.open(STATIC);
+  const seen = new Set();
+  let done = 0, okN = 0, last = 0;
+  const report = (final) => {
+    if (!final && Date.now() - last < 250) return;
+    last = Date.now();
+    client?.postMessage({ type: final ? 'precached' : 'precache-progress', id, done, count: okN, total: urls.length });
+  };
+  const one = async (u) => {
+    try {
+      if (kind === 'static') {
+        if (!(await stat.match(u))) { const r = await fetch(u, { credentials: 'same-origin' }); if (r.ok && r.status === 200) await stat.put(u, r); else throw 0; }
+      } else {
+        const r = await fetch(u, { credentials: 'same-origin' });
+        if (!r.ok) throw 0;
+        const path = new URL(u, self.location.origin).pathname;
+        if ((r.headers.get('content-type') || '').includes('text/html')) {
+          const html = await r.clone().text();
+          for (const a of assetsOf(html)) {
+            if (seen.has(a)) continue;
+            seen.add(a);
+            if (!(await stat.match(a))) { const ar = await fetch(a).catch(() => null); if (ar && ar.ok) await stat.put(a, ar); }
+          }
+        }
+        await pages.put(isListApi(path) ? path : u, r);
+      }
+      okN++;
+    } catch { /* atla */ }
+    done++;
+    report(false);
+  };
+  // Aynı anda 4 istek
+  let i = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => { while (i < urls.length) await one(urls[i++]); }));
+  report(true);
+}
+
 self.addEventListener('message', (e) => {
   const d = e.data || {};
-  // Çıkış yapınca kişiye özel sayfaları temizle
+  const client = e.source;
+  // Çıkış yapınca kişiye özel sayfaları ve liste verisini temizle
   if (d.type === 'clear-pages') e.waitUntil(caches.delete(PAGES).then(() => caches.open(PAGES).then((c) => c.add(OFFLINE))));
-  // Tüm dersleri çevrimdışı kullanım için indir
-  if (d.type === 'precache' && Array.isArray(d.urls)) {
-    e.waitUntil((async () => {
-      const c = await caches.open(PAGES);
-      let n = 0;
-      for (const u of d.urls) {
-        try { const r = await fetch(u, { credentials: 'same-origin' }); if (r.ok) { await c.put(u, r); n++; } } catch { /* atla */ }
-      }
-      const all = await self.clients.matchAll();
-      all.forEach((cl) => cl.postMessage({ type: 'precached', count: n, total: d.urls.length }));
-    })());
+  // Bütün çevrimdışı verileri sil (sayfalar, sesler, derlenmiş dosyalar)
+  if (d.type === 'clear-all') {
+    e.waitUntil(Promise.all([caches.delete(PAGES), caches.delete(STATIC)])
+      .then(() => caches.open(PAGES).then((c) => c.add(OFFLINE)))
+      .then(() => client?.postMessage({ type: 'cleared' })));
   }
+  // Çevrimdışı kullanım için indir: kind 'pages' (sayfalar ve liste verisi) ya da 'static' (sesler)
+  if (d.type === 'precache' && Array.isArray(d.urls)) e.waitUntil(precache({ id: d.id || 'x', urls: d.urls, kind: d.kind || 'pages' }, client));
 });

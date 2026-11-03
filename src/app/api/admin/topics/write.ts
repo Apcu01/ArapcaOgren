@@ -41,7 +41,7 @@ export async function writeTopic(t: TopicInputT, isNew: boolean) {
         description: a.desc,
         glyph: a.glyph || '',
         keepOrder: !!a.keepOrder,
-        items: ['flash', 'listen', 'clock', 'speak'].includes(a.type) && !(a.items && a.items.length) ? null : ((a.items || []) as Item[])
+        items: ['flash', 'listen', 'clock', 'speak', 'dictate'].includes(a.type) && !(a.items && a.items.length) ? null : ((a.items || []) as Item[])
       };
       const id = Number(a.id);
       if (a.id && existing.some((e) => e.id === id)) {

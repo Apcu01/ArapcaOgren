@@ -4,6 +4,8 @@ import { fail, ok, parse } from '@/lib/api';
 import { appendItem, recordAnswers, resetProgress, saveBest, setShare, setStar } from '@/lib/lists';
 import { markDay } from '@/lib/progress';
 import { dayKey } from '@/lib/text';
+import { XP } from '@/lib/league';
+import { addXp } from '@/lib/xp';
 import { ItemZ, listId } from '../../schema';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -36,6 +38,7 @@ export async function POST(req: Request, { params }: Ctx) {
       if (!(await recordAnswers(user.id, id, b.results))) return missing();
       // Liste çalışmak da o günü çalışılmış sayar (çalışma takvimi ve seri)
       await markDay(user.id, b.day || dayKey(new Date()));
+      await addXp(user.id, b.results.filter((r) => r.ok).length * XP.listAnswer);
       return ok();
     case 'star':
       return (await setStar(user.id, id, b.itemId, b.on)) ? ok() : missing();
@@ -45,6 +48,7 @@ export async function POST(req: Request, { params }: Ctx) {
       const r = await saveBest(user.id, id, b.game, b.value);
       if (!r) return missing();
       await markDay(user.id, b.day || dayKey(new Date()));
+      await addXp(user.id, XP.game);
       return ok(r);
     }
     case 'share': {
