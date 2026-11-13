@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useApp } from './AppProvider';
+import NotifySettings from './NotifySettings';
 import { Field, inputCls } from './AuthForm';
 import { clearPageCache } from './ServiceWorker';
 
@@ -81,6 +82,8 @@ export default function AccountView({ createdAt, hasPassword, google }: { create
         ))}
       </div>
       <p className="m-0 -mt-4 text-sm text-faint">Ayrıntılar için <Link href="/ilerleme">İlerlemem</Link> sayfasına bak.</p>
+
+      <NotifySettings />
 
       <form onSubmit={saveName} className={card}>
         <h2 className="m-0 text-xl font-bold">Profil</h2>

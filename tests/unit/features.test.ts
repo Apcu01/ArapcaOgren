@@ -3,7 +3,8 @@ import { BADGES, evaluate, longestStreak, progressStats } from '@/lib/badges';
 import { isCode, normCode } from '@/lib/class-shared';
 import { actXp, addDays, daysLeft, leagueName, rankRows, weekStart, XP } from '@/lib/league';
 import { queueable } from '@/lib/outbox';
-import { bareWord, READING_TOPIC, READINGS, sentenceAr } from '@/lib/readings';
+import { bareWord, DEFAULT_READINGS as READINGS, READING_TOPIC, sentenceAr } from '@/lib/readings';
+import { ReadingZ } from '@/lib/reading-schema';
 import { DICTATE_KEY, isAr } from '@/lib/text';
 
 const BAD = /[–—…“”‘’]/;
@@ -29,6 +30,7 @@ describe('okuma metinleri', () => {
         expect(q.options).toContain(q.a);
         expect(new Set(q.options).size).toBe(q.options.length);
       }
+      expect(ReadingZ.safeParse(r).success, r.slug).toBe(true);
       const text = JSON.stringify(r);
       expect(BAD.test(text), r.slug).toBe(false);
     }

@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Browser } from '@playwright/test';
-import { readingBySlug } from '../../src/lib/readings';
+import { resetLimits } from './reset-limits';
+import { DEFAULT_READINGS } from '../../src/lib/readings';
 
 // Sınıflar, okuma metni ve haftalık lig: öğretmen sınıf açar ve ödev verir, öğrenci bağlantıyla katılır,
 // okuma metnini bitirir; ödev öğretmende "tamamlandı" görünür, öğrenci sınıf liginde ve genel ligde puan alır.
@@ -32,6 +33,7 @@ async function register(browser: Browser, u: (typeof users)['teacher']) {
 
 test.describe.serial('sınıflar, okuma ve lig', () => {
   test.beforeAll(async ({ browser }) => {
+    await resetLimits();
     await register(browser, users.teacher);
     await register(browser, users.student);
   });
@@ -99,7 +101,7 @@ test.describe.serial('sınıflar, okuma ve lig', () => {
     await page.getByRole('button', { name: /: doktor$/ }).click();
     await expect(page.locator('[role="status"]').getByText('doktor', { exact: true })).toBeVisible();
 
-    const r = readingBySlug('ailem')!;
+    const r = DEFAULT_READINGS.find((x) => x.slug === 'ailem')!;
     for (const q of r.questions) await page.getByRole('radiogroup', { name: q.q }).getByRole('radio', { name: q.a, exact: true }).click();
     await page.getByRole('button', { name: 'Cevapları kontrol et' }).click();
     await expect(page.getByText(`${r.questions.length} / ${r.questions.length} doğru`)).toBeVisible();

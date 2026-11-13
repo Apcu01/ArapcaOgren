@@ -24,6 +24,7 @@ const VIEWS: Record<ModeKey, React.ComponentType<ModeProps>> = {
   ogren: dynamic(() => import('./modes/Learn'), { loading: Loader }),
   test: dynamic(() => import('./modes/TestMode'), { loading: Loader }),
   dikte: dynamic(() => import('./modes/ListDictation'), { loading: Loader }),
+  hareke: dynamic(() => import('./modes/ListHarakat'), { loading: Loader }),
   eslestir: dynamic(() => import('./modes/Match'), { loading: Loader }),
   blast: dynamic(() => import('./modes/Blast'), { loading: Loader }),
   bloklar: dynamic(() => import('./modes/Blocks'), { loading: Loader }),
@@ -94,7 +95,7 @@ function Shell({ list, update, mode }: { list: WordList; update: (fn: (l: WordLi
                   </Link>
                 ))}
               </nav>
-              {mode !== 'dikte' && <div className="flex flex-col gap-2 border-t border-line pt-3">
+              {mode !== 'dikte' && mode !== 'hareke' && <div className="flex flex-col gap-2 border-t border-line pt-3">
                 <span className="text-xs font-bold tracking-[.1em] uppercase text-lab">Soru yönü</span>
                 <div role="radiogroup" aria-label="Soru yönü" className="grid gap-1 p-1 rounded-xl bg-s2 border border-line3">
                   {(Object.keys(DIR_LABEL) as Dir[]).map((d) => (

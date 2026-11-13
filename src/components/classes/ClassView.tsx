@@ -12,9 +12,10 @@ import { jsonFetch } from '../lists/useList';
 import { Loading } from '../lists/parts';
 import QrCode from '../live/QrCode';
 import { ClassLogin } from './ClassesView';
-import { TASK_KIND, type ClassDetail, type ClassTask, type TaskKind, type TaskStatus } from '@/lib/class-shared';
+import { classReportCsv, POST_MAX, TASK_KIND, type ClassDetail, type ClassPost, type ClassTask, type TaskKind, type TaskStatus } from '@/lib/class-shared';
 import { trDay, type LeagueBoard } from '@/lib/league';
 import type { ListSummary } from '@/lib/study';
+import { wordSlug } from '@/lib/slug';
 
 type Opt = { id: string; name: string };
 const fmtDue = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', timeZone: 'UTC' });
@@ -70,9 +71,17 @@ export default function ClassView({ id, topics, readings }: { id: number; topics
 
       {c.isOwner && c.code && <Invite code={c.code} onRenew={() => act({ action: 'renew' }, 'Yeni kod oluşturuldu. Eski kod artık çalışmaz.')} empty={!c.members.length} />}
 
+      <Posts posts={c.posts} owner={c.isOwner} onPost={(body) => act({ action: 'post', body }, 'Duyuru paylaşıldı.')} onDelete={(postId) => { if (confirm('Duyuru silinsin mi?')) void act({ action: 'unpost', postId }, 'Duyuru silindi.'); }} />
+
       <section className="flex flex-col gap-4" aria-labelledby="odevler">
-        <h2 id="odevler" className="m-0 text-[24px] font-bold">Ödevler</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="odevler" className="m-0 text-[24px] font-bold">Ödevler</h2>
+          {c.isOwner && c.tasks.length > 0 && c.members.length > 0 && (
+            <button type="button" onClick={() => downloadReport(c)} className="h-10 px-4 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh"><Raw html={I.down(15)} /> Ödev raporunu Excel'e indir</button>
+          )}
+        </div>
         {c.isOwner && <NewTask topics={topics} readings={readings} onAdd={(body) => act({ action: 'task', ...body }, 'Ödev verildi.')} />}
+        {!c.isOwner && c.tasks.some((t) => t.due) && <p className="m-0 text-sm text-faint">Son günü yaklaşan ödevler için telefonuna hatırlatma gelsin istersen <Link href="/hesap#bildirimler">bildirimleri aç</Link>.</p>}
         {!c.tasks.length && <p className="m-0 p-6 rounded-2xl bg-s1 border border-line text-center text-mute">{c.isOwner ? 'Henüz ödev vermedin. Yukarıdan bir ders, okuma metni ya da kelime listesi seç.' : 'Öğretmenin henüz ödev vermedi.'}</p>}
         <div className="flex flex-col gap-3">
           {c.tasks.map((t) => <TaskCard key={t.id} t={t} c={c} onDelete={() => { if (confirm(`"${t.title}" ödevi kaldırılsın mı?`)) void act({ action: 'untask', taskId: t.id }, 'Ödev kaldırıldı.'); }} />)}
@@ -116,6 +125,53 @@ export default function ClassView({ id, topics, readings }: { id: number; topics
         </div>
       )}
     </div>
+  );
+}
+
+function downloadReport(c: ClassDetail) {
+  const today = trDay();
+  const blob = new Blob([classReportCsv(c, today)], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `sinif-${wordSlug(c.name).slice(0, 40) || 'rapor'}-${today}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- Duyurular ---------- */
+const fmtWhen = (d: string) => new Date(d).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+function Posts({ posts, owner, onPost, onDelete }: { posts: ClassPost[]; owner: boolean; onPost: (b: string) => Promise<unknown>; onDelete: (id: number) => void }) {
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [all, setAll] = useState(false);
+  if (!owner && !posts.length) return null;
+  const shown = all ? posts : posts.slice(0, 3);
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby="duyurular">
+      <h2 id="duyurular" className="m-0 text-[24px] font-bold">Duyurular</h2>
+      {owner && (
+        <form onSubmit={async (e) => { e.preventDefault(); if (!body.trim()) return; setBusy(true); if (await onPost(body.trim())) setBody(''); setBusy(false); }} className="flex flex-col gap-2 p-4 rounded-2xl bg-s3 border border-line">
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={POST_MAX} rows={2} placeholder="Öğrencilerine bir duyuru yaz. Örneğin: Cumaya kadar Evimiz okuma metnini bitirin." aria-label="Duyuru"
+            className="px-3 py-2 rounded-xl bg-s2 border border-line3 text-ink outline-none focus:border-acc leading-relaxed" />
+          <div className="flex items-center justify-between gap-3"><span className="text-xs text-faint">{body.length} / {POST_MAX}</span>
+            <button type="submit" disabled={!body.trim() || busy} className="h-10 px-4 rounded-xl bg-acc text-onacc text-sm font-bold disabled:opacity-50">{busy ? 'Paylaşılıyor' : 'Paylaş'}</button></div>
+        </form>
+      )}
+      {!posts.length && <p className="m-0 text-sm text-mute">Henüz duyuru yok. Duyurular sınıftaki bütün öğrencilere görünür.</p>}
+      <ul className="m-0 p-0 list-none flex flex-col gap-2">
+        {shown.map((p) => (
+          <li key={p.id} className="flex gap-3 p-4 rounded-2xl bg-s4 border border-line3">
+            <span className="w-9 h-9 shrink-0 rounded-full bg-chip border border-chipln text-acct inline-flex items-center justify-center"><Raw html={I.flag(16)} /></span>
+            <span className="flex-1 min-w-0 flex flex-col gap-1">
+              <span className="text-ink whitespace-pre-line break-words leading-relaxed">{p.body}</span>
+              <span className="text-xs text-faint">{fmtWhen(p.createdAt)}</span>
+            </span>
+            {owner && <button type="button" onClick={() => onDelete(p.id)} aria-label="Duyuruyu sil" className="w-8 h-8 shrink-0 rounded-lg text-faint hover:text-bad inline-flex items-center justify-center"><Raw html={I.trash(15)} /></button>}
+          </li>
+        ))}
+      </ul>
+      {posts.length > 3 && <button type="button" onClick={() => setAll(!all)} className="self-start text-sm font-semibold text-acct">{all ? 'Daha az göster' : `Bütün duyurular (${posts.length})`}</button>}
+    </section>
   );
 }
 

@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { resetLimits } from './reset-limits';
+
+test.beforeAll(resetLimits);
 
 // Hesap: misafir ilerlemesi kayıtta hesaba aktarılır, başka bir tarayıcıdan girişte de görünür.
 // Test sonunda oluşturulan hesap silinir. Kayıt sınırı aynı IP'den saatte 5 hesaptır.

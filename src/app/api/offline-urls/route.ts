@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { getSessionUser } from '@/lib/auth';
 import { getNarrationIds } from '@/lib/narration';
-import { READINGS } from '@/lib/readings';
+import { getReadings } from '@/lib/reading-store';
 import { READY_LISTS } from '@/lib/ready-lists';
 import { MODES } from '@/lib/study';
 import { getTopics } from '@/lib/topics';
@@ -16,11 +16,11 @@ const OFFLINE_LISTS = 10;
  * ve kişisel listeler isteğe bağlı (boyutlarıyla birlikte, kullanıcı seçsin diye).
  */
 export async function GET() {
-  const [topics, user] = await Promise.all([getTopics(), getSessionUser()]);
+  const [topics, user, readings] = await Promise.all([getTopics(), getSessionUser(), getReadings()]);
   const pages = [
     '/', '/sozluk', '/alfabe', '/ilerleme', '/hatalarim', '/cevrimdisi', '/kelime-bul', '/okuma', '/hazir-listeler',
     ...topics.map((t) => `/konu/${t.id}`),
-    ...READINGS.map((r) => `/okuma/${r.slug}`),
+    ...readings.map((r) => `/okuma/${r.slug}`),
     ...READY_LISTS.map((l) => `/hazir-listeler/${l.slug}`)
   ];
 

@@ -1,4 +1,5 @@
-/* Okuma metinleri: derslerdeki kelimelerle yazılmış kısa hikâyeler.
+/* Okuma metinleri: derslerdeki kelimelerle yazılmış kısa hikâyeler (veritabanında, yönetim panelinden düzenlenir; burada türler,
+   yardımcılar ve ilk kurulumda yüklenen 8 metin).
    Her cümle kelime kelime yazılır ([Arapça, Türkçe karşılık]); sayfada kelimeye dokununca anlamı ve sesi çıkar.
    Cümlenin Arapçası kelimelerin boşlukla birleşimidir, yani kelime ile cümle hiçbir zaman kaymaz.
    Okuma ilerlemesi derslerdeki etkinlikler gibi saklanır: konu READING_TOPIC, etkinlik anahtarı hikâyenin slug'ı. */
@@ -8,21 +9,26 @@ export type Sentence = { w: Token[]; tr: string };
 export type ReadingQ = { q: string; options: string[]; a: string };
 export type Reading = {
   slug: string;
+  /** Yönetim panelinde: yayında mı, yapay zekâ taslağı mı */
+  published?: boolean;
+  ai?: boolean;
   title: string;
   ar: string;
-  level: 'Başlangıç' | 'Orta';
+  level: (typeof READING_LEVELS)[number];
   /** İlgili ders (kelimeleri bu derste) */
-  topic: string;
+  topic: string | null;
   desc: string;
   sentences: Sentence[];
   questions: ReadingQ[];
 };
 
 export const READING_TOPIC = 'okuma';
+export const READING_LEVELS = ['Başlangıç', 'Orta', 'İleri'] as const;
 
 const s = (tr: string, ...w: Token[]): Sentence => ({ w, tr });
 
-export const READINGS: Reading[] = [
+/** İlk kurulumda veritabanına yüklenen metinler (npm run db:migrate, tablo boşsa) */
+export const DEFAULT_READINGS: Reading[] = [
   {
     slug: 'ailem', title: 'Ailem', ar: 'أُسْرَتِي', level: 'Başlangıç', topic: 'aile',
     desc: 'Ahmed küçük ailesini anlatıyor: anne, baba, kardeşler, dede ve nine.',
@@ -182,7 +188,6 @@ export const READINGS: Reading[] = [
 export const sentenceAr = (x: Sentence) => x.w.map((t) => t[0]).join(' ');
 /** Seslendirme ve sözlük için noktalamasız kelime */
 export const bareWord = (ar: string) => ar.replace(/[؟،؛.!?,:;"'()]/g, '').trim();
-export const readingBySlug = (slug: string) => READINGS.find((r) => r.slug === slug) || null;
 export const wordCount = (r: Reading) => r.sentences.reduce((n, x) => n + x.w.length, 0);
 /** Tahmini okuma süresi (dakika): soruları da sayar */
 export const readMins = (r: Reading) => Math.max(3, Math.round(wordCount(r) / 12 + r.questions.length * 0.5));

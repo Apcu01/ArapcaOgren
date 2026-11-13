@@ -1,5 +1,6 @@
 import ReadingList from '@/components/reading/ReadingList';
-import { READINGS, readMins, wordCount } from '@/lib/readings';
+import { readMins, wordCount } from '@/lib/readings';
+import { getReadings } from '@/lib/reading-store';
 import { getTopics } from '@/lib/topics';
 
 export const metadata = {
@@ -9,9 +10,9 @@ export const metadata = {
 };
 
 export default async function ReadingsPage() {
-  const topics = await getTopics();
-  const name = (id: string) => topics.find((t) => t.id === id)?.name || '';
-  const cards = READINGS.map((r) => ({ slug: r.slug, title: r.title, ar: r.ar, level: r.level, desc: r.desc, lesson: name(r.topic), words: wordCount(r), mins: readMins(r) }));
+  const [topics, readings] = await Promise.all([getTopics(), getReadings()]);
+  const name = (id: string | null) => topics.find((t) => t.id === id)?.name || '';
+  const cards = readings.map((r) => ({ slug: r.slug, title: r.title, ar: r.ar, level: r.level, desc: r.desc, lesson: name(r.topic), words: wordCount(r), mins: readMins(r) }));
   return (
     <div className="max-w-[1100px] mx-auto px-4 sm:px-6 pt-10 pb-20 flex flex-col gap-8">
       <div className="flex flex-col gap-2">

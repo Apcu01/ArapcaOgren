@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import { resetLimits } from './reset-limits';
 
 // Kelime bul: ders kelimeleri, yerleşik sözlük ve önbellek herkese açık; yapay zekâya sormak giriş ister.
 // Derslerdeki kelimeler sayfada bulunur; diğerleri API'den (yerleşik sözlük ya da yapay zekâ) gelir.
@@ -12,6 +13,7 @@ const state = path.join('test-results', 'lookup-user.json');
 
 test.describe.serial('kelime bul', () => {
   test.beforeAll(async ({ browser }) => {
+    await resetLimits();
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     await page.goto('/kayit');

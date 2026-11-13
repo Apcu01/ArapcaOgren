@@ -66,13 +66,18 @@ export const TYPE: Record<ActType, { label: string; kind: string }> = {
   test: { label: 'Konu testi', kind: 'Test' },
   clock: { label: 'Sınırsız pratik', kind: 'Pratik' },
   speak: { label: 'Telaffuz', kind: 'Konuşma' },
-  dictate: { label: 'Dikte', kind: 'Dinleme' }
+  dictate: { label: 'Dikte', kind: 'Dinleme' },
+  harakat: { label: 'Hareke koy', kind: 'Yazı' }
 };
 
 /** Dikte etkinliğinde sorulan en fazla kelime */
 export const DICTATE_MAX = 10;
 /** Ders sayfasındaki ek dikte (ilerleme yüzdesine sayılmaz, kaydı bu anahtarla tutulur) */
 export const DICTATE_KEY = 'dikte';
+/** Hareke koyma: en fazla kelime, ders sayfasındaki ek pratik anahtarı ve kelimenin uygun olması için en az sorulan harf */
+export const HARAKAT_MAX = 8;
+export const HARAKAT_KEY = 'hareke';
+export const HARAKAT_MIN_LETTERS = 2;
 
 /** Telaffuz etkinliğinde sorulan en fazla kelime */
 export const SPEAK_MAX = 8;
@@ -94,8 +99,9 @@ export function actsOf(t: Pick<Topic, 'acts' | 'words'> & { autoListen?: boolean
       : a.type === 'listen' && !a.items?.length ? Math.min(10, (t.words || []).length)
       : a.type === 'speak' ? Math.min(SPEAK_MAX, (a.items?.length ? a.items : t.words || []).length)
       : a.type === 'dictate' ? Math.min(DICTATE_MAX, (a.items?.length ? a.items : t.words || []).length)
+      : a.type === 'harakat' ? Math.min(HARAKAT_MAX, (a.items?.length ? a.items : t.words || []).length)
       : items.length;
-    let meta = a.type === 'flash' ? count + ' kart' : a.type === 'speak' || a.type === 'dictate' ? count + ' kelime' : a.type === 'match' ? count + ' çift' : count + ' soru';
+    let meta = a.type === 'flash' ? count + ' kart' : a.type === 'speak' || a.type === 'dictate' || a.type === 'harakat' ? count + ' kelime' : a.type === 'match' ? count + ' çift' : count + ' soru';
     let mins = Math.max(3, Math.round(count * (a.type === 'flash' ? 0.35 : 0.55)));
     if (a.type === 'clock') { count = 0; meta = 'Sınırsız soru'; mins = 5; }
     return { ...a, id, count, meta, mins };

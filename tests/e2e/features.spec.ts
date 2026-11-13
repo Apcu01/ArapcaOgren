@@ -70,3 +70,46 @@ test('okuma metinleri listesi ve çevrimdışı penceresi', async ({ page }) => 
   await expect(dlg.getByText(/Kelime sesleri/)).toBeVisible();
   await expect(dlg.getByText(/kayıt, yaklaşık [\d.,]+ MB/).first()).toBeVisible();
 });
+
+test('hareke koy: yanlış kelime sonda tekrar sorulur, doğru harekelerle biter', async ({ page }) => {
+  const { slots, SHADDA, VOWELS } = await import('../../src/lib/harakat');
+  await page.goto('/konu/evim');
+  await page.getByRole('button', { name: 'Hareke koy', exact: true }).first().click();
+  const player = page.locator('#player');
+  const fb = player.locator('[aria-live="polite"]');
+  const total = Number((await player.getByText(/^1 \/ \d+$/).textContent())!.split('/')[1]);
+  const seen: string[] = [];
+  // İlk tur: her harfe üstün (çoğu yanlış); doğrusu gösterilir
+  for (let i = 0; i < total; i++) {
+    const tiles = player.getByRole('group', { name: 'Harfler' }).locator('button:not([disabled])');
+    for (let k = 0; k < await tiles.count(); k++) {
+      await tiles.nth(k).click();
+      await player.getByRole('group', { name: 'Harekeler' }).getByRole('button', { name: /üstün$/ }).first().click();
+    }
+    await player.getByRole('button', { name: 'Kontrol et' }).click();
+    seen.push((await fb.locator('.ar').first().textContent())!);
+    await player.getByRole('button', { name: /Devam/ }).click();
+  }
+  // Tekrar sorulanlar: doğru harekelerle
+  const names = Object.fromEntries(VOWELS.map(([m, l]) => [m, l]));
+  while (await player.getByText('Tekrar soru').isVisible()) {
+    const word = seen.find(Boolean)!;
+    // Hangi kelimenin sorulduğu: harekesiz hâli ekrandaki harflerle aynı olan
+    const letters = (await player.getByRole('group', { name: 'Harfler' }).locator('button').allTextContents()).map((t) => t.replace(/[ً-ٰٕ]/g, '')).join('');
+    const target = seen.find((w) => slots(w).map((s) => s.letter).join('') === letters) || word;
+    seen.splice(seen.indexOf(target), 1);
+    const ss = slots(target);
+    const tiles = player.getByRole('group', { name: 'Harfler' }).locator('button');
+    for (const [k, s] of ss.entries()) {
+      if (!s.asked) continue;
+      await tiles.nth(k).click();
+      if (s.marks.includes(SHADDA)) await player.getByRole('button', { name: /şedde$/ }).click();
+      const v = s.marks.replace(SHADDA, '');
+      if (v) await player.getByRole('group', { name: 'Harekeler' }).getByRole('button', { name: new RegExp(names[v] + '$') }).first().click();
+    }
+    await player.getByRole('button', { name: 'Kontrol et' }).click();
+    await expect(fb.getByText('Doğru!')).toBeVisible();
+    await player.getByRole('button', { name: /Devam/ }).click();
+  }
+  await expect(player.getByText('Bitti')).toBeVisible();
+});

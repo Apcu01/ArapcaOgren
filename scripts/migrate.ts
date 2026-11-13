@@ -9,6 +9,7 @@
  */
 import { config } from 'dotenv';
 import mysql from 'mysql2/promise';
+import { DEFAULT_READINGS } from '../src/lib/readings';
 
 config({ path: '.env.local', quiet: true });
 config({ quiet: true });
@@ -24,7 +25,11 @@ const TABLES: Record<string, string> = {
   xp_log: "CREATE TABLE IF NOT EXISTS `xp_log` (\n  `user_id` int NOT NULL,\n  `day` char(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `xp` int NOT NULL DEFAULT '0',\n  PRIMARY KEY (`user_id`,`day`),\n  KEY `xp_log_day_idx` (`day`),\n  CONSTRAINT `xp_log_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   classes: "CREATE TABLE IF NOT EXISTS `classes` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `owner_id` int NOT NULL,\n  `name` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `code` char(6) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `classes_code_uq` (`code`),\n  KEY `classes_owner_idx` (`owner_id`),\n  CONSTRAINT `classes_owner_fk` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   class_members: "CREATE TABLE IF NOT EXISTS `class_members` (\n  `class_id` int NOT NULL,\n  `user_id` int NOT NULL,\n  `joined_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`class_id`,`user_id`),\n  KEY `class_members_user_idx` (`user_id`),\n  CONSTRAINT `class_members_class_fk` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `class_members_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-  class_tasks: "CREATE TABLE IF NOT EXISTS `class_tasks` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `class_id` int NOT NULL,\n  `kind` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `ref` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `due` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `class_tasks_class_idx` (`class_id`,`created_at`),\n  CONSTRAINT `class_tasks_class_fk` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+  class_tasks: "CREATE TABLE IF NOT EXISTS `class_tasks` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `class_id` int NOT NULL,\n  `kind` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `ref` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `due` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `class_tasks_class_idx` (`class_id`,`created_at`),\n  CONSTRAINT `class_tasks_class_fk` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+  readings: "CREATE TABLE IF NOT EXISTS `readings` (\n  `slug` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `position` int NOT NULL DEFAULT '0',\n  `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `ar` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `level` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Başlangıç',\n  `topic` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `description` varchar(400) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `sentences` json NOT NULL,\n  `questions` json NOT NULL,\n  `published` tinyint(1) NOT NULL DEFAULT '0',\n  `ai` tinyint(1) NOT NULL DEFAULT '0',\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`slug`),\n  KEY `readings_pos_idx` (`published`,`position`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+  class_posts: "CREATE TABLE IF NOT EXISTS `class_posts` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `class_id` int NOT NULL,\n  `body` varchar(1000) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `class_posts_class_idx` (`class_id`,`created_at`),\n  CONSTRAINT `class_posts_class_fk` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+  push_subscriptions: "CREATE TABLE IF NOT EXISTS `push_subscriptions` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `user_id` int NOT NULL,\n  `endpoint` varchar(512) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `p256dh` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `auth` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `kinds` json NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `push_subscriptions_endpoint_uq` (`endpoint`),\n  KEY `push_subscriptions_user_idx` (`user_id`),\n  CONSTRAINT `push_subscriptions_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+  push_sends: "CREATE TABLE IF NOT EXISTS `push_sends` (\n  `user_id` int NOT NULL,\n  `kind` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `day` char(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`user_id`,`kind`,`day`),\n  CONSTRAINT `push_sends_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
 };
 // Eski tablolara sonradan eklenen sütunlar
 const COLUMNS: [table: string, column: string, def: string][] = [
@@ -53,6 +58,15 @@ async function main() {
       const m = line.trim().match(/^`([a-z_]+)` (.+?),?$/);
       if (m) await addColumn(t, m[1], m[2]);
     }
+  }
+  // Okuma metinleri: tablo boşsa ilk 8 metin yayında olarak yüklenir
+  const [[cnt]] = await conn.query<mysql.RowDataPacket[]>('SELECT COUNT(*) n FROM readings');
+  if (!Number(cnt.n)) {
+    for (const [i, r] of DEFAULT_READINGS.entries()) {
+      await conn.query('INSERT INTO readings (slug, position, title, ar, level, topic, description, sentences, questions, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)',
+        [r.slug, i, r.title, r.ar, r.level, r.topic, r.desc, JSON.stringify(r.sentences), JSON.stringify(r.questions)]);
+    }
+    console.log('+ ' + DEFAULT_READINGS.length + ' okuma metni');
   }
   await conn.end();
   console.log("Veritabanı güncel.");

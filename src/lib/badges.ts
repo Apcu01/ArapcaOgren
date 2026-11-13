@@ -2,7 +2,7 @@
    Ders, etkinlik, seri, okuma ve dikte rozetleri misafirlerde de çalışır;
    kelime listesi, canlı yarışma ve lig rozetleri hesap gerektirir. */
 import type { ProgressState } from './types';
-import { DICTATE_KEY } from './text';
+import { DICTATE_KEY, HARAKAT_KEY } from './text';
 import { READING_TOPIC } from './readings';
 
 export type BadgeStats = {
@@ -59,6 +59,8 @@ export function progressStats(s: ProgressState): Omit<BadgeStats, 'words' | 'lis
     if (rec.lesson) lessons++;
     for (const [key, a] of Object.entries(rec.acts || {})) {
       if (key === DICTATE_KEY) { if (a.done) dictations++; continue; }
+      // Hareke koyma ek pratiği etkinlik rozetlerine sayılmaz
+      if (key === HARAKAT_KEY) continue;
       if (a.done) acts++;
       if (a.best >= 1) perfect++;
     }

@@ -4,7 +4,9 @@
    doğru/yanlış, cümle kurma, dinleme, karma konu testi ve sınırsız saat pratiği */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Pair, Question, QType, Word } from '@/lib/types';
-import { DICTATE_MAX, esc, isAr, shuffle, SPEAK_MAX, TYPE, type ActView } from '@/lib/text';
+import { DICTATE_MAX, esc, HARAKAT_MAX, HARAKAT_MIN_LETTERS, isAr, shuffle, SPEAK_MAX, TYPE, type ActView } from '@/lib/text';
+import { askedCount } from '@/lib/harakat';
+import HarakatPractice from './HarakatPractice';
 import Dictation from './Dictation';
 import { pronScore, pronVerdict, type PronVerdict } from '@/lib/pron';
 import { recognizer, type SR } from '@/lib/speech';
@@ -146,6 +148,7 @@ export default function Player({ topic, act, list, onClose, onSwitch, preview = 
             : act.type === 'clock' ? <ClockPractice {...props} />
             : act.type === 'speak' ? <Speak {...props} />
             : act.type === 'dictate' ? <Dictate {...props} />
+            : act.type === 'harakat' ? <Harakat {...props} />
             : <Quiz {...props} />}
         </div>
       </div>
@@ -552,7 +555,7 @@ function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview, tall
 }
 
 /* ================= Dikte ================= */
-function Dictate({ topic, act, finish, setHdr, toTop, miss, hit, tally }: SubProps) {
+function Dictate({ topic, act, finish, setHdr, toTop, miss, hit, tally, log }: SubProps) {
   const { tx, hasAudio } = useApp();
   const src = useMemo(() => ((act.items as Word[] | null | undefined)?.length ? (act.items as Word[]) : topic.words).filter((w) => w.ar), [act.items, topic.words]);
   // Önce ses kaydı olan kelimeler (tarayıcı sesi her cihazda yok); yetmezse diğerleri
@@ -565,11 +568,26 @@ function Dictate({ topic, act, finish, setHdr, toTop, miss, hit, tally }: SubPro
     <Dictation
       items={items}
       onProgress={(d, t) => { setHdr(d / t, `${Math.min(d + 1, t)} / ${t}`); toTop(); }}
-      onAnswer={(it, ok) => { tally(ok); const w = items[it.id as number]; (ok ? hit : miss)(wordQ(w, src)); }}
+      onAnswer={(it, ok) => { tally(ok); log({ qk: 'd' + hash53(it.ar), label: it.ar + ' (' + it.tr + ')', ok }); const w = items[it.id as number]; (ok ? hit : miss)(wordQ(w, src)); }}
       onFinish={(r) => finish(r.right / r.total, r.right / r.total >= 0.7, r.wrong.map((w) => ({
         prompt: tx.ar(w.ar, 'text-2xl') + (w.tl ? ' <span class="tl text-mute">' + esc(w.tl) + '</span>' : ''),
         right: esc(w.tr), given: w.given ? esc(w.given) : 'boş bırakıldı'
       })))}
+    />
+  );
+}
+
+/* ================= Hareke koy ================= */
+function Harakat({ topic, act, finish, setHdr, toTop, miss, hit, tally, log }: SubProps) {
+  const src = useMemo(() => ((act.items as Word[] | null | undefined)?.length ? (act.items as Word[]) : topic.words).filter((w) => w.ar && askedCount(w.ar) >= HARAKAT_MIN_LETTERS), [act.items, topic.words]);
+  const items = useMemo(() => shuffle(src).slice(0, HARAKAT_MAX).map((w, i) => ({ ...w, id: i })), [src]);
+  if (!items.length) return <p className="m-0 text-center text-mute">Bu derste hareke koymaya uygun kelime yok.</p>;
+  return (
+    <HarakatPractice
+      items={items}
+      onProgress={(d, t) => { setHdr(d / t, `${Math.min(d + 1, t)} / ${t}`); toTop(); }}
+      onAnswer={(it, ok) => { tally(ok); log({ qk: 'h' + hash53(it.ar), label: it.ar, ok }); const w = items[it.id as number]; (ok ? hit : miss)(wordQ(w, src)); }}
+      onFinish={(r) => finish(r.right / r.total, r.right / r.total >= 0.7, r.wrong.map((w) => ({ prompt: esc(w.tr), right: '<span class="ar text-2xl" lang="ar" dir="rtl">' + esc(w.ar) + '</span>', given: '<span class="ar text-2xl" lang="ar" dir="rtl">' + esc(w.given) + '</span>' })))}
     />
   );
 }

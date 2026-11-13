@@ -9,6 +9,8 @@ const ITEMS: [string, string, keyof typeof I][] = [
   ['/admin', 'Genel bakış', 'chart'],
   ['/admin/kullanicilar', 'Kullanıcılar', 'user'],
   ['/admin/dersler', 'Dersler ve etkinlikler', 'book'],
+  ['/admin/okuma', 'Okuma metinleri', 'read'],
+  ['/admin/ogrenme', 'Okuma, dikte, sınıf, lig', 'trophy'],
   ['/admin/sesler', 'Sesler', 'speaker'],
   ['/admin/kelime-aramalari', 'Kelime aramaları', 'search'],
   ['/admin/listeler', 'Kelime listeleri', 'list'],

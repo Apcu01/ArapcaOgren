@@ -9,4 +9,10 @@ export async function register() {
   setTimeout(() => {
     fetch(`http://127.0.0.1:${port}/api/internal/refresh`, { method: 'POST', headers: { 'x-boot-token': token } }).catch(() => null);
   }, 3000);
+  // Bildirim hatırlatmaları: 10 dakikada bir zamanı gelenleri gönder (seri, ödev, lig; aynı gün bir kez)
+  const cron = crypto.randomUUID();
+  (globalThis as unknown as { __arbCronToken?: string }).__arbCronToken = cron;
+  setInterval(() => {
+    fetch(`http://127.0.0.1:${port}/api/internal/push`, { method: 'POST', headers: { 'x-cron-token': cron } }).catch(() => null);
+  }, 10 * 60_000);
 }

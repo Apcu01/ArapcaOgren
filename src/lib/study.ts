@@ -37,6 +37,7 @@ export const MODES = [
   { key: 'ogren', name: 'Öğren', desc: 'Adım adım, bilmediklerin daha sık sorulur', icon: 'learn' },
   { key: 'test', name: 'Test', desc: 'Karışık sorularla kendini sına', icon: 'test' },
   { key: 'dikte', name: 'Dikte', desc: 'Dinle, duyduğunu Arapça ya da okunuşla yaz', icon: 'pen' },
+  { key: 'hareke', name: 'Hareke koy', desc: 'Harekesiz kelimeye doğru harekeleri koy', icon: 'pen' },
   { key: 'eslestir', name: 'Eşleştir', desc: 'Çiftleri en kısa sürede bul', icon: 'pairs' },
   { key: 'blast', name: 'Blast', desc: 'Doğru cevabı taşıyan göktaşını vur', icon: 'rocket' },
   { key: 'bloklar', name: 'Bloklar', desc: 'Doğru cevapla blok kazan, satırları doldur', icon: 'blocks' },

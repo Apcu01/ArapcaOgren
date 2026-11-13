@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { resetLimits } from './reset-limits';
 
 // Kelime listeleri: misafir giriş uyarısı görür; üye liste oluşturur, kartlarla ve öğren moduyla çalışır,
 // eşleştirme oyununu bitirir ve kelimelerin durumu liste sayfasına yansır. Geçici hesap sonunda silinir (listeler de silinir).
@@ -14,6 +15,7 @@ const meaningOf = (t: string) => WORDS.find((w) => strip(w[0]) === strip(t) || w
 
 test.describe.serial('kelime listeleri', () => {
   test.beforeAll(async ({ browser }) => {
+    await resetLimits();
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     await page.goto('/kayit');

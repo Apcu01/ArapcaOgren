@@ -140,3 +140,22 @@ self.addEventListener('message', (e) => {
   // Çevrimdışı kullanım için indir: kind 'pages' (sayfalar ve liste verisi) ya da 'static' (sesler)
   if (d.type === 'precache' && Array.isArray(d.urls)) e.waitUntil(precache({ id: d.id || 'x', urls: d.urls, kind: d.kind || 'pages' }, client));
 });
+
+/* Bildirimler: sunucunun gönderdiği hatırlatmayı göster, dokununca ilgili sayfayı aç */
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { title: 'ArapcaOgren', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'ArapcaOgren', {
+    body: d.body || '', tag: d.tag, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', lang: 'tr', data: { url: d.url || '/' }
+  }));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    const open = list.find((c) => c.url === url) || list.find((c) => new URL(c.url).origin === self.location.origin);
+    if (open) return open.focus().then((c) => (c && c.url !== url && 'navigate' in c ? c.navigate(url) : c));
+    return self.clients.openWindow(url);
+  }));
+});

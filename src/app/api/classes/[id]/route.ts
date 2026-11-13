@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { fail, ok, parse } from '@/lib/api';
 import { getSessionUser } from '@/lib/auth';
-import { addTask, classRole, deleteClass, deleteTask, getClass, memberIds, removeMember, renameClass, renewCode } from '@/lib/classes';
+import { addPost, addTask, className, classRole, deletePost, deleteClass, deleteTask, getClass, memberIds, removeMember, renameClass, renewCode } from '@/lib/classes';
 import { leagueBoard } from '@/lib/xp';
+import { POST_MAX } from '@/lib/class-shared';
+import { notifyPost } from '@/lib/push';
 
 type Ctx = { params: Promise<{ id: string }> };
 const classId = (s: string) => { const n = Number(s); return Number.isInteger(n) && n > 0 ? n : null; };
@@ -26,6 +28,8 @@ const Body = z.discriminatedUnion('action', [
   z.object({ action: z.literal('remove'), userId: z.number().int().positive() }),
   z.object({ action: z.literal('task'), kind: z.enum(['topic', 'reading', 'list']), ref: z.string().min(1).max(64), due: day.nullable().optional() }),
   z.object({ action: z.literal('untask'), taskId: z.number().int().positive() }),
+  z.object({ action: z.literal('post'), body: z.string().trim().min(1, 'Duyuru boş olamaz.').max(POST_MAX, `Duyuru en fazla ${POST_MAX} karakter olabilir.`) }),
+  z.object({ action: z.literal('unpost'), postId: z.number().int().positive() }),
   // Öğrenci: sınıftan ayrıl
   z.object({ action: z.literal('leave') })
 ]);
@@ -59,6 +63,15 @@ export async function POST(req: Request, { params }: Ctx) {
     }
     case 'untask':
       await deleteTask(id, b.taskId);
+      return ok();
+    case 'post': {
+      const postId = await addPost(id, b.body);
+      // Öğrencilere bildirim (isteyenlere); beklemeden
+      void className(id).then((n) => notifyPost(id, n, b.body));
+      return ok({ id: postId });
+    }
+    case 'unpost':
+      await deletePost(id, b.postId);
       return ok();
   }
 }

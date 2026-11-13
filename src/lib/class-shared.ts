@@ -22,5 +22,25 @@ export type ClassMember = { userId: number; name: string; joinedAt: string };
 export type ClassSummary = { id: number; name: string; owner: string; isOwner: boolean; members: number; tasks: number; code?: string };
 export type ClassDetail = {
   id: number; name: string; owner: string; isOwner: boolean; code: string | null; me: number;
-  members: ClassMember[]; tasks: ClassTask[];
+  members: ClassMember[]; tasks: ClassTask[]; posts: ClassPost[];
 };
+
+export type ClassPost = { id: number; body: string; createdAt: string };
+export const POST_MAX = 1000;
+
+/** Ödev raporu (Excel'in Türkçe ayarlarında açılır: noktalı virgül ayraçlı, UTF-8 BOM): öğrenciler satırda, ödevler sütunda */
+export function classReportCsv(c: Pick<ClassDetail, 'name' | 'members' | 'tasks'>, today: string) {
+  const cell = (v: string | number) => { const s = String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const row = (cells: (string | number)[]) => cells.map(cell).join(';');
+  const tasks = [...c.tasks].reverse();
+  const state = (s?: TaskStatus) => (!s || !s.started ? 'Başlanmadı' : s.done ? 'Tamamlandı' : `%${s.pct}`);
+  const lines = [
+    row([c.name, `${c.members.length} öğrenci`, `${tasks.length} ödev`, `Rapor: ${today}`]),
+    '',
+    row(['Öğrenci', ...tasks.map((t) => `${TASK_KIND[t.kind]}: ${t.title}${t.due ? ` (son gün ${t.due})` : ''}`), 'Tamamlanan ödev']),
+    ...c.members.map((m) => row([m.name, ...tasks.map((t) => state(t.status[m.userId])), tasks.filter((t) => t.status[m.userId]?.done).length])),
+    '',
+    row(['Tamamlayan öğrenci', ...tasks.map((t) => Object.values(t.status).filter((s) => s.done).length), ''])
+  ];
+  return '\uFEFF' + lines.join('\r\n');
+}

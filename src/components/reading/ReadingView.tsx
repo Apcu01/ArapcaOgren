@@ -9,10 +9,11 @@ import { I, Raw } from '../icons';
 import AddToList from '../lists/AddToList';
 import { bareWord, READING_TOPIC, sentenceAr, type Reading } from '@/lib/readings';
 import { shuffle } from '@/lib/text';
+import { hash53 } from '@/lib/qkey';
 
 type Nav = { slug: string; title: string } | null;
 
-export default function ReadingView({ reading: r, lesson, next }: { reading: Reading; lesson: { id: string; name: string } | null; next: Nav }) {
+export default function ReadingView({ reading: r, lesson, next, preview = false }: { reading: Reading; lesson: { id: string; name: string } | null; next: Nav; preview?: boolean }) {
   const { tx, speak, playUntilEnd, stopSay, track } = useApp();
   const [sel, setSel] = useState<{ s: number; w: number } | null>(null);
   const [allTr, setAllTr] = useState(false);
@@ -20,7 +21,7 @@ export default function ReadingView({ reading: r, lesson, next }: { reading: Rea
   const [reading, setReading] = useState<number | null>(null);
   const run = useRef(0);
 
-  useEffect(() => { track('view', { path: '/okuma/' + r.slug, topicId: READING_TOPIC }); }, [r.slug, track]);
+  useEffect(() => { if (!preview) track('view', { path: '/okuma/' + r.slug, topicId: READING_TOPIC }); }, [r.slug, track, preview]);
   useEffect(() => () => { run.current++; stopSay(); }, [stopSay]);
 
   async function playAll(from = 0) {
@@ -44,7 +45,9 @@ export default function ReadingView({ reading: r, lesson, next }: { reading: Rea
 
   return (
     <div className="max-w-[900px] mx-auto px-4 sm:px-6 pt-8 pb-20 flex flex-col gap-8">
-      <Link href="/okuma" className="self-start inline-flex items-center gap-2 text-sm text-mute hover:text-ink"><Raw html={I.back()} /> Okuma metinleri</Link>
+      {preview
+        ? <Link href={`/admin/okuma/${r.slug}`} className="self-start inline-flex items-center gap-2 text-sm text-mute hover:text-ink"><Raw html={I.back()} /> Düzenleyiciye dön <span className="px-2 py-0.5 rounded-full bg-progbg border border-progln text-prog text-[11px] font-bold">Önizleme</span></Link>
+        : <Link href="/okuma" className="self-start inline-flex items-center gap-2 text-sm text-mute hover:text-ink"><Raw html={I.back()} /> Okuma metinleri</Link>}
       <header className="flex flex-col gap-3">
         <span className="text-[13px] font-semibold tracking-[.12em] uppercase text-lab">{r.level} · okuma metni</span>
         <h1 className="m-0 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[34px] sm:text-[42px] leading-tight font-bold tracking-tight">
@@ -101,7 +104,7 @@ export default function ReadingView({ reading: r, lesson, next }: { reading: Rea
         })}
       </article>
 
-      <Questions r={r} />
+      <Questions r={r} preview={preview} />
 
       {next && (
         <Link href={`/okuma/${next.slug}`} className="self-end inline-flex items-center gap-2 text-acct font-semibold">Sonraki metin: {next.title} <Raw html={I.arrow(16)} /></Link>
@@ -111,7 +114,7 @@ export default function ReadingView({ reading: r, lesson, next }: { reading: Rea
 }
 
 /* ---------- Anlama soruları ---------- */
-function Questions({ r }: { r: Reading }) {
+function Questions({ r, preview }: { r: Reading; preview: boolean }) {
   const { setAct, actState, track } = useApp();
   const [order, setOrder] = useState(() => r.questions.map((q) => q.options));
   const [ans, setAns] = useState<Record<number, string>>({});
@@ -125,8 +128,11 @@ function Questions({ r }: { r: Reading }) {
   function check() {
     setChecked(true);
     const score = right / r.questions.length;
-    setAct(READING_TOPIC, r.slug, score, score >= 0.7);
-    track('activity', { topicId: READING_TOPIC, actKey: r.slug, score });
+    if (!preview) {
+      setAct(READING_TOPIC, r.slug, score, score >= 0.7);
+      // Soru bazında istatistik (yönetim panelindeki okuma istatistikleri)
+      track('activity', { topicId: READING_TOPIC, actKey: r.slug, score, answers: r.questions.map((q, i) => ({ qk: 'q' + hash53(q.q), label: q.q.slice(0, 255), ok: ans[i] === q.a })) });
+    }
     document.getElementById('sorular')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function again() { setAns({}); setChecked(false); setOrder(r.questions.map((q) => shuffle(q.options))); }

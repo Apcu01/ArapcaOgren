@@ -5,11 +5,12 @@ import { db, schema } from '@/db';
 import { CLASS_LIMITS, CODE_CHARS, type ClassDetail, type ClassSummary, type ClassTask, type TaskKind, type TaskStatus } from './class-shared';
 import { leagueName } from './league';
 import { setShare } from './lists';
-import { READING_TOPIC, readingBySlug } from './readings';
+import { READING_TOPIC } from './readings';
+import { getReading } from './reading-store';
 import { actsOf } from './text';
 import { getTopics } from './topics';
 
-const C = schema.classes, M = schema.classMembers, T = schema.classTasks;
+const C = schema.classes, M = schema.classMembers, T = schema.classTasks, P = schema.classPosts;
 
 function newCode() {
   let s = '';
@@ -127,15 +128,26 @@ async function statuses(tasks: (typeof T.$inferSelect)[], users: number[], owner
   return { out, hrefs };
 }
 
+/** Hatırlatmalar için: verilen öğrenciler bu ödevi bitirdi mi */
+export async function taskDone(task: typeof T.$inferSelect, users: number[], ownerId: number) {
+  const st = (await statuses([task], users, ownerId)).out.get(task.id)!;
+  return Object.fromEntries(users.map((u) => [u, !!st[u]?.done])) as Record<number, boolean>;
+}
+export async function className(id: number) {
+  const [c] = await db.select({ name: C.name }).from(C).where(eq(C.id, id)).limit(1);
+  return c?.name || 'Sınıf';
+}
+
 export async function getClass(userId: number, id: number): Promise<ClassDetail | null> {
   const role = await classRole(userId, id);
   if (!role) return null;
   const [c] = await db.select({ id: C.id, name: C.name, code: C.code, ownerId: C.ownerId, owner: schema.users.name })
     .from(C).innerJoin(schema.users, eq(schema.users.id, C.ownerId)).where(eq(C.id, id)).limit(1);
-  const [members, tasks] = await Promise.all([
+  const [members, tasks, posts] = await Promise.all([
     db.select({ userId: M.userId, name: schema.users.name, joinedAt: M.joinedAt }).from(M).innerJoin(schema.users, eq(schema.users.id, M.userId))
       .where(eq(M.classId, id)).orderBy(schema.users.name),
-    db.select().from(T).where(eq(T.classId, id)).orderBy(desc(T.createdAt))
+    db.select().from(T).where(eq(T.classId, id)).orderBy(desc(T.createdAt)),
+    db.select().from(P).where(eq(P.classId, id)).orderBy(desc(P.createdAt)).limit(20)
   ]);
   const owner = role === 'owner';
   // Öğretmen herkesin durumunu, öğrenci yalnızca kendisininkini görür
@@ -150,7 +162,8 @@ export async function getClass(userId: number, id: number): Promise<ClassDetail 
     id: c.id, name: c.name, owner: owner ? c.owner : leagueName(c.owner), isOwner: owner, code: owner ? c.code : null, me: userId,
     // Öğrenciler sınıf arkadaşlarının yalnızca adını ve soyadının baş harfini görür
     members: members.map((m) => ({ userId: m.userId, name: owner ? m.name : leagueName(m.name), joinedAt: m.joinedAt.toISOString() })),
-    tasks: list
+    tasks: list,
+    posts: posts.map((p) => ({ id: p.id, body: p.body, createdAt: p.createdAt.toISOString() }))
   };
 }
 
@@ -185,7 +198,7 @@ export async function addTask(ownerId: number, id: number, kind: TaskKind, ref: 
     if (!t) return { error: 'Ders bulunamadı.' };
     title = t.name;
   } else if (kind === 'reading') {
-    const r = readingBySlug(ref);
+    const r = await getReading(ref);
     if (!r) return { error: 'Okuma metni bulunamadı.' };
     title = r.title;
   } else {
@@ -199,6 +212,17 @@ export async function addTask(ownerId: number, id: number, kind: TaskKind, ref: 
   const [r] = await db.insert(T).values({ classId: id, kind, ref, title: title.slice(0, 120), due }).$returningId();
   return { id: r.id };
 }
+/** Duyuru: sınıf başına en fazla 200 tutulur (eskiler silinir) */
+export async function addPost(id: number, body: string) {
+  const [r] = await db.insert(P).values({ classId: id, body }).$returningId();
+  const old = await db.select({ id: P.id }).from(P).where(eq(P.classId, id)).orderBy(desc(P.createdAt), desc(P.id)).limit(1000).offset(200);
+  if (old.length) await db.delete(P).where(inArray(P.id, old.map((x) => x.id)));
+  return r.id;
+}
+export async function deletePost(id: number, postId: number) {
+  await db.delete(P).where(and(eq(P.classId, id), eq(P.id, postId)));
+}
+
 export async function deleteTask(id: number, taskId: number) {
   await db.delete(T).where(and(eq(T.classId, id), eq(T.id, taskId)));
 }

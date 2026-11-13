@@ -4,6 +4,7 @@ import {
 } from 'drizzle-orm/mysql-core';
 import type { Item, LookupResult, Mistake, Question, ReportContext, Section, Word } from '@/lib/types';
 import type { LiveReport } from '@/lib/live-report';
+import type { ReadingQ, Sentence } from '@/lib/readings';
 
 // Ses dosyaları veritabanında saklanır (her barındırmada çalışsın, ayrı dosya depolaması gerekmesin)
 const mediumBlob = customType<{ data: Buffer }>({ dataType: () => 'mediumblob' });
@@ -317,3 +318,48 @@ export const classTasks = mysqlTable('class_tasks', {
   due: char('due', { length: 10 }),
   createdAt: timestamp('created_at').notNull().defaultNow()
 }, (t) => [index('class_tasks_class_idx').on(t.classId, t.createdAt)]);
+
+// Okuma metinleri (/okuma): yönetim panelinden düzenlenir; sentences kelime kelime [Arapça, Türkçe]
+// ai: yapay zekâ taslağı olarak oluşturuldu (yayınlanmadan önce gözden geçirilmeli)
+export const readings = mysqlTable('readings', {
+  slug: varchar('slug', { length: 64 }).primaryKey(),
+  position: int('position').notNull().default(0),
+  title: varchar('title', { length: 120 }).notNull(),
+  ar: varchar('ar', { length: 191 }).notNull(),
+  level: varchar('level', { length: 20 }).notNull().default('Başlangıç'),
+  topic: varchar('topic', { length: 64 }),
+  description: varchar('description', { length: 400 }).notNull().default(''),
+  sentences: json('sentences').$type<Sentence[]>().notNull(),
+  questions: json('questions').$type<ReadingQ[]>().notNull(),
+  published: boolean('published').notNull().default(false),
+  ai: boolean('ai').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow()
+}, (t) => [index('readings_pos_idx').on(t.published, t.position)]);
+
+// Sınıf duyuruları: öğretmen yazar, öğrenciler sınıf sayfasında görür
+export const classPosts = mysqlTable('class_posts', {
+  id: int('id').autoincrement().primaryKey(),
+  classId: int('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  body: varchar('body', { length: 1000 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (t) => [index('class_posts_class_idx').on(t.classId, t.createdAt)]);
+
+// Web bildirimleri: cihaz başına abonelik ve hangi hatırlatmaları istediği
+export const pushSubscriptions = mysqlTable('push_subscriptions', {
+  id: int('id').autoincrement().primaryKey(),
+  userId: int('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: varchar('endpoint', { length: 512 }).notNull().unique(),
+  p256dh: varchar('p256dh', { length: 200 }).notNull(),
+  auth: varchar('auth', { length: 100 }).notNull(),
+  kinds: json('kinds').$type<string[]>().notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (t) => [index('push_subscriptions_user_idx').on(t.userId)]);
+
+// Gönderilen hatırlatmalar: aynı gün aynı hatırlatma ikinci kez gönderilmez (sunucu yeniden başlasa da)
+export const pushSends = mysqlTable('push_sends', {
+  userId: int('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  kind: varchar('kind', { length: 16 }).notNull(),
+  day: char('day', { length: 10 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (t) => [primaryKey({ columns: [t.userId, t.kind, t.day] })]);
