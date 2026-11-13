@@ -1,6 +1,6 @@
 import 'server-only';
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
-import webpush from 'web-push';
+import { sendNotification, setVapidDetails } from 'web-push';
 import { db, schema } from '@/db';
 import { addDays, rankRows, trDay, weekEnd, weekStart } from './league';
 import { dueText, leagueText, postText, PUSH_HOURS, streakText, type PushKind, type PushPayload } from './push-shared';
@@ -12,7 +12,7 @@ export const pushReady = () => !!(process.env.VAPID_PUBLIC_KEY && process.env.VA
 let configured = false;
 function setup() {
   if (configured || !pushReady()) return pushReady();
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@example.com', process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
+  setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@example.com', process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
   configured = true;
   return true;
 }
@@ -46,7 +46,7 @@ export async function sendPush(userIds: number[], payload: PushPayload, kind?: P
   const gone: number[] = [];
   await Promise.all(subs.map(async (s) => {
     try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 6 * 3600, urgency: 'normal' });
+      await sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 6 * 3600, urgency: 'normal' });
       sent++;
     } catch (e) {
       failed++;
