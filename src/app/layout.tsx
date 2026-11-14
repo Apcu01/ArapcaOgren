@@ -47,6 +47,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        {/* Ziyaretçi istatistikleri (stats.minefox.net) — çerezsiz; /admin sayfaları sayılmaz */}
+        <script defer src="https://stats.minefox.net/script.js" data-site="4v8cc95jeg" data-exclude="/admin" />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen flex flex-col" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: SETTINGS_SCRIPT }} />
