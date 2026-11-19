@@ -34,7 +34,7 @@ async function main() {
       else await c.query('INSERT INTO topics SET ?', [{ id: t.id, ...row }]);
       await c.query('DELETE FROM activities WHERE topic_id = ?', [t.id]);
       for (const [i, a] of t.acts.entries()) {
-        const empty = ['flash', 'listen', 'clock', 'speak'].includes(a.type) && !(a.items && a.items.length);
+        const empty = ['flash', 'listen', 'clock', 'speak', 'endless'].includes(a.type) && !(a.items && a.items.length);
         await c.query('INSERT INTO activities SET ?', [{
           topic_id: t.id, position: i, type: a.type, mode: a.type === 'clock' ? a.mode || 'mix' : null, title: a.title,
           description: a.desc, glyph: a.glyph || '', keep_order: a.keepOrder ? 1 : 0, items: empty ? null : JSON.stringify(a.items || [])

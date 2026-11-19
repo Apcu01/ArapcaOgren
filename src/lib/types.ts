@@ -13,7 +13,7 @@ export type Section = {
   narr?: string;
 };
 
-export const ACT_TYPES = ['flash', 'match', 'mc', 'fill', 'order', 'tf', 'listen', 'test', 'clock', 'speak', 'dictate', 'harakat'] as const;
+export const ACT_TYPES = ['flash', 'match', 'mc', 'fill', 'order', 'tf', 'listen', 'test', 'clock', 'speak', 'dictate', 'harakat', 'endless'] as const;
 export type ActType = (typeof ACT_TYPES)[number];
 export type QType = 'mc' | 'fill' | 'tf' | 'order' | 'listen';
 

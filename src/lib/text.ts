@@ -67,7 +67,8 @@ export const TYPE: Record<ActType, { label: string; kind: string }> = {
   clock: { label: 'Sınırsız pratik', kind: 'Pratik' },
   speak: { label: 'Telaffuz', kind: 'Konuşma' },
   dictate: { label: 'Dikte', kind: 'Dinleme' },
-  harakat: { label: 'Hareke koy', kind: 'Yazı' }
+  harakat: { label: 'Hareke koy', kind: 'Yazı' },
+  endless: { label: 'Sınırsız pratik', kind: 'Pratik' }
 };
 
 /** Dikte etkinliğinde sorulan en fazla kelime */
@@ -103,7 +104,7 @@ export function actsOf(t: Pick<Topic, 'acts' | 'words'> & { autoListen?: boolean
       : items.length;
     let meta = a.type === 'flash' ? count + ' kart' : a.type === 'speak' || a.type === 'dictate' || a.type === 'harakat' ? count + ' kelime' : a.type === 'match' ? count + ' çift' : count + ' soru';
     let mins = Math.max(3, Math.round(count * (a.type === 'flash' ? 0.35 : 0.55)));
-    if (a.type === 'clock') { count = 0; meta = 'Sınırsız soru'; mins = 5; }
+    if (a.type === 'clock' || a.type === 'endless') { count = 0; meta = 'Sınırsız soru'; mins = 5; }
     return { ...a, id, count, meta, mins };
   });
 }

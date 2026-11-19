@@ -27,10 +27,14 @@ const LIMIT = Number(opt('limit', '0'));
 const PRICE_PER_CHAR = MODEL.startsWith('elevenlabs/') ? 40e-6 : Number(opt('price', '0'));
 const KEY = process.env.OPENROUTER_API_KEY;
 
+/** Kalan bakiye: hesap kredisi ile anahtar sınırından küçük olanı (anahtar sınırı tek başına yanıltıcı) */
 async function balance() {
-  const r = await fetch('https://openrouter.ai/api/v1/key', { headers: { Authorization: 'Bearer ' + KEY } });
-  const j = (await r.json()) as { data?: { limit_remaining?: number | null; usage?: number } };
-  return j.data?.limit_remaining ?? null;
+  const get = (u: string) => fetch('https://openrouter.ai/api/v1/' + u, { headers: { Authorization: 'Bearer ' + KEY } }).then((r) => r.json()).catch(() => null);
+  const [c, k] = await Promise.all([get('credits'), get('key')]) as [{ data?: { total_credits?: number; total_usage?: number } } | null, { data?: { limit_remaining?: number | null } } | null];
+  const vals: number[] = [];
+  if (c?.data?.total_credits != null && c.data.total_usage != null) vals.push(c.data.total_credits - c.data.total_usage);
+  if (k?.data?.limit_remaining != null) vals.push(k.data.limit_remaining);
+  return vals.length ? Math.min(...vals) : null;
 }
 
 async function speak(text: string): Promise<Buffer> {

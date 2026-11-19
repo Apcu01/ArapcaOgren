@@ -31,6 +31,12 @@ const TABLES: Record<string, string> = {
   push_subscriptions: "CREATE TABLE IF NOT EXISTS `push_subscriptions` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `user_id` int NOT NULL,\n  `endpoint` varchar(512) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `p256dh` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `auth` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `kinds` json NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `push_subscriptions_endpoint_uq` (`endpoint`),\n  KEY `push_subscriptions_user_idx` (`user_id`),\n  CONSTRAINT `push_subscriptions_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   push_sends: "CREATE TABLE IF NOT EXISTS `push_sends` (\n  `user_id` int NOT NULL,\n  `kind` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `day` char(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`user_id`,`kind`,`day`),\n  CONSTRAINT `push_sends_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
 };
+// Sınırsız pratik etkinliğinin başlık ve açıklaması
+const ENDLESS: Record<string, [string, string]> = {
+  zamirler: ['Sınırsız zamir pratiği', 'Zamirin anlamı, Arapçası, dinleyerek bulma, zamir ile yüklem uyumu ve bu/şu işaret zamirleri. Sorular her seferinde farklı biçimde gelir, bitene kadar devam eder.'],
+  iyelik: ['Sınırsız iyelik pratiği', 'Ekli isimlerin anlamı ve Arapçası, doğru eki bulma, dinleme ve "bende var" kalıbı. Sorular her seferinde farklı biçimde gelir, bitene kadar devam eder.'],
+  words: ['Sınırsız kelime pratiği', 'Bu dersin kelimeleri farklı biçimlerde sorulur: anlamını bul, Arapçasını bul, dinleyip bul. Bitene kadar devam eder.']
+};
 // Eski tablolara sonradan eklenen sütunlar
 const COLUMNS: [table: string, column: string, def: string][] = [
   ["users", "league_hidden", "tinyint(1) NOT NULL DEFAULT '0'"]
@@ -67,6 +73,18 @@ async function main() {
         [r.slug, i, r.title, r.ar, r.level, r.topic, r.desc, JSON.stringify(r.sentences), JSON.stringify(r.questions)]);
     }
     console.log('+ ' + DEFAULT_READINGS.length + ' okuma metni');
+  }
+  // Sınırsız pratik: kelimesi olan her derse (saatlerin kendi sınırsız pratiği var) bir kez eklenir, konu testinden önceye
+  const [tops] = await conn.query<mysql.RowDataPacket[]>(
+    "SELECT t.id FROM topics t WHERE t.id <> 'saatler' AND (t.id IN ('zamirler', 'iyelik') OR JSON_LENGTH(t.words) >= 4) AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.topic_id = t.id AND a.type IN ('endless', 'clock'))");
+  for (const { id } of tops) {
+    const [acts] = await conn.query<mysql.RowDataPacket[]>('SELECT id, position, type FROM activities WHERE topic_id = ? ORDER BY position', [id]);
+    const test = acts.find((a) => a.type === 'test');
+    const pos = test ? Number(test.position) : acts.length ? Number(acts[acts.length - 1].position) + 1 : 0;
+    if (test) await conn.query('UPDATE activities SET position = position + 1 WHERE topic_id = ? AND position >= ?', [id, pos]);
+    const [title, desc] = ENDLESS[id] || ENDLESS.words;
+    await conn.query('INSERT INTO activities (topic_id, position, type, title, description, glyph, keep_order, items) VALUES (?, ?, ?, ?, ?, ?, 0, NULL)', [id, pos, 'endless', title, desc, '∞']);
+    console.log('+ sınırsız pratik: ' + id);
   }
   await conn.end();
   console.log("Veritabanı güncel.");

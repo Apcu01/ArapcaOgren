@@ -1,7 +1,7 @@
 'use client';
 
 /* Etkinlik oynatıcısı: kelime kartları, eşleştirme, çoktan seçmeli, boşluk doldurma,
-   doğru/yanlış, cümle kurma, dinleme, karma konu testi ve sınırsız saat pratiği */
+   doğru/yanlış, cümle kurma, dinleme, karma konu testi, sınırsız saat pratiği ve sınırsız ders pratiği */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Pair, Question, QType, Word } from '@/lib/types';
 import { DICTATE_MAX, esc, HARAKAT_MAX, HARAKAT_MIN_LETTERS, isAr, shuffle, SPEAK_MAX, TYPE, type ActView } from '@/lib/text';
@@ -12,6 +12,7 @@ import { pronScore, pronVerdict, type PronVerdict } from '@/lib/pron';
 import { recognizer, type SR } from '@/lib/speech';
 import { clockSVG, distractors, fmt, hmKey, nextH, randTime, ring, timeAr, timeTr, timeWhy, type HM } from '@/lib/clock';
 import { hash53 } from '@/lib/qkey';
+import { endlessGen, nextQ, type EQ } from '@/lib/endless';
 
 /* ---------- Hatalarım için yanlışları çoktan seçmeli soruya çevirme (seçenekler kararlı) ---------- */
 const pick3 = (seed: string, pool: string[]) => [...new Set(pool)].sort((a, b) => (hash53(seed + a) < hash53(seed + b) ? -1 : 1)).slice(0, 3);
@@ -146,6 +147,7 @@ export default function Player({ topic, act, list, onClose, onSwitch, preview = 
           ) : act.type === 'flash' ? <Flash {...props} />
             : act.type === 'match' ? <Match {...props} />
             : act.type === 'clock' ? <ClockPractice {...props} />
+            : act.type === 'endless' ? <EndlessPractice {...props} />
             : act.type === 'speak' ? <Speak {...props} />
             : act.type === 'dictate' ? <Dictate {...props} />
             : act.type === 'harakat' ? <Harakat {...props} />
@@ -906,6 +908,154 @@ function ClockPractice({ act, finish, setHdr, toTop, endlessRef, close, log, mis
   );
 }
 
+/** Kelime dizme: karışık Arapça kelimelere sırayla dokunup cümle kurulur (biri fazla) */
+function TileBuilder({ tiles, answer, picked, onDone }: { tiles: string[]; answer: string; picked: string | null; onDone: (v: string) => void }) {
+  const { tx } = useApp();
+  const [used, setUsed] = useState<number[]>([]);
+  const need = answer.split(' ').length;
+  const built = used.map((i) => tiles[i]).join(' ');
+  // Cevaptan sonra soru ekranı yeniden kurulur; kurulan cümle verilen cevaptan gösterilir
+  const shown = picked ? picked.split(' ') : used.map((i) => tiles[i]);
+  return (
+    <div className="flex flex-col gap-4">
+      <div dir="rtl" className={`min-h-[76px] px-4 py-3 rounded-2xl border-2 border-dashed flex flex-wrap items-center gap-2 ${picked ? (picked === answer ? 'border-okln bg-okbg' : 'border-badln bg-badbg') : 'border-line3 bg-s2'}`}>
+        {shown.length ? shown.map((w, k) => (
+          <button key={k} type="button" disabled={!!picked} onClick={() => setUsed((u) => u.filter((_, x) => x !== k))} className="px-3 py-1.5 rounded-xl bg-s3 border border-line2" aria-label="Kelimeyi geri al">
+            <Raw html={tx.ar(w, 'text-[26px]')} />
+          </button>
+        )) : <span dir="ltr" className="w-full text-center text-sm text-faint">Kelimelere dokun, cümle burada oluşur.</span>}
+      </div>
+      <div dir="rtl" className="flex flex-wrap justify-center gap-2">
+        {tiles.map((t, i) => (
+          <button key={i} type="button" disabled={!!picked || used.includes(i)} onClick={() => setUsed((u) => [...u, i])}
+            className={`opt px-4 py-2 rounded-2xl bg-s3 border border-line2 ${used.includes(i) || picked?.split(' ').includes(t) ? 'is-gone' : ''}`}>
+            <Raw html={tx.ar(t, 'text-[26px]')} />
+          </button>
+        ))}
+      </div>
+      {!picked && (
+        <div className="flex justify-center gap-3">
+          <button type="button" onClick={() => setUsed([])} disabled={!used.length} className="h-11 px-5 rounded-xl border border-line3 bg-s2 text-soft font-semibold disabled:opacity-50">Temizle</button>
+          <button type="button" onClick={() => onDone(built)} disabled={used.length !== need} className="h-11 px-6 rounded-xl bg-acc text-onacc font-bold disabled:opacity-50">Kontrol et</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ================= Sınırsız pratik (zamirler, iyelik ekleri, kelimeler) ================= */
+function EndlessPractice({ topic, finish, setHdr, toTop, endlessRef, close, log, miss, hit, tally }: SubProps) {
+  const { tx, speak } = useApp();
+  const gen = useMemo(() => endlessGen(topic.id, topic.words), [topic.id, topic.words]);
+  const recent = useRef<string[]>([]);
+  const make = () => { const q = nextQ(gen!, recent.current); recent.current = [...recent.current.slice(-5), q.key]; return q; };
+  const [stats, setStats] = useState<Endless & { streak: number }>({ answered: 0, correct: 0, best: 0, streak: 0 });
+  const wrong = useRef<Wrong[]>([]);
+  const [q, setQ] = useState<EQ | null>(() => (gen ? make() : null));
+  const [picked, setPicked] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const nextBtn = useRef<HTMLButtonElement>(null);
+  const fb = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { endlessRef.current = stats; }, [stats, endlessRef]);
+  useEffect(() => {
+    setHdr(stats.answered ? stats.correct / stats.answered : 0, `Soru ${stats.answered + (picked ? 0 : 1)} · sınırsız`);
+  }, [stats, picked, setHdr]);
+  useEffect(() => {
+    if (q?.listen) { const x = setTimeout(() => speak(q.ar!), 250); return () => clearTimeout(x); }
+  }, [q]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    if (picked) { nextBtn.current?.focus({ preventScroll: true }); fb.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  }, [picked]);
+
+  if (!q) return <p className="text-center text-mute">Bu derste sınırsız pratik için yeterli kelime yok.</p>;
+  // Hatalarım'a eklenen soru (çoktan seçmeli)
+  const asQ = (): Question => ({ t: 'mc', q: q.prompt + (q.tr ? ' ' + q.tr : ''), ar: q.ar, options: q.tiles ? shuffle([q.a, ...(q.alt || [])]) : q.options, a: q.a, why: q.why });
+  const goNext = () => { clearTimeout(timer.current); setPicked(null); setQ(make()); toTop(); };
+
+  function choose(o: string) {
+    if (picked || !q) return;
+    const ok = o === q.a;
+    tally(ok);
+    log({ qk: q.kind, label: q.label, ok });
+    if (ok) hit(asQ()); else miss(asQ());
+    setPicked(o);
+    setStats((s) => {
+      const streak = ok ? s.streak + 1 : 0;
+      return { answered: s.answered + 1, correct: s.correct + (ok ? 1 : 0), streak, best: Math.max(s.best, streak) };
+    });
+    if (!ok) {
+      const show = (v: string) => (q.optAr ? tx.ar(v, 'text-2xl') : esc(v));
+      wrong.current.push({
+        prompt: tx.text(q.prompt) + (q.ar ? ' ' + tx.ar(q.ar, 'text-2xl') : '') + (q.tr ? ' ' + esc(q.tr) : ''),
+        given: show(o), right: show(q.a), why: tx.text(q.why)
+      });
+      if (wrong.current.length > 12) wrong.current.shift();
+    } else {
+      timer.current = setTimeout(goNext, 1600);
+    }
+  }
+  function end() {
+    clearTimeout(timer.current);
+    if (!stats.answered) { endlessRef.current = null; return close(); }
+    const e = { answered: stats.answered, correct: stats.correct, best: stats.best };
+    finish(e.correct / e.answered, endlessDone(e), wrong.current, e);
+  }
+
+  const ok = picked === q.a;
+  const acc = stats.answered ? Math.round((stats.correct / stats.answered) * 100) : 0;
+  const chips: [string, string | number, string][] = [
+    ['Doğru', stats.correct, 'text-okt'], ['Yanlış', stats.answered - stats.correct, 'text-bad'], ['Seri', stats.streak, 'text-acct'],
+    ['En iyi seri', stats.best, 'text-soft'], ['Başarı', stats.answered ? '%' + acc : '-', 'text-ink']
+  ];
+
+  return (
+    <div className="flex flex-col gap-6 pop" key={q.key + stats.answered}>
+      <div className="flex flex-wrap justify-center gap-2 text-sm">
+        {chips.map(([l, v, c]) => <span key={l} className="px-3 py-1.5 rounded-full bg-s1 border border-line"><span className="text-faint">{l}</span> <b className={c}>{v}</b></span>)}
+      </div>
+      <Raw as="p" className="m-0 text-lg sm:text-xl font-semibold text-center" html={tx.text(q.prompt)} />
+      <div className="flex items-center justify-center gap-4 flex-wrap px-4 py-6 rounded-2xl bg-s3 border border-line2 min-h-[120px]">
+        {q.listen && !picked ? (
+          <button type="button" data-replay onClick={() => speak(q.ar!)} className="w-20 h-20 rounded-full bg-acc text-onacc flex items-center justify-center" aria-label="Tekrar dinle"><Raw html={I.speaker(30)} /></button>
+        ) : q.ar ? (
+          <><Raw html={tx.ar(q.ar, 'text-[34px] sm:text-[42px] text-ink text-center')} />{!q.ar.includes('___') && <SayBtn text={q.ar} />}</>
+        ) : (
+          <span className="text-[26px] sm:text-[30px] font-bold text-center leading-snug">{q.tr}</span>
+        )}
+      </div>
+      {q.tiles ? <TileBuilder key={q.key + stats.answered} tiles={q.tiles} answer={q.a} picked={picked} onDone={choose} /> : <div className="grid sm:grid-cols-2 gap-3">
+        {q.options.map((o, i) => (
+          <button key={o} type="button" disabled={!!picked} onClick={() => choose(o)} data-v={o}
+            className={`opt relative min-h-[64px] px-5 py-3 rounded-2xl bg-s3 border border-line2 text-ink text-center ${picked ? (o === q.a ? 'is-right' : o === picked ? 'is-wrong shake' : '') : ''}`}>
+            <span className="absolute left-3 top-2 text-[11px] font-bold text-faint">{i + 1}</span>
+            {q.optAr ? <Raw html={tx.ar(o, 'text-[26px]')} /> : <span className="text-lg font-semibold">{o}</span>}
+          </button>
+        ))}
+      </div>}
+      <div ref={fb} aria-live="polite">
+        {picked && (
+          <div className={`pop rounded-2xl p-5 sm:p-6 flex flex-col gap-3 border ${ok ? 'bg-okbg border-okln' : 'bg-badbg border-badln'}`}>
+            <div className={`flex items-center gap-2 font-bold text-lg ${ok ? 'text-okt' : 'text-bad'}`}>
+              <Raw html={ok ? I.check(20) : I.x(20)} /> {ok ? 'Doğru!' : 'Yanlış'}
+              {ok && stats.streak >= 3 && <span className="text-acct text-base">{stats.streak} doğru üst üste</span>}
+            </div>
+            <div className="flex items-center gap-3 flex-wrap"><Raw html={tx.ar(q.full, 'text-[26px] text-ink')} /><SayBtn text={q.full} cls="w-9 h-9" size={16} /></div>
+            <p className="m-0 text-soft">{q.fullTr}</p>
+            {q.why && <p className="m-0 text-[15px] leading-relaxed text-prose"><span className="inline-flex align-[-3px] text-acct mr-1"><Raw html={I.bulb(17)} /></span><Raw html={tx.text(q.why)} /></p>}
+            <div className="flex justify-end"><button ref={nextBtn} type="button" data-next onClick={goNext} className="h-12 px-7 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2">Sonraki soru <Raw html={I.arrow()} /></button></div>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-line">
+        <span className="text-xs text-faint">İpucu: {q.tiles ? 'kelimeye dokunarak ekle, eklenen kelimeye dokunarak geri al' : '1-4 tuşlarıyla seç'}, Enter ile devam et{q.listen ? ', boşlukla tekrar dinle' : ''}.</span>
+        <button type="button" onClick={end} className="h-11 px-5 rounded-xl border border-line3 bg-s2 text-soft font-semibold hover:border-lineh">Bitir ve sonucu gör</button>
+      </div>
+    </div>
+  );
+}
+
 /* ================= Sonuç ================= */
 function Result({ score, done, wrong, endless, act, list, onAgain, onBack, onNext }: {
   score: number; done: boolean; wrong: Wrong[]; endless?: Endless; act: ActView; list: ActView[];
@@ -924,7 +1074,7 @@ function Result({ score, done, wrong, endless, act, list, onAgain, onBack, onNex
       <div className="flex flex-col gap-2">
         <h2 className="m-0 text-3xl font-bold">{endless && !done && pct >= 70 ? 'İyi gidiyorsun' : msg[0]}</h2>
         <p className="m-0 text-mute max-w-[460px]">
-          {endless ? `${endless.answered} saat cevapladın · ${endless.correct} doğru · en uzun seri ${endless.best}.${done ? '' : ' Tamamlanmış sayılması için en az 10 soru ve %70 başarı gerekir.'}` : msg[1]}
+          {endless ? `${endless.answered} ${act.type === 'clock' ? 'saat' : 'soru'} cevapladın · ${endless.correct} doğru · en uzun seri ${endless.best}.${done ? '' : ' Tamamlanmış sayılması için en az 10 soru ve %70 başarı gerekir.'}` : msg[1]}
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-3">

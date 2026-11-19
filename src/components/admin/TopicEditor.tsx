@@ -465,7 +465,8 @@ const NEW_ACT: Record<ActType, () => Activity> = {
   speak: () => ({ id: '', type: 'speak', title: 'Telaffuz alıştırması', desc: 'Kelimeyi dinle, sonra sen söyle. Tarayıcı söylediğini kontrol eder.', glyph: 'تَكَلَّمْ' }),
   dictate: () => ({ id: '', type: 'dictate', title: 'Dikte: dinle ve yaz', desc: 'Kelimeyi dinle, duyduğunu Arapça ya da okunuşuyla yaz.', glyph: 'اُكْتُبْ' }),
   harakat: () => ({ id: '', type: 'harakat', title: 'Hareke koy', desc: 'Harekesiz kelimenin harflerine doğru harekeleri koy.', glyph: 'حَرَكَة' }),
-  clock: () => ({ id: '', type: 'clock', mode: 'mix', title: 'Sınırsız saat pratiği', desc: 'Rastgele saatlerle bitmeyen pratik.', glyph: '∞' })
+  clock: () => ({ id: '', type: 'clock', mode: 'mix', title: 'Sınırsız saat pratiği', desc: 'Rastgele saatlerle bitmeyen pratik.', glyph: '∞' }),
+  endless: () => ({ id: '', type: 'endless', title: 'Sınırsız pratik', desc: 'Sorular farklı biçimlerde rastgele gelir: anlamını bul, Arapçasını bul, dinle. Bitene kadar devam eder.', glyph: '∞' })
 };
 
 function ActsTab({ d, up, onPreview }: TabProps & { onPreview: (i: number) => void }) {
@@ -481,7 +482,7 @@ function ActsTab({ d, up, onPreview }: TabProps & { onPreview: (i: number) => vo
               <span className="w-10 h-10 shrink-0 rounded-xl bg-chip border border-chipln flex items-center justify-center font-ar text-[16px] text-acct overflow-hidden">{a.glyph || d.glyph}</span>
               <span className="min-w-0 flex flex-col">
                 <span className="font-bold truncate">{a.title || 'Başlıksız etkinlik'}</span>
-                <span className="text-xs text-faint">{TYPE[a.type].label}{a.items ? ` · ${a.items.length} ${a.type === 'match' ? 'çift' : 'soru'}` : a.type === 'clock' ? ' · sınırsız' : ' · kelimelerden'}{!a.id ? ' · yeni' : ''}</span>
+                <span className="text-xs text-faint">{TYPE[a.type].label}{a.items ? ` · ${a.items.length} ${a.type === 'match' ? 'çift' : 'soru'}` : a.type === 'clock' || a.type === 'endless' ? ' · sınırsız' : ' · kelimelerden'}{!a.id ? ' · yeni' : ''}</span>
               </span>
             </button>
             <button type="button" onClick={() => onPreview(i)} className="h-9 px-3 rounded-lg border border-line3 bg-s2 text-soft text-sm font-semibold hover:text-ink hover:border-lineh">Önizle</button>
@@ -527,6 +528,9 @@ function ActEditor({ a, set, words }: { a: Activity; set: (fn: (a: Activity) => 
             <option value="mix" className="bg-s2">Karışık</option>
           </select>
         </F>
+      )}
+      {a.type === 'endless' && (
+        <p className="m-0 px-4 py-3 rounded-xl bg-s3 border border-line text-sm text-mute">Sorular otomatik üretilir. Zamirler ve İyelik Ekleri derslerinde dilbilgisi kalıplarından (zamir-yüklem uyumu, işaret zamirleri, doğru ek, عِنْدَ ile sahiplik), diğer derslerde "Kelimeler" bölümündeki {words} kelimeden (en az 4 kelime gerekir).</p>
       )}
       {(a.type === 'flash' || a.type === 'listen' || a.type === 'speak' || a.type === 'dictate' || a.type === 'harakat') && (
         <p className="m-0 px-4 py-3 rounded-xl bg-s3 border border-line text-sm text-mute">Bu etkinlik dersin "Kelimeler" bölümündeki {words} kelimeyi kullanır{a.type === 'listen' ? ' (rastgele 10 tanesi sorulur)' : a.type === 'speak' ? ' (rastgele 8 tanesi söyletilir)' : a.type === 'dictate' ? ' (rastgele 10 tanesi yazdırılır)' : a.type === 'harakat' ? ' (en az 2 harekeli harfi olan 8 kelime sorulur)' : ''}.</p>

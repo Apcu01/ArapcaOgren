@@ -2,6 +2,7 @@
 import type mysql from 'mysql2/promise';
 import { ALPHABET_TOPIC, HARAKAT, LETTERS } from '../src/lib/alphabet';
 import { timeAr } from '../src/lib/clock';
+import { endlessTexts } from '../src/lib/endless';
 import { bareWord, sentenceAr, type Sentence } from '../src/lib/readings';
 import { audioKey, isAr } from '../src/lib/text';
 import type { Item, Section, Word } from '../src/lib/types';
@@ -38,6 +39,7 @@ export async function collectTexts(conn: mysql.Connection): Promise<AudioText[]>
     }
   }
   for (let h = 1; h <= 12; h++) for (let m = 0; m < 60; m += 5) add('Saat pratiği', 'السَّاعَةُ ' + timeAr(h, m));
+  for (const s of endlessTexts()) add('Sınırsız pratik', s);
   // Okuma metinleri: cümleler (baştan sona dinleme) ve kelimeye dokununca okunan tek kelimeler
   const [readings] = await conn.query<mysql.RowDataPacket[]>('SELECT ar, sentences FROM readings ORDER BY position');
   for (const r of readings) {
