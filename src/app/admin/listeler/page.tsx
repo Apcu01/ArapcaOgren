@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { Card, Stat, ago, dt } from '@/components/admin/ui';
 import { adminLists, type ListFilter } from '@/lib/admin-lists';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Kelime listeleri' };
 
 const FILTERS: [ListFilter, string][] = [['all', 'Tümü'], ['shared', 'Paylaşılanlar'], ['copies', 'Kopyalar']];
 
 export default async function AdminListsPage({ searchParams }: { searchParams: Promise<{ q?: string; f?: string; s?: string }> }) {
+  await requireAdmin();
   const sp = await searchParams;
   const q = (sp.q || '').trim().slice(0, 100);
   const filter: ListFilter = sp.f === 'shared' || sp.f === 'copies' ? sp.f : 'all';

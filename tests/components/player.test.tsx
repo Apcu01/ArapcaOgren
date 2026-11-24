@@ -17,7 +17,7 @@ function setup(a: Activity) {
   const [view] = actsOf({ acts: [a], words });
   const onClose = vi.fn();
   render(
-    <AppProvider audios={{}}>
+    <AppProvider audioV="test">
       <Player topic={topic} act={view} list={[view]} onClose={onClose} onSwitch={vi.fn()} />
     </AppProvider>
   );

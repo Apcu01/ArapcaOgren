@@ -5,12 +5,14 @@ import ListActions from '@/components/admin/ListActions';
 import { Card, Stat, ago, dt } from '@/components/admin/ui';
 import { adminList } from '@/lib/admin-lists';
 import { fmtTime, statusOf, type Status } from '@/lib/study';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Kelime listesi' };
 
 const STATE: Record<Status, string> = { new: 'Çalışılmamış', learning: 'Öğreniliyor', learned: 'Öğrenildi' };
 
 export default async function AdminListDetail({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();
   const l = await adminList(id);

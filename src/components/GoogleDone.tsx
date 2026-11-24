@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useApp } from './AppProvider';
 import { mergeGuestProgress } from './AuthForm';
+import { safeNext } from '@/lib/site';
 
 // Google ile girişten sonra: misafir ilerlemesini hesaba aktar ve kaldığı sayfaya dön
 export default function GoogleDone({ next }: { next: string }) {
@@ -13,8 +14,7 @@ export default function GoogleDone({ next }: { next: string }) {
     (async () => {
       await mergeGuestProgress();
       await refreshSession();
-      const safe = next.startsWith('/') && !next.startsWith('//') ? next : '/';
-      router.replace(safe);
+      router.replace(safeNext(next));
       router.refresh();
     })();
   }, [next, router, refreshSession]);

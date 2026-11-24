@@ -155,12 +155,14 @@
 
 
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: rgb(var(--c-bg)); color: rgb(var(--c-ink)); font-family: Manrope, system-ui, sans-serif; }
+body { margin: 0; background: rgb(var(--c-bg)); color: rgb(var(--c-ink)); font-family: var(--font-sans), system-ui, sans-serif; }
 a { color: rgb(var(--c-acct)); text-decoration: none; }
 a:hover { color: rgb(var(--c-acch)); }
 ::selection { background: rgb(var(--c-lineh)); color: rgb(var(--c-ink)); }
 
-.ar { font-family: 'Noto Sans Arabic', sans-serif; line-height: 1.7; unicode-bidi: isolate; }
+/* Arapça yazı tipi html.ar-font varken (bkz. src/lib/fonts.ts); o zamana kadar cihazın yazı tipi */
+html.ar-font { --font-ar: var(--font-ar-face); }
+.ar { font-family: var(--font-ar, system-ui), sans-serif; line-height: 1.7; unicode-bidi: isolate; }
 
 /* Ayarlar */
 body.no-tl .tl { display: none !important; }

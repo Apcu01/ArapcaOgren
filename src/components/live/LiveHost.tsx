@@ -12,7 +12,7 @@ import type { LiveReport } from '@/lib/live-report';
 import { hostKeyOf, OPTS, OptText, post, Prompt, Ring, Shape, store, useCountdown, usePoll } from './shared';
 
 type HostState = {
-  v: number; code: string; title: string; phase: 'lobby' | 'question' | 'reveal' | 'board' | 'end'; q: number; total: number; seconds: number; remaining: number;
+  v: number; code: string; title: string; round: number; phase: 'lobby' | 'question' | 'reveal' | 'board' | 'end'; q: number; total: number; seconds: number; remaining: number;
   question: { prompt: string; promptTl: string; side: 'ar' | 'tr'; options: string[]; say: string; correct: number | null } | null;
   answered: number; counts: number[] | null;
   players: { id: string; name: string; score: number; streak: number; last: number | null }[];
@@ -47,7 +47,7 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
   const joinUrl = origin ? `${origin}/canli/${code}` : '';
   useEffect(() => { setOrigin(location.origin); }, []);
 
-  async function act(action: 'start' | 'next' | 'skip' | 'kick' | 'end', pid?: string) {
+  async function act(action: 'start' | 'next' | 'skip' | 'kick' | 'end' | 'again', pid?: string) {
     setBusy(true);
     const r = await post(`/api/live/${code}`, { action, k: hostKey, pid });
     setBusy(false);
@@ -162,7 +162,12 @@ function Host({ code, hostKey }: { code: string; hostKey: string }) {
         <div className="flex justify-center gap-3">
           {s.phase === 'board'
             ? <button type="button" disabled={busy} onClick={() => act('next')} className="h-14 px-8 rounded-2xl bg-acc text-onacc text-lg font-bold">Sonraki soru</button>
-            : <Link href="/canli" className="h-14 px-8 rounded-2xl bg-acc text-onacc text-lg font-bold inline-flex items-center hover:text-onacc">Yeni yarışma</Link>}
+            : (
+              <span className="flex flex-wrap justify-center gap-3">
+                <button type="button" disabled={busy || !s.players.length} onClick={() => act('again')} className="h-14 px-8 rounded-2xl bg-acc text-onacc text-lg font-bold inline-flex items-center gap-2 disabled:opacity-50"><Raw html={I.refresh(20)} /> Aynı oyuncularla yeniden oyna</button>
+                <Link href="/canli" className="h-14 px-8 rounded-2xl border border-line3 bg-s2 text-ink text-lg font-semibold inline-flex items-center hover:text-ink hover:border-lineh">Yeni yarışma</Link>
+              </span>
+            )}
         </div>
         {s.phase === 'end' && s.report && s.report.questions.length > 0 && (
           <>

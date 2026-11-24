@@ -17,6 +17,6 @@ export async function POST(req: Request) {
   const p = await parse(req, ListZ);
   if ('res' in p) return p.res;
   if ((await countLists(user.id)) >= LISTS_MAX) return fail(`En fazla ${LISTS_MAX} liste oluşturabilirsin.`);
-  const { title, description, items } = p.data;
-  return ok({ id: await createList(user.id, title, description, items) });
+  const { title, description, items, folder, tags } = p.data;
+  return ok({ id: await createList(user.id, title, description, items, { folder, tags }) });
 }

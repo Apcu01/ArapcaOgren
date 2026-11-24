@@ -7,5 +7,6 @@ export const metadata = { title: 'Sözlük', description: 'Derslerde geçen büt
 // Önceden hazırlanır; ?konu= süzgeci tarayıcıda okunur
 export default async function DictionaryPage() {
   const [topics, slugs] = await Promise.all([getTopics(), getWordSlugMap()]);
-  return <DictionaryView topics={topics} slugs={slugs} />;
+  // Sözlük yalnızca kelimeleri kullanır: anlatım ve sorular gönderilmez
+  return <DictionaryView topics={topics.map((t) => ({ id: t.id, n: t.n, name: t.name, words: t.words }))} slugs={slugs} />;
 }

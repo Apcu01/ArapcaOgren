@@ -28,7 +28,7 @@ const NAV: [string, string, string][] = [
 
 function activeKey(path: string) {
   if (path.startsWith('/ilerleme')) return 'progress';
-  if (path.startsWith('/sozluk')) return 'dict';
+  if (path.startsWith('/sozluk') || path.startsWith('/zit-es-anlamlilar')) return 'dict';
   if (path.startsWith('/kelime-bul')) return 'find';
   if (path.startsWith('/okuma')) return 'read';
   if (path.startsWith('/listelerim')) return 'lists';

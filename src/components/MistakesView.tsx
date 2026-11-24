@@ -1,16 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Question } from '@/lib/types';
 import type { MistakeItem } from '@/lib/qkey';
 import { esc, type ActView, type TextFns } from '@/lib/text';
 import { clockSVG } from '@/lib/clock';
+import { RULE_TR } from '@/lib/endless';
+import { DRILLS } from '@/lib/drills';
 import { useApp } from './AppProvider';
 import { I, Raw } from './icons';
-import Player from './Player';
+import Player, { usePreloadPlayer } from './LazyPlayer';
 
 const PRACTICE_SIZE = 15;
+const VIEW_KEY = 'arblearn:mistakes-view';
 
 function promptHtml(q: Question, tx: TextFns) {
   if (q.t === 'listen') return tx.ar(q.ar || '', 'text-2xl');
@@ -22,16 +25,27 @@ function promptHtml(q: Question, tx: TextFns) {
 const rightOf = (q: Question) => (q.t === 'tf' ? (q.a ? 'Doğru' : 'Yanlış') : q.t === 'order' ? (q.w || []).join(' ') : String(q.a ?? ''));
 
 export default function MistakesView({ topics }: { topics: { id: string; name: string; n: number }[] }) {
+  usePreloadPlayer();
   const { tx, mistakes, removeMistake, clearMistakes, user } = useApp();
   const [playing, setPlaying] = useState<{ act: ActView; nonce: number } | null>(null);
-  const nameOf = (id: string) => (id === 'alfabe' ? 'Alfabe' : topics.find((t) => t.id === id)?.name || id);
-  const orderOf = (id: string) => (id === 'alfabe' ? 0 : topics.find((t) => t.id === id)?.n ?? 999);
+  const nameOf = (id: string) => (id === 'alfabe' ? 'Alfabe' : DRILLS[id]?.name || topics.find((t) => t.id === id)?.name || id);
+  const orderOf = (id: string) => (id === 'alfabe' ? 0 : DRILLS[id] ? 900 : topics.find((t) => t.id === id)?.n ?? 999);
+  // Gruplama: derse göre ya da konuya (kurala) göre; seçim bu tarayıcıda hatırlanır
+  const [view, setView] = useState<'topic' | 'rule'>('topic');
+  useEffect(() => { try { if (localStorage.getItem(VIEW_KEY) === 'rule') setView('rule'); } catch { /* yok */ } }, []);
+  const pickView = (v: 'topic' | 'rule') => { setView(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* yok */ } };
+  /** Sorunun kural başlığı: sınırsız pratikte ve saatte sorunun kendisinde; diğerlerinde dersin adı */
+  const ruleOf = (m: MistakeItem) => {
+    const g = m.question.g || (m.question.clock ? 'saat' : '');
+    return g ? RULE_TR[g] || g : nameOf(m.topicId);
+  };
 
   const groups = useMemo(() => {
     const m = new Map<string, MistakeItem[]>();
-    for (const it of mistakes) m.set(it.topicId, [...(m.get(it.topicId) || []), it]);
-    return [...m.entries()].sort((a, b) => orderOf(a[0]) - orderOf(b[0]));
-  }, [mistakes]); // eslint-disable-line react-hooks/exhaustive-deps
+    for (const it of mistakes) { const k = view === 'rule' ? ruleOf(it) : it.topicId; m.set(k, [...(m.get(k) || []), it]); }
+    // Konuya göre: en çok hata yapılan konu önce; derse göre: ders sırası
+    return [...m.entries()].sort((a, b) => (view === 'rule' ? b[1].length - a[1].length || a[0].localeCompare(b[0], 'tr') : orderOf(a[0]) - orderOf(b[0])));
+  }, [mistakes, view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function practice(list: MistakeItem[]) {
     // En çok yanlış yapılan ve en yeni hatalar önce
@@ -71,11 +85,20 @@ export default function MistakesView({ topics }: { topics: { id: string; name: s
         </div>
       )}
 
-      {groups.map(([tid, list]) => (
-        <section key={tid} className="flex flex-col gap-3">
+      {mistakes.length > 0 && (
+        <div role="radiogroup" aria-label="Hataları grupla" className="self-start grid grid-cols-2 gap-1 p-1 rounded-xl bg-s2 border border-line3 text-sm font-semibold">
+          {([['topic', 'Derse göre'], ['rule', 'Konuya göre']] as const).map(([v, l]) => (
+            <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => pickView(v)} className={`h-9 px-4 rounded-lg ${view === v ? 'bg-acc text-onacc' : 'text-soft hover:text-ink'}`}>{l}</button>
+          ))}
+        </div>
+      )}
+      {view === 'rule' && mistakes.length > 0 && <p className="m-0 -mt-4 text-sm text-mute">Sınırsız pratikteki yanlışlar dilbilgisi kuralına göre (ة ve ت değişimi, zamir ve fiil uyumu gibi), diğerleri dersine göre toplanır.</p>}
+
+      {groups.map(([gid, list]) => (
+        <section key={gid} className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="m-0 text-xl font-bold">{nameOf(tid)} <span className="text-sm font-semibold text-faint">· {list.length} hata</span></h2>
-            <button type="button" onClick={() => practice(list)} className="h-10 px-4 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold hover:border-lineh hover:text-ink">Bu dersin hatalarını çalış</button>
+            <h2 className="m-0 text-xl font-bold"><Raw html={tx.text(view === 'rule' ? gid : nameOf(gid))} /> <span className="text-sm font-semibold text-faint">· {list.length} hata</span></h2>
+            <button type="button" onClick={() => practice(list)} className="h-10 px-4 rounded-xl border border-line3 bg-s2 text-soft text-sm font-semibold hover:border-lineh hover:text-ink">{view === 'rule' ? 'Bu konunun hatalarını çalış' : 'Bu dersin hatalarını çalış'}</button>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {list.map((m) => (

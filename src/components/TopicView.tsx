@@ -8,7 +8,7 @@ import { askedCount } from '@/lib/harakat';
 import { ring } from '@/lib/clock';
 import { useApp, SayBtn } from './AppProvider';
 import { I, Raw } from './icons';
-import Player from './Player';
+import Player, { usePreloadPlayer } from './LazyPlayer';
 import ShareCard from './ShareCard';
 import ReportButton from './ReportButton';
 import { ListenCard, NowPlaying, SectionListen, useLessonAudio, type LessonAudio, type NarrIds } from './LessonAudio';
@@ -16,6 +16,7 @@ import { ListenCard, NowPlaying, SectionListen, useLessonAudio, type LessonAudio
 type Nav = { id: string; name: string } | null;
 
 export default function TopicView({ topic: t, prev, next, narr }: { topic: Topic; prev: Nav; next: Nav; narr?: NarrIds }) {
+  usePreloadPlayer();
   const app = useApp();
   const { tx, topicStats, actState, setLast, setLesson, track } = app;
   const list = useMemo(() => actsOf(t), [t]);

@@ -1,22 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
-import type { Topic } from '@/lib/types';
-import { actsOf, TYPE } from '@/lib/text';
+import type { TopicSummary } from '@/lib/types';
+import { TYPE } from '@/lib/text';
 import { useApp } from './AppProvider';
 import StudyCalendar from './StudyCalendar';
 import BadgeGrid from './Badges';
 import { I, Raw } from './icons';
 
-export default function ProgressView({ topics }: { topics: Topic[] }) {
+export default function ProgressView({ topics }: { topics: TopicSummary[] }) {
   const { topicStats, actState, streak, reset, toast, user, state } = useApp();
-  const actMap = useMemo(() => Object.fromEntries(topics.map((t) => [t.id, actsOf(t)])), [topics]);
 
   let doneActs = 0, totalActs = 0, sum = 0, tried = 0, doneTopics = 0;
   topics.forEach((t) => {
-    if (topicStats(t.id, actMap[t.id]).pct === 100) doneTopics++;
-    actMap[t.id].forEach((a) => {
+    if (topicStats(t.id, t.acts).pct === 100) doneTopics++;
+    t.acts.forEach((a) => {
       totalActs++;
       const s = actState(t.id, a.id);
       if (s) { tried++; sum += s.best; if (s.done) doneActs++; }
@@ -60,7 +58,7 @@ export default function ProgressView({ topics }: { topics: Topic[] }) {
       <BadgeGrid />
       <div className="flex flex-col gap-3">
         {topics.map((t) => {
-          const st = topicStats(t.id, actMap[t.id]);
+          const st = topicStats(t.id, t.acts);
           return (
             <div key={t.id} className="p-5 sm:p-6 rounded-[18px] bg-s3 border border-line flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-4 justify-between">
@@ -74,7 +72,7 @@ export default function ProgressView({ topics }: { topics: Topic[] }) {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {actMap[t.id].map((a) => {
+                {t.acts.map((a) => {
                   const s = actState(t.id, a.id);
                   const cls = s && s.done ? 'bg-okbg text-okt border-okln' : s ? 'bg-progbg text-prog border-progln' : 'bg-s0 text-dim border-edge';
                   return <span key={a.id} className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${cls}`} title={a.title}>{TYPE[a.type].label}{s ? ' · %' + Math.round(s.best * 100) : ''}</span>;

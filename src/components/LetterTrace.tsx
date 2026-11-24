@@ -5,6 +5,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { LETTERS } from '@/lib/alphabet';
 import { I, Raw } from './icons';
 import { useApp } from './AppProvider';
+import { arabic } from '@/lib/fonts';
+
+// Sitenin kendi sunduğu Arapça yazı tipi (adı derlemede üretilir)
+const AR_FONT = arabic.style.fontFamily;
 
 const Z = '‍'; // birleşik biçimler için sıfır genişlikli birleştirici
 const FORMS = ['Tek', 'Başta', 'Ortada', 'Sonda'] as const;
@@ -20,7 +24,7 @@ const cssColor = (name: string) => `rgb(${getComputedStyle(document.documentElem
 /** Harfi verilen tuvale ortalayarak yazar; kalınlık verilirse kenarlarını da o kadar genişletir */
 function drawGlyph(ctx: CanvasRenderingContext2D, text: string, color: string, widen = 0) {
   ctx.save();
-  ctx.font = `${SIZE * 0.62}px "Noto Sans Arabic"`;
+  ctx.font = `${SIZE * 0.62}px ${AR_FONT}`;
   ctx.direction = 'rtl';
   ctx.textBaseline = 'alphabetic';
   const m = ctx.measureText(text);
@@ -97,7 +101,7 @@ export default function LetterTrace() {
   };
 
   const paintGuide = useCallback(async () => {
-    try { await document.fonts.load(`${SIZE * 0.62}px "Noto Sans Arabic"`, text); } catch { /* yazı tipi yüklenemezse varsayılanla çiz */ }
+    try { await document.fonts.load(`${SIZE * 0.62}px ${AR_FONT}`, text); } catch { /* yazı tipi yüklenemezse varsayılanla çiz */ }
     const ctx = setup(bg.current);
     if (!ctx) return;
     ctx.clearRect(0, 0, SIZE, SIZE);
@@ -155,7 +159,7 @@ export default function LetterTrace() {
 
   async function check() {
     if (!pad.current) return;
-    try { await document.fonts.load(`${SIZE * 0.62}px "Noto Sans Arabic"`, text); } catch { /* yok */ }
+    try { await document.fonts.load(`${SIZE * 0.62}px ${AR_FONT}`, text); } catch { /* yok */ }
     const r = score(pad.current, text);
     setRes(r);
     if (r.verdict === 'ok') {

@@ -12,7 +12,8 @@ import { pronScore, pronVerdict, type PronVerdict } from '@/lib/pron';
 import { recognizer, type SR } from '@/lib/speech';
 import { clockSVG, distractors, fmt, hmKey, nextH, randTime, ring, timeAr, timeTr, timeWhy, type HM } from '@/lib/clock';
 import { hash53 } from '@/lib/qkey';
-import { endlessGen, nextQ, type EQ } from '@/lib/endless';
+import { endlessGen, kindLabel, nextQ, type EQ } from '@/lib/endless';
+import { normDigits } from '@/lib/drills';
 
 /* ---------- Hatalarım için yanlışları çoktan seçmeli soruya çevirme (seçenekler kararlı) ---------- */
 const pick3 = (seed: string, pool: string[]) => [...new Set(pool)].sort((a, b) => (hash53(seed + a) < hash53(seed + b) ? -1 : 1)).slice(0, 3);
@@ -27,7 +28,7 @@ const pairQ = (p: { l: string; r: string }, all: { l: string; r: string }[]): Qu
 const clockQ = (t: HM): Question => {
   const mir: Record<number, number> = { 0: 30, 5: 55, 10: 50, 15: 45, 20: 40, 25: 35, 30: 0, 35: 25, 40: 20, 45: 15, 50: 10, 55: 5 };
   const opts = [t, { h: nextH(t.h), m: t.m }, { h: t.h, m: mir[t.m] }, { h: ((t.h + 10) % 12) + 1, m: t.m }];
-  return { t: 'mc', q: 'Saat kaç?', clock: fmt(t.h, t.m), options: [...new Set(opts.map((o) => timeAr(o.h, o.m)))], a: timeAr(t.h, t.m), why: timeWhy(t.h, t.m) };
+  return { t: 'mc', q: 'Saat kaç?', clock: fmt(t.h, t.m), options: [...new Set(opts.map((o) => timeAr(o.h, o.m)))], a: timeAr(t.h, t.m), why: timeWhy(t.h, t.m), g: 'saat' };
 };
 // Bildirime eklenen içerik: oynatıcının iç alanları atılır
 const cleanQ = (q: Question & { _retry?: boolean; _i?: number }) => { const { _retry, _i, ...rest } = q; void _retry; void _i; return rest as Question; };
@@ -41,7 +42,8 @@ import ReportButton from './ReportButton';
 
 export type PTopic = { id: string; name: string; words: Word[] };
 type Wrong = { prompt: string; right: string; given?: string; why?: string };
-type Endless = { answered: number; correct: number; best: number };
+/** Sınırsız pratik sonucu; kinds: soru türüne göre özet; timed: 60 saniye meydan okuma (doğru sayısı ve rekor) */
+type Endless = { answered: number; correct: number; best: number; kinds?: { label: string; n: number; ok: number }[]; timed?: { correct: number; record: number; isNew: boolean } };
 type Finish = (score: number, done: boolean, wrong: Wrong[], endless?: Endless) => void;
 type SetHdr = (progress: number, label: string) => void;
 
@@ -558,14 +560,18 @@ function Quiz({ topic, act, finish, setHdr, toTop, log, miss, hit, preview, tall
 
 /* ================= Dikte ================= */
 function Dictate({ topic, act, finish, setHdr, toTop, miss, hit, tally, log }: SubProps) {
-  const { tx, hasAudio } = useApp();
+  const { tx, hasAudio, audioReady } = useApp();
   const src = useMemo(() => ((act.items as Word[] | null | undefined)?.length ? (act.items as Word[]) : topic.words).filter((w) => w.ar), [act.items, topic.words]);
-  // Önce ses kaydı olan kelimeler (tarayıcı sesi her cihazda yok); yetmezse diğerleri
-  const items = useMemo(() => {
+  // Önce ses kaydı olan kelimeler (tarayıcı sesi her cihazda yok); yetmezse diğerleri.
+  // Ses eşlemesi indirilince bir kez seçilir: eşleme sonradan yenilense de soruların sırası değişmez.
+  const pick = () => {
     const rec = shuffle(src.filter((w) => hasAudio(w.ar)));
     const rest = shuffle(src.filter((w) => !hasAudio(w.ar)));
     return [...rec, ...rest].slice(0, DICTATE_MAX).map((w, i) => ({ ...w, id: i }));
-  }, [src, hasAudio]);
+  };
+  const [items, setItems] = useState<ReturnType<typeof pick> | null>(() => (audioReady ? pick() : null));
+  useEffect(() => { if (!items && audioReady) setItems(pick()); }, [audioReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!items) return null;
   return (
     <Dictation
       items={items}
@@ -943,36 +949,118 @@ function TileBuilder({ tiles, answer, picked, onDone }: { tiles: string[]; answe
   );
 }
 
-/* ================= Sınırsız pratik (zamirler, iyelik ekleri, kelimeler) ================= */
-function EndlessPractice({ topic, finish, setHdr, toTop, endlessRef, close, log, miss, hit, tally }: SubProps) {
-  const { tx, speak } = useApp();
+/* ================= Sınırsız pratik (zamirler, iyelik ekleri, kelimeler, ek alıştırmalar) ================= */
+/** 60 saniye meydan okuma: süre ve rekorun saklandığı yer (bu cihazda, ders ve etkinlik başına) */
+const BLITZ_SEC = 60;
+const blitzKey = (topicId: string, actId: string) => `arblearn:blitz:${topicId}:${actId}`;
+const readBest = (k: string) => { try { return Number(localStorage.getItem(k)) || 0; } catch { return 0; } };
+
+/** Rakamla yazılan cevap (sayı ve telefon numarası dinleme) */
+function DigitAnswer({ picked, answer, onDone }: { picked: string | null; answer: string; onDone: (v: string) => void }) {
+  const [v, setV] = useState('');
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (!picked) ref.current?.focus({ preventScroll: true }); }, [picked]);
+  const clean = normDigits(v);
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); if (clean && !picked) onDone(clean); }} className="flex flex-col sm:flex-row gap-3 items-stretch justify-center">
+      <input ref={ref} value={picked ?? v} onChange={(e) => setV(e.target.value)} disabled={!!picked} inputMode="numeric" autoComplete="off" maxLength={14} aria-label="Cevabın (rakamlarla)"
+        placeholder="Rakamlarla yaz" dir="ltr"
+        className={`h-16 px-5 rounded-2xl border-2 text-center text-[28px] font-bold tracking-[.12em] tabular-nums outline-none ${picked ? (picked === answer ? 'border-okln bg-okbg text-okt' : 'border-badln bg-badbg text-bad') : 'border-line3 bg-s2 text-ink focus:border-acc'}`} />
+      {!picked && <button type="submit" disabled={!clean} className="h-16 px-7 rounded-2xl bg-acc text-onacc font-bold disabled:opacity-50">Kontrol et</button>}
+    </form>
+  );
+}
+
+function EndlessPractice({ topic, act, finish, setHdr, toTop, endlessRef, close, log, miss, hit, tally }: SubProps) {
+  const { tx, speak, playUntilEnd, toast } = useApp();
   const gen = useMemo(() => endlessGen(topic.id, topic.words), [topic.id, topic.words]);
   const recent = useRef<string[]>([]);
   const make = () => { const q = nextQ(gen!, recent.current); recent.current = [...recent.current.slice(-5), q.key]; return q; };
   const [stats, setStats] = useState<Endless & { streak: number }>({ answered: 0, correct: 0, best: 0, streak: 0 });
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
   const wrong = useRef<Wrong[]>([]);
+  // Oturum özeti: soru türüne göre kaç soru, kaç doğru
+  const kinds = useRef(new Map<string, { n: number; ok: number }>());
   const [q, setQ] = useState<EQ | null>(() => (gen ? make() : null));
   const [picked, setPicked] = useState<string | null>(null);
+  // Süreli mod: free serbest, ready başlamayı bekliyor, run süre işliyor
+  const [mode, setMode] = useState<'free' | 'ready' | 'run'>(() => (act.blitz ? 'ready' : 'free'));
+  const [left, setLeft] = useState(BLITZ_SEC);
+  const endsAt = useRef(0);
+  const recKey = blitzKey(topic.id, act.id);
+  const [record, setRecord] = useState(0);
+  useEffect(() => { setRecord(readBest(recKey)); }, [recKey]);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const nextBtn = useRef<HTMLButtonElement>(null);
   const fb = useRef<HTMLDivElement>(null);
+  const playId = useRef(0);
 
-  useEffect(() => { endlessRef.current = stats; }, [stats, endlessRef]);
+  /** Dinleme: tek ifade ya da art arda okunan ifadeler (telefon numarası) */
+  const play = useCallback(async (x: EQ) => {
+    const id = ++playId.current;
+    if (!x.seq) { speak(x.ar!); return; }
+    for (const t of x.seq) {
+      if (playId.current !== id) return;
+      await playUntilEnd(t);
+      await new Promise((r) => setTimeout(r, 160));
+    }
+  }, [speak, playUntilEnd]);
+
+  useEffect(() => { endlessRef.current = mode === 'ready' ? null : stats; }, [stats, mode, endlessRef]);
   useEffect(() => {
-    setHdr(stats.answered ? stats.correct / stats.answered : 0, `Soru ${stats.answered + (picked ? 0 : 1)} · sınırsız`);
-  }, [stats, picked, setHdr]);
+    if (mode === 'run') setHdr(1 - left / BLITZ_SEC, `${left} sn · ${stats.correct} doğru`);
+    else if (mode === 'ready') setHdr(0, '60 saniye');
+    else setHdr(stats.answered ? stats.correct / stats.answered : 0, `Soru ${stats.answered + (picked ? 0 : 1)} · sınırsız`);
+  }, [stats, picked, setHdr, mode, left]);
   useEffect(() => {
-    if (q?.listen) { const x = setTimeout(() => speak(q.ar!), 250); return () => clearTimeout(x); }
-  }, [q]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (q?.listen && mode !== 'ready') { const x = setTimeout(() => play(q), 250); return () => { clearTimeout(x); playId.current++; }; }
+  }, [q, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => clearTimeout(timer.current), []);
   useEffect(() => {
     if (picked) { nextBtn.current?.focus({ preventScroll: true }); fb.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   }, [picked]);
+  // Süre: bitince sonuç ekranı
+  useEffect(() => {
+    if (mode !== 'run') return;
+    const t = setInterval(() => {
+      const l = Math.max(0, Math.ceil((endsAt.current - Date.now()) / 1000));
+      setLeft(l);
+      if (l <= 0) { clearInterval(t); endRun(); }
+    }, 200);
+    return () => clearInterval(t);
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!q) return <p className="text-center text-mute">Bu derste sınırsız pratik için yeterli kelime yok.</p>;
-  // Hatalarım'a eklenen soru (çoktan seçmeli)
-  const asQ = (): Question => ({ t: 'mc', q: q.prompt + (q.tr ? ' ' + q.tr : ''), ar: q.ar, options: q.tiles ? shuffle([q.a, ...(q.alt || [])]) : q.options, a: q.a, why: q.why });
+  // Hatalarım'a eklenen soru (çoktan seçmeli; tek sesli dinleme soruları dinleme olarak kalır)
+  const asQ = (): Question => ({
+    t: q.listen && !q.seq && (q.g?.startsWith('ses-') || q.input) ? 'listen' : 'mc',
+    q: q.prompt + (q.tr ? ' ' + q.tr : ''), ar: q.ar, g: q.g,
+    options: q.tiles || q.input ? shuffle([q.a, ...(q.alt || [])]) : q.options, a: q.a, why: q.why
+  });
   const goNext = () => { clearTimeout(timer.current); setPicked(null); setQ(make()); toTop(); };
+  const kindList = () => [...kinds.current.entries()].map(([label, v]) => ({ label, ...v })).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, 'tr'));
+  const reset = () => { setStats({ answered: 0, correct: 0, best: 0, streak: 0 }); wrong.current = []; kinds.current = new Map(); recent.current = []; };
+
+  function startRun() {
+    reset();
+    endsAt.current = Date.now() + BLITZ_SEC * 1000;
+    setLeft(BLITZ_SEC);
+    setPicked(null);
+    setQ(make());
+    setMode('run');
+    toTop();
+  }
+  function endRun() {
+    clearTimeout(timer.current);
+    playId.current++;
+    const s = statsRef.current;
+    if (!s.answered) { setMode('ready'); toast('Süre doldu. Hiç cevap vermedin; tekrar başlayabilirsin.'); return; }
+    const isNew = s.correct > record;
+    if (isNew) { try { localStorage.setItem(recKey, String(s.correct)); } catch { /* yok */ } }
+    const e: Endless = { answered: s.answered, correct: s.correct, best: s.best, kinds: kindList(), timed: { correct: s.correct, record: Math.max(record, s.correct), isNew } };
+    finish(s.correct / s.answered, endlessDone(e), wrong.current, e);
+  }
 
   function choose(o: string) {
     if (picked || !q) return;
@@ -981,6 +1069,9 @@ function EndlessPractice({ topic, finish, setHdr, toTop, endlessRef, close, log,
     log({ qk: q.kind, label: q.label, ok });
     if (ok) hit(asQ()); else miss(asQ());
     setPicked(o);
+    const kl = kindLabel(q);
+    const k = kinds.current.get(kl) || { n: 0, ok: 0 };
+    kinds.current.set(kl, { n: k.n + 1, ok: k.ok + (ok ? 1 : 0) });
     setStats((s) => {
       const streak = ok ? s.streak + 1 : 0;
       return { answered: s.answered + 1, correct: s.correct + (ok ? 1 : 0), streak, best: Math.max(s.best, streak) };
@@ -988,44 +1079,80 @@ function EndlessPractice({ topic, finish, setHdr, toTop, endlessRef, close, log,
     if (!ok) {
       const show = (v: string) => (q.optAr ? tx.ar(v, 'text-2xl') : esc(v));
       wrong.current.push({
-        prompt: tx.text(q.prompt) + (q.ar ? ' ' + tx.ar(q.ar, 'text-2xl') : '') + (q.tr ? ' ' + esc(q.tr) : ''),
+        prompt: tx.text(q.prompt) + (q.ar && !q.seq ? ' ' + tx.ar(q.ar, 'text-2xl') : '') + (q.tr ? ' ' + esc(q.tr) : ''),
         given: show(o), right: show(q.a), why: tx.text(q.why)
       });
       if (wrong.current.length > 12) wrong.current.shift();
-    } else {
-      timer.current = setTimeout(goNext, 1600);
     }
+    // Doğruysa kısa süre sonra sıradakine geçer; süreli modda yanlışta da (doğrusu bir an gösterilir)
+    if (ok) timer.current = setTimeout(goNext, mode === 'run' ? 450 : 1600);
+    else if (mode === 'run') timer.current = setTimeout(goNext, 1700);
   }
   function end() {
     clearTimeout(timer.current);
+    if (mode === 'run') { endRun(); return; }
     if (!stats.answered) { endlessRef.current = null; return close(); }
-    const e = { answered: stats.answered, correct: stats.correct, best: stats.best };
+    const e: Endless = { answered: stats.answered, correct: stats.correct, best: stats.best, kinds: kindList() };
     finish(e.correct / e.answered, endlessDone(e), wrong.current, e);
   }
 
   const ok = picked === q.a;
   const acc = stats.answered ? Math.round((stats.correct / stats.answered) * 100) : 0;
-  const chips: [string, string | number, string][] = [
-    ['Doğru', stats.correct, 'text-okt'], ['Yanlış', stats.answered - stats.correct, 'text-bad'], ['Seri', stats.streak, 'text-acct'],
-    ['En iyi seri', stats.best, 'text-soft'], ['Başarı', stats.answered ? '%' + acc : '-', 'text-ink']
-  ];
+  const chips: [string, string | number, string][] = mode === 'run'
+    ? [['Süre', left + ' sn', left <= 10 ? 'text-bad' : 'text-ink'], ['Doğru', stats.correct, 'text-okt'], ['Yanlış', stats.answered - stats.correct, 'text-bad'], ['Rekor', record || '-', 'text-acct']]
+    : [['Doğru', stats.correct, 'text-okt'], ['Yanlış', stats.answered - stats.correct, 'text-bad'], ['Seri', stats.streak, 'text-acct'], ['En iyi seri', stats.best, 'text-soft'], ['Başarı', stats.answered ? '%' + acc : '-', 'text-ink']];
+  const say = q.say === undefined ? q.full : q.say;
+
+  // Mod seçimi: yalnızca ilk sorudan önce (oturum ortasında değişirse çözülenler kaybolmasın)
+  const modeSwitch = mode !== 'run' && !stats.answered && (
+    <div role="radiogroup" aria-label="Pratik türü" className="self-center grid grid-cols-2 gap-1 p-1 rounded-xl bg-s2 border border-line3 text-sm font-semibold">
+      {([['free', 'Serbest'], ['ready', '60 saniye']] as const).map(([m, l]) => (
+        <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => { setMode(m); setPicked(null); }}
+          className={`h-9 px-4 rounded-lg inline-flex items-center justify-center gap-1.5 ${mode === m ? 'bg-acc text-onacc' : 'text-soft hover:text-ink'}`}>
+          {m === 'ready' && <Raw html={I.clock(15)} />}{l}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (mode === 'ready') {
+    return (
+      <div className="flex flex-col gap-6 pop">
+        {modeSwitch}
+        <div className="flex flex-col items-center text-center gap-4 p-8 rounded-[22px] bg-s3 border border-line2">
+          <span className="w-16 h-16 rounded-2xl bg-chip border border-chipln text-acct flex items-center justify-center"><Raw html={I.clock(30)} /></span>
+          <h2 className="m-0 text-2xl font-bold">60 saniye meydan okuma</h2>
+          <p className="m-0 text-mute max-w-[440px] leading-relaxed">Bir dakikada olabildiğince çok soruyu doğru cevapla. Doğru cevaptan sonra hemen sıradaki gelir; yanlışta doğrusu bir an gösterilir.</p>
+          <p className="m-0 text-soft">{record ? <>Bu etkinlikteki rekorun: <b className="text-ink">{record} doğru</b></> : 'Henüz rekorun yok. İlk rekorunu kır!'}</p>
+          <button type="button" onClick={startRun} autoFocus className="h-14 px-8 rounded-2xl bg-acc text-onacc text-lg font-bold inline-flex items-center gap-2">Başla <Raw html={I.arrow()} /></button>
+          <span className="text-xs text-faint">Rekorun bu cihazda saklanır.</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 pop" key={q.key + stats.answered}>
+      {modeSwitch}
+      {mode === 'run' && <div className="h-2.5 rounded-full bg-track overflow-hidden" aria-hidden="true"><div className={`h-full rounded-full transition-[width] duration-200 ${left <= 10 ? 'bg-bad' : 'bg-acc'}`} style={{ width: (left / BLITZ_SEC) * 100 + '%' }} /></div>}
       <div className="flex flex-wrap justify-center gap-2 text-sm">
         {chips.map(([l, v, c]) => <span key={l} className="px-3 py-1.5 rounded-full bg-s1 border border-line"><span className="text-faint">{l}</span> <b className={c}>{v}</b></span>)}
       </div>
       <Raw as="p" className="m-0 text-lg sm:text-xl font-semibold text-center" html={tx.text(q.prompt)} />
       <div className="flex items-center justify-center gap-4 flex-wrap px-4 py-6 rounded-2xl bg-s3 border border-line2 min-h-[120px]">
         {q.listen && !picked ? (
-          <button type="button" data-replay onClick={() => speak(q.ar!)} className="w-20 h-20 rounded-full bg-acc text-onacc flex items-center justify-center" aria-label="Tekrar dinle"><Raw html={I.speaker(30)} /></button>
-        ) : q.ar ? (
-          <><Raw html={tx.ar(q.ar, 'text-[34px] sm:text-[42px] text-ink text-center')} />{!q.ar.includes('___') && <SayBtn text={q.ar} />}</>
+          <button type="button" data-replay onClick={() => play(q)} className="w-20 h-20 rounded-full bg-acc text-onacc flex items-center justify-center" aria-label="Tekrar dinle"><Raw html={I.speaker(30)} /></button>
+        ) : q.ar && !(q.seq && picked) ? (
+          <><Raw html={tx.ar(q.ar, 'text-[34px] sm:text-[42px] text-ink text-center')} />{!q.ar.includes('___') && !/^[٠-٩]+$/.test(q.ar) && <SayBtn text={q.ar} />}</>
+        ) : q.seq ? (
+          <span dir="ltr" className="text-[34px] font-bold tabular-nums tracking-[.12em]">{q.fullTr}</span>
         ) : (
           <span className="text-[26px] sm:text-[30px] font-bold text-center leading-snug">{q.tr}</span>
         )}
       </div>
-      {q.tiles ? <TileBuilder key={q.key + stats.answered} tiles={q.tiles} answer={q.a} picked={picked} onDone={choose} /> : <div className="grid sm:grid-cols-2 gap-3">
+      {q.input ? <DigitAnswer key={q.key + stats.answered} picked={picked} answer={q.a} onDone={choose} />
+        : q.tiles ? <TileBuilder key={q.key + stats.answered} tiles={q.tiles} answer={q.a} picked={picked} onDone={choose} />
+        : <div className="grid sm:grid-cols-2 gap-3">
         {q.options.map((o, i) => (
           <button key={o} type="button" disabled={!!picked} onClick={() => choose(o)} data-v={o}
             className={`opt relative min-h-[64px] px-5 py-3 rounded-2xl bg-s3 border border-line2 text-ink text-center ${picked ? (o === q.a ? 'is-right' : o === picked ? 'is-wrong shake' : '') : ''}`}>
@@ -1041,16 +1168,17 @@ function EndlessPractice({ topic, finish, setHdr, toTop, endlessRef, close, log,
               <Raw html={ok ? I.check(20) : I.x(20)} /> {ok ? 'Doğru!' : 'Yanlış'}
               {ok && stats.streak >= 3 && <span className="text-acct text-base">{stats.streak} doğru üst üste</span>}
             </div>
-            <div className="flex items-center gap-3 flex-wrap"><Raw html={tx.ar(q.full, 'text-[26px] text-ink')} /><SayBtn text={q.full} cls="w-9 h-9" size={16} /></div>
-            <p className="m-0 text-soft">{q.fullTr}</p>
+            {!ok && q.input && <p className="m-0 text-soft">Doğrusu: <b dir="ltr" className="text-ink tabular-nums">{q.fullTr}</b></p>}
+            <div className="flex items-center gap-3 flex-wrap"><Raw html={tx.ar(q.full, 'text-[26px] text-ink')} />{say && <SayBtn text={say} cls="w-9 h-9" size={16} />}</div>
+            {!q.input && <p className="m-0 text-soft">{q.fullTr}</p>}
             {q.why && <p className="m-0 text-[15px] leading-relaxed text-prose"><span className="inline-flex align-[-3px] text-acct mr-1"><Raw html={I.bulb(17)} /></span><Raw html={tx.text(q.why)} /></p>}
             <div className="flex justify-end"><button ref={nextBtn} type="button" data-next onClick={goNext} className="h-12 px-7 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2">Sonraki soru <Raw html={I.arrow()} /></button></div>
           </div>
         )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-line">
-        <span className="text-xs text-faint">İpucu: {q.tiles ? 'kelimeye dokunarak ekle, eklenen kelimeye dokunarak geri al' : '1-4 tuşlarıyla seç'}, Enter ile devam et{q.listen ? ', boşlukla tekrar dinle' : ''}.</span>
-        <button type="button" onClick={end} className="h-11 px-5 rounded-xl border border-line3 bg-s2 text-soft font-semibold hover:border-lineh">Bitir ve sonucu gör</button>
+        <span className="text-xs text-faint">İpucu: {q.input ? "rakamları yazıp Enter'a bas" : q.tiles ? 'kelimeye dokunarak ekle, eklenen kelimeye dokunarak geri al' : '1-4 tuşlarıyla seç'}, Enter ile devam et{q.listen ? ', boşlukla tekrar dinle' : ''}.</span>
+        <button type="button" onClick={end} className="h-11 px-5 rounded-xl border border-line3 bg-s2 text-soft font-semibold hover:border-lineh">{mode === 'run' ? 'Şimdi bitir' : 'Bitir ve sonucu gör'}</button>
       </div>
     </div>
   );
@@ -1061,6 +1189,7 @@ function Result({ score, done, wrong, endless, act, list, onAgain, onBack, onNex
   score: number; done: boolean; wrong: Wrong[]; endless?: Endless; act: ActView; list: ActView[];
   onAgain: () => void; onBack: () => void; onNext: (a: ActView) => void;
 }) {
+  const { tx } = useApp();
   const pct = Math.round(score * 100);
   const idx = list.findIndex((a) => a.id === act.id);
   // Listede olmayan ek etkinlikte (dikte) sonraki etkinlik önerilmez
@@ -1072,13 +1201,34 @@ function Result({ score, done, wrong, endless, act, list, onAgain, onBack, onNex
     <div className="flex flex-col items-center gap-7 text-center pop">
       <Raw html={ring(pct, 150, 12)} />
       <div className="flex flex-col gap-2">
-        <h2 className="m-0 text-3xl font-bold">{endless && !done && pct >= 70 ? 'İyi gidiyorsun' : msg[0]}</h2>
+        <h2 className="m-0 text-3xl font-bold">{endless?.timed ? `60 saniyede ${endless.timed.correct} doğru` : endless && !done && pct >= 70 ? 'İyi gidiyorsun' : msg[0]}</h2>
+        {endless?.timed && (
+          <p className={`m-0 self-center px-4 py-1.5 rounded-full font-bold ${endless.timed.isNew ? 'bg-okbg border border-okln text-okt' : 'bg-s2 border border-line3 text-soft'}`}>
+            {endless.timed.isNew ? 'Yeni rekor!' : `Rekorun: ${endless.timed.record} doğru`}
+          </p>
+        )}
         <p className="m-0 text-mute max-w-[460px]">
           {endless ? `${endless.answered} ${act.type === 'clock' ? 'saat' : 'soru'} cevapladın · ${endless.correct} doğru · en uzun seri ${endless.best}.${done ? '' : ' Tamamlanmış sayılması için en az 10 soru ve %70 başarı gerekir.'}` : msg[1]}
         </p>
       </div>
+      {endless?.kinds && endless.kinds.length > 1 && (
+        <section className="w-full max-w-[560px] flex flex-col gap-2 text-left" aria-label="Soru türlerine göre">
+          <h3 className="m-0 text-base font-bold text-center">Soru türlerine göre</h3>
+          {endless.kinds.map((k) => {
+            const r = Math.round((k.ok / k.n) * 100);
+            return (
+              <div key={k.label} className="flex flex-col gap-1 px-4 py-2.5 rounded-xl bg-s1 border border-line">
+                <div className="flex justify-between gap-3 text-sm"><Raw html={tx.text(k.label)} className="font-semibold text-ink" /><span className={r >= 70 ? 'text-okt font-bold' : 'text-bad font-bold'}>{k.ok} / {k.n}</span></div>
+                <div className="h-1.5 rounded-full bg-track overflow-hidden"><div className={`h-full rounded-full ${r >= 70 ? 'bg-ok' : 'bg-bad'}`} style={{ width: r + '%' }} /></div>
+              </div>
+            );
+          })}
+          {endless.kinds.some((k) => k.ok / k.n < 0.7) && <p className="m-0 text-sm text-mute text-center">Kırmızı olan türler Hatalarım sayfasında konusuna göre toplanır; oradan tekrar çalışabilirsin.</p>}
+        </section>
+      )}
       <div className="flex flex-wrap justify-center gap-3">
         <button type="button" onClick={onAgain} className="h-12 px-6 rounded-xl border border-line3 bg-s2 text-soft font-semibold hover:border-lineh inline-flex items-center gap-2"><Raw html={I.refresh(17)} /> Tekrar dene</button>
+        {act.type === 'endless' && <button type="button" onClick={() => onNext({ ...act, blitz: true })} className="h-12 px-6 rounded-xl border border-line3 bg-s2 text-soft font-semibold hover:border-lineh inline-flex items-center gap-2"><Raw html={I.clock(17)} /> 60 saniye meydan okuma</button>}
         <button type="button" onClick={onBack} className="h-12 px-6 rounded-xl border border-line3 bg-s2 text-soft font-semibold hover:border-lineh">Etkinliklere dön</button>
         {next && <button ref={nextRef} type="button" data-next onClick={() => onNext(next)} className="h-12 px-6 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2">Sıradaki: {next.title} <Raw html={I.arrow()} /></button>}
       </div>

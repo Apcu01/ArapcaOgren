@@ -3,17 +3,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { SITE_NAME } from '@/lib/site';
 import { useApp } from './AppProvider';
+import { arabic, sans } from '@/lib/fonts';
 import { I, Raw } from './icons';
 
 type Props = { topicName: string; topicAr: string; topicId: string; score: number; acts: number; congrats?: boolean; onClose: () => void };
 
 const W = 1200, H = 630;
+const SANS = sans.style.fontFamily, AR = arabic.style.fontFamily;
 
 async function draw(canvas: HTMLCanvasElement, p: Props, name: string | null, harakat: (s: string) => string) {
   const ctx = canvas.getContext('2d')!;
   await Promise.all([
-    document.fonts.load('800 64px Manrope'), document.fonts.load('600 28px Manrope'),
-    document.fonts.load(`700 84px "Noto Sans Arabic"`, p.topicAr)
+    document.fonts.load(`800 64px ${SANS}`), document.fonts.load(`600 28px ${SANS}`),
+    document.fonts.load(`700 84px ${AR}`, p.topicAr)
   ]).catch(() => null);
   const logo = new Image();
   logo.src = '/logo.svg';
@@ -27,19 +29,19 @@ async function draw(canvas: HTMLCanvasElement, p: Props, name: string | null, ha
 
   // Üst satır: logo ve site adı
   if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, 96, 92, 72, 72);
-  ctx.fillStyle = '#F2E8DC'; ctx.font = '800 34px Manrope, sans-serif'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#F2E8DC'; ctx.font = `800 34px ${SANS}, sans-serif`; ctx.textBaseline = 'middle';
   ctx.fillText(SITE_NAME, 184, 128);
-  ctx.fillStyle = '#C08A55'; ctx.font = '700 22px Manrope, sans-serif';
+  ctx.fillStyle = '#C08A55'; ctx.font = `700 22px ${SANS}, sans-serif`;
   ctx.textAlign = 'right'; ctx.fillText('DERS TAMAMLANDI', W - 96, 128); ctx.textAlign = 'left';
 
   // Ders adı (Türkçe) ve Arapçası
-  ctx.fillStyle = '#F2E8DC'; ctx.font = '800 68px Manrope, sans-serif';
+  ctx.fillStyle = '#F2E8DC'; ctx.font = `800 68px ${SANS}, sans-serif`;
   ctx.fillText(p.topicName, 96, 262);
-  ctx.fillStyle = '#B8A595'; ctx.font = '600 30px Manrope, sans-serif';
+  ctx.fillStyle = '#B8A595'; ctx.font = `600 30px ${SANS}, sans-serif`;
   ctx.fillText(name ? `${name} bu dersi bitirdi` : 'Bu dersi bitirdim', 96, 326);
   ctx.save();
   ctx.direction = 'rtl'; ctx.textAlign = 'right';
-  ctx.fillStyle = '#D9A066'; ctx.font = '700 84px "Noto Sans Arabic", sans-serif';
+  ctx.fillStyle = '#D9A066'; ctx.font = `700 84px ${AR}, sans-serif`;
   ctx.fillText(harakat(p.topicAr), W - 96, 262);
   ctx.restore();
 
@@ -47,8 +49,8 @@ async function draw(canvas: HTMLCanvasElement, p: Props, name: string | null, ha
   const box = (x: number, label: string, value: string) => {
     ctx.fillStyle = '#221A14'; ctx.strokeStyle = '#33271E'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(x, 400, 320, 118, 22); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#A8958A'; ctx.font = '600 22px Manrope, sans-serif'; ctx.fillText(label, x + 26, 438);
-    ctx.fillStyle = '#F2E8DC'; ctx.font = '800 42px Manrope, sans-serif'; ctx.fillText(value, x + 26, 486);
+    ctx.fillStyle = '#A8958A'; ctx.font = `600 22px ${SANS}, sans-serif`; ctx.fillText(label, x + 26, 438);
+    ctx.fillStyle = '#F2E8DC'; ctx.font = `800 42px ${SANS}, sans-serif`; ctx.fillText(value, x + 26, 486);
   };
   box(96, 'Ortalama başarı', '%' + Math.round(p.score * 100));
   box(440, 'Tamamlanan etkinlik', String(p.acts));

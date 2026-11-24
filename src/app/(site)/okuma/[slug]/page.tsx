@@ -33,7 +33,7 @@ export default async function ReadingPage({ params }: Params) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
         '@context': 'https://schema.org', '@type': 'Article', headline: `${r.title} (${r.ar})`, inLanguage: 'ar',
         description: r.desc, articleBody: r.sentences.map(sentenceAr).join(' '), publisher: { '@type': 'Organization', name: SITE_NAME }
-      }) }} />
+      }).replace(/</g, '\\u003c') }} />
       <ReadingView reading={r} lesson={t ? { id: t.id, name: t.name } : null} next={next.slug === r.slug ? null : { slug: next.slug, title: next.title }} />
     </>
   );

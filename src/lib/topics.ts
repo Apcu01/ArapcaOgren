@@ -3,7 +3,8 @@ import { cache } from 'react';
 import { asc, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { buildSafe, cached } from './cache';
-import type { Activity, ActType, Topic } from './types';
+import { actsOf } from './text';
+import type { Activity, ActType, Topic, TopicSummary } from './types';
 
 type TopicRow = typeof schema.topics.$inferSelect;
 type ActRow = typeof schema.activities.$inferSelect;
@@ -54,6 +55,15 @@ export const getTopics = cache((opts: { all?: boolean } = {}): Promise<Topic[]> 
   ]);
   return rows.map((t) => toTopic(t, acts));
 }), []));
+
+/* Ana sayfa ve İlerlemem yalnızca kart bilgilerini ve etkinlik listesini kullanır. Dersin tamamı
+   (anlatım, kelimeler, sorular) bu sayfalarda ~380 KB tutuyordu ve her açılışta tarayıcıya gidiyordu. */
+export function topicSummary(t: Topic): TopicSummary {
+  return {
+    id: t.id, n: t.n, level: t.level, glyph: t.glyph, ar: t.ar, name: t.name, desc: t.desc, tags: t.tags ?? null,
+    acts: actsOf(t).map((a) => ({ id: a.id, type: a.type, title: a.title }))
+  };
+}
 
 export async function getTopic(id: string, opts: { all?: boolean } = {}): Promise<Topic | null> {
   const t = await cached('topics:one:' + id, async () => {

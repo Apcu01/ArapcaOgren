@@ -2,7 +2,7 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import { and, asc, desc, eq, inArray, isNotNull, sql, type SQL } from 'drizzle-orm';
 import { db, schema } from '@/db';
-import { LIST_MAX_ITEMS, LISTS_MAX, type GameKey, type ListItem, type ListSummary, type SharedList, type SyncDiff, type WordList } from './study';
+import { LIST_MAX_ITEMS, LISTS_MAX, type GameKey, type ListItem, type ListMeta, type ListSummary, type SharedList, type SyncDiff, type WordList } from './study';
 
 const { wordLists: L, wordListItems: I } = schema;
 
@@ -18,14 +18,14 @@ const toItem = (r: typeof I.$inferSelect): ListItem => ({
 
 export async function listLists(userId: number): Promise<ListSummary[]> {
   const rows = await db.select({
-    id: L.id, title: L.title, description: L.description, studiedAt: L.studiedAt, updatedAt: L.updatedAt,
+    id: L.id, title: L.title, description: L.description, folder: L.folder, tags: L.tags, studiedAt: L.studiedAt, updatedAt: L.updatedAt,
     count: sql<number>`count(${I.id})`,
     learned: sql<number>`coalesce(sum(${I.streak} >= 2), 0)`,
     learning: sql<number>`coalesce(sum(${I.streak} < 2 and (${I.correct} + ${I.wrong}) > 0), 0)`
   }).from(L).leftJoin(I, eq(I.listId, L.id)).where(eq(L.userId, userId)).groupBy(L.id)
     .orderBy(desc(sql`coalesce(${L.studiedAt}, ${L.updatedAt})`));
   return rows.map((r) => ({
-    ...r, count: Number(r.count), learned: Number(r.learned), learning: Number(r.learning),
+    ...r, tags: r.tags || [], count: Number(r.count), learned: Number(r.learned), learning: Number(r.learning),
     studiedAt: r.studiedAt?.toISOString() ?? null, updatedAt: r.updatedAt.toISOString()
   }));
 }
@@ -40,38 +40,51 @@ export async function getList(userId: number, id: number): Promise<WordList | nu
   const [l] = await db.select().from(L).where(and(eq(L.id, id), eq(L.userId, userId)));
   if (!l) return null;
   const items = await db.select().from(I).where(eq(I.listId, id)).orderBy(asc(I.position), asc(I.id));
-  return { id: l.id, title: l.title, description: l.description, best: l.best || {}, shareToken: l.shareToken, copies: l.copies, linked: l.sourceListId != null, items: items.map(toItem) };
+  return { id: l.id, title: l.title, description: l.description, folder: l.folder, tags: l.tags || [], best: l.best || {}, shareToken: l.shareToken, copies: l.copies, linked: l.sourceListId != null, items: items.map(toItem) };
 }
 
-export async function createList(userId: number, title: string, description: string, items: ItemInput[]) {
-  const [r] = await db.insert(L).values({ userId, title, description, best: {} }).$returningId();
+export async function createList(userId: number, title: string, description: string, items: ItemInput[], meta: ListMeta = {}) {
+  const [r] = await db.insert(L).values({ userId, title, description, best: {}, folder: meta.folder ?? '', tags: meta.tags ?? [] }).$returningId();
   if (items.length) await db.insert(I).values(items.map((it, i) => ({ listId: r.id, position: i, ar: it.ar, tl: it.tl, tr: it.tr, note: it.note })));
   return r.id;
 }
 
 /** Listeyi kaydeder: id'si olan kelimelerin çalışma durumu korunur, listeden çıkanlar silinir */
-export async function saveList(userId: number, id: number, title: string, description: string, items: ItemInput[]) {
+/** meta verilmezse (eski istemciler) klasör ve etiketler olduğu gibi kalır */
+export async function saveList(userId: number, id: number, title: string, description: string, items: ItemInput[], meta: ListMeta = {}) {
   const [l] = await db.select({ id: L.id }).from(L).where(and(eq(L.id, id), eq(L.userId, userId)));
   if (!l) return false;
+  // Uzak veritabanına her kelime için ayrı gidilmez: yalnızca içeriği değişen kelimeler tek tek, yeri değişenler tek sorguda,
+  // yeni kelimeler tek sorguda yazılır (300 kelimelik listede bir kelimeyi düzeltmek 300 değil birkaç sorgu)
   await db.transaction(async (tx) => {
-    await tx.update(L).set({ title, description, updatedAt: new Date() }).where(eq(L.id, id));
-    const rows = await tx.select({ id: I.id, ar: I.ar, tl: I.tl, tr: I.tr, note: I.note }).from(I).where(eq(I.listId, id));
+    await tx.update(L).set({ title, description, ...(meta.folder !== undefined ? { folder: meta.folder } : {}), ...(meta.tags !== undefined ? { tags: meta.tags } : {}), updatedAt: new Date() }).where(eq(L.id, id));
+    const rows = await tx.select({ id: I.id, position: I.position, ar: I.ar, tl: I.tl, tr: I.tr, note: I.note }).from(I).where(eq(I.listId, id));
     const have = new Map(rows.map((r) => [r.id, r]));
     const keep = new Set<number>();
+    const moved: { id: number; position: number }[] = [];
+    const fresh: (typeof I.$inferInsert)[] = [];
     for (const [i, it] of items.entries()) {
-      if (it.id && have.has(it.id)) {
-        keep.add(it.id);
-        const old = have.get(it.id)!;
-        const sameContent = old.ar === it.ar && old.tl === it.tl && old.tr === it.tr && old.note === it.note;
-        await tx.update(I).set({ position: i, ar: it.ar, tl: it.tl, tr: it.tr, note: it.note, ...(sameContent ? keepTime : {}) }).where(eq(I.id, it.id));
-      } else {
-        await tx.insert(I).values({ listId: id, position: i, ar: it.ar, tl: it.tl, tr: it.tr, note: it.note });
-      }
+      const old = it.id ? have.get(it.id) : undefined;
+      if (!old || keep.has(old.id)) { fresh.push({ listId: id, position: i, ar: it.ar, tl: it.tl, tr: it.tr, note: it.note }); continue; }
+      keep.add(old.id);
+      const sameContent = old.ar === it.ar && old.tl === it.tl && old.tr === it.tr && old.note === it.note;
+      if (!sameContent) await tx.update(I).set({ position: i, ar: it.ar, tl: it.tl, tr: it.tr, note: it.note }).where(eq(I.id, old.id));
+      else if (old.position !== i) moved.push({ id: old.id, position: i });
     }
+    if (moved.length) {
+      await tx.update(I).set({ position: caseOf(moved.map((m) => [m.id, sql`${m.position}`])), ...keepTime })
+        .where(and(eq(I.listId, id), inArray(I.id, moved.map((m) => m.id))));
+    }
+    if (fresh.length) await tx.insert(I).values(fresh);
     const drop = [...have.keys()].filter((x) => !keep.has(x));
     if (drop.length) await tx.delete(I).where(and(eq(I.listId, id), inArray(I.id, drop)));
   });
   return true;
+}
+
+/** Kelime numarasına göre farklı değer: tek UPDATE ile birçok satır (CASE id WHEN .. THEN .. END) */
+function caseOf(pairs: [number, SQL][]) {
+  return sql`CASE ${I.id} ${sql.join(pairs.map(([k, v]) => sql`WHEN ${k} THEN ${v}`), sql` `)} END`;
 }
 
 export async function deleteList(userId: number, id: number) {
@@ -96,15 +109,25 @@ async function own(userId: number, id: number) {
   return l ?? null;
 }
 
-/** Çalışma cevapları: doğruysa art arda sayısı artar, yanlışsa sıfırlanır */
+/** Çalışma cevapları: doğruysa art arda sayısı artar, yanlışsa sıfırlanır. Bütün cevaplar tek sorguda yazılır */
 export async function recordAnswers(userId: number, id: number, results: { id: number; ok: boolean }[]) {
   if (!(await own(userId, id))) return false;
+  // Aynı kelimeye birden çok cevap geldiyse sırayla uygulanmış gibi tek sonuca indirgenir:
+  // yanlış varsa art arda sayısı son yanlıştan sonraki doğrular kadardır, yoksa doğrular kadar artar
+  const agg = new Map<number, { c: number; w: number; tail: number }>();
   for (const r of results) {
-    await db.update(I).set(r.ok
-      ? { correct: sql`${I.correct} + 1`, streak: sql`${I.streak} + 1`, seenAt: new Date(), ...keepTime }
-      : { wrong: sql`${I.wrong} + 1`, streak: 0, seenAt: new Date(), ...keepTime }
-    ).where(and(eq(I.id, r.id), eq(I.listId, id)));
+    const a = agg.get(r.id) || { c: 0, w: 0, tail: 0 };
+    if (r.ok) { a.c++; a.tail++; } else { a.w++; a.tail = 0; }
+    agg.set(r.id, a);
   }
+  const all = [...agg.entries()];
+  await db.update(I).set({
+    correct: sql`${I.correct} + ${caseOf(all.map(([k, a]) => [k, sql`${a.c}`]))}`,
+    wrong: sql`${I.wrong} + ${caseOf(all.map(([k, a]) => [k, sql`${a.w}`]))}`,
+    streak: caseOf(all.map(([k, a]) => [k, a.w ? sql`${a.tail}` : sql`${I.streak} + ${a.c}`])),
+    seenAt: new Date(),
+    ...keepTime
+  }).where(and(eq(I.listId, id), inArray(I.id, all.map(([k]) => k))));
   await db.update(L).set({ studiedAt: new Date(), updatedAt: sql`${L.updatedAt}` }).where(eq(L.id, id));
   return true;
 }

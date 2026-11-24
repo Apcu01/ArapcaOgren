@@ -6,10 +6,12 @@ import RefreshSiteButton from '@/components/admin/RefreshSiteButton';
 import { snapshot } from '@/lib/presence';
 import { liveSummary } from '@/lib/live';
 import { getHardestQuestions, getStats } from '@/lib/stats';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Genel bakış' };
 
 export default async function AdminHome() {
+  await requireAdmin();
   const [s, hardQ] = await Promise.all([getStats(), getHardestQuestions(10)]);
   const { totals: t, ev } = s;
   const maxTopic = Math.max(1, ...s.topTopics.map((x) => x.n));

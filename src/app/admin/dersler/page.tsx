@@ -2,10 +2,12 @@ import { sql } from 'drizzle-orm';
 import { db } from '@/db';
 import TopicsTable from '@/components/admin/TopicsTable';
 import { getTopics } from '@/lib/topics';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Dersler' };
 
 export default async function TopicsAdmin() {
+  await requireAdmin();
   const topics = await getTopics({ all: true });
   const [rows] = (await db.execute(sql`SELECT topic_id t, COUNT(*) n, AVG(score) avg FROM events WHERE type = 'activity' GROUP BY topic_id`)) as unknown as [{ t: string; n: number; avg: number }[]];
   const usage = Object.fromEntries(rows.map((r) => [r.t, { n: Number(r.n), avg: Number(r.avg) }]));

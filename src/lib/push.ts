@@ -3,7 +3,7 @@ import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { sendNotification, setVapidDetails } from 'web-push';
 import { db, schema } from '@/db';
 import { addDays, rankRows, trDay, weekEnd, weekStart } from './league';
-import { dueText, leagueText, postText, PUSH_HOURS, streakText, type PushKind, type PushPayload } from './push-shared';
+import { dueText, leagueText, postText, PUSH_HOURS, pushEndpointOk, streakText, type PushKind, type PushPayload } from './push-shared';
 import { taskDone } from './classes';
 
 const S = schema.pushSubscriptions;
@@ -43,10 +43,11 @@ export async function sendPush(userIds: number[], payload: PushPayload, kind?: P
     endpoint ? eq(S.endpoint, endpoint) : undefined
   ));
   let sent = 0, failed = 0;
-  const gone: number[] = [];
-  await Promise.all(subs.map(async (s) => {
+  // Bildirim servisi olmayan bir adres (bu denetimden önce kaydedilmiş olabilir) kullanılmaz, silinir
+  const gone: number[] = subs.filter((s) => !pushEndpointOk(s.endpoint)).map((s) => s.id);
+  await Promise.all(subs.filter((s) => !gone.includes(s.id)).map(async (s) => {
     try {
-      await sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 6 * 3600, urgency: 'normal' });
+      await sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 6 * 3600, urgency: 'normal', timeout: 10_000 });
       sent++;
     } catch (e) {
       failed++;

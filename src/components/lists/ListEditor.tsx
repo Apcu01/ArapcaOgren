@@ -8,7 +8,8 @@ import { Ar, useApp } from '../AppProvider';
 import { I, Raw } from '../icons';
 import { jsonFetch, useList } from './useList';
 import { Loading, LoginNeeded, Missing } from './parts';
-import { LIST_MAX_ITEMS, type WordList } from '@/lib/study';
+import { LIST_MAX_ITEMS, type ListSummary, type WordList } from '@/lib/study';
+import { cleanText } from '@/lib/text';
 
 export type TopicWords = { id: string; name: string; words: { ar: string; tl: string; tr: string }[] };
 type Row = { key: number; id?: number; ar: string; tl: string; tr: string; note: string };
@@ -21,7 +22,7 @@ const filled = (r: Row) => r.ar.trim() || r.tl.trim() || r.tr.trim();
 /** Toplu ekleme: her satır "Arapça ; okunuş ; anlam" (sekme, noktalı virgül ya da tire ile ayrılabilir) */
 export function parseBulk(text: string): Omit<Row, 'key'>[] {
   const out: Omit<Row, 'key'>[] = [];
-  for (const line of text.split(/\r?\n/)) {
+  for (const line of cleanText(text).split(/\r?\n/)) {
     const parts = line.split(/\t|;| [-–] |=/).map((s) => s.trim()).filter(Boolean);
     if (!parts.length) continue;
     const ar = parts.find((p) => /[؀-ۿ]/.test(p)) || '';
@@ -52,6 +53,17 @@ function Editor({ list, topics }: { list?: WordList; topics: TopicWords[] }) {
   const { toast } = useApp();
   const [title, setTitle] = useState(list?.title ?? '');
   const [desc, setDesc] = useState(list?.description ?? '');
+  const [folder, setFolder] = useState(list?.folder ?? '');
+  const [tags, setTags] = useState<string[]>(list?.tags ?? []);
+  // Var olan klasör ve etiketler öneri olarak gösterilir
+  const [known, setKnown] = useState<{ folders: string[]; tags: string[] }>({ folders: [], tags: [] });
+  useEffect(() => {
+    jsonFetch<{ lists: ListSummary[] }>('/api/lists').then((r) => {
+      if (!r.ok) return;
+      const uniq = (a: string[]) => [...new Set(a.filter(Boolean))].sort((x, y) => x.localeCompare(y, 'tr'));
+      setKnown({ folders: uniq(r.data.lists.map((l) => l.folder)), tags: uniq(r.data.lists.flatMap((l) => l.tags)) });
+    });
+  }, []);
   const [rows, setRows] = useState<Row[]>(() => list?.items.length
     ? list.items.map((it) => ({ key: ++seq, id: it.id, ar: it.ar, tl: it.tl, tr: it.tr, note: it.note }))
     : [blank(), blank(), blank()]);
@@ -96,7 +108,7 @@ function Editor({ list, topics }: { list?: WordList; topics: TopicWords[] }) {
     const bad = items.findIndex((it) => !it.ar.trim() || !it.tr.trim());
     if (bad >= 0) { setErr(`${bad + 1}. kelimede Arapça yazım ya da Türkçe anlam eksik.`); return; }
     setBusy(true); setErr('');
-    const body = JSON.stringify({ title, description: desc, items });
+    const body = JSON.stringify({ title, description: desc, folder: folder.trim(), tags, items });
     const r = list
       ? await jsonFetch(`/api/lists/${list.id}`, { method: 'PUT', body })
       : await jsonFetch<{ id: number }>('/api/lists', { method: 'POST', body });
@@ -134,6 +146,15 @@ function Editor({ list, topics }: { list?: WordList; topics: TopicWords[] }) {
           <input value={desc} onChange={(e) => { dirty.current = true; setDesc(e.target.value); }} maxLength={300} placeholder="Kısa bir not"
             className="h-12 px-4 rounded-xl bg-s2 border border-line3 text-ink text-[16px] outline-none focus:border-acc" />
         </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-semibold text-soft">Klasör <span className="font-normal text-faint">(isteğe bağlı)</span></span>
+            <input value={folder} onChange={(e) => { dirty.current = true; setFolder(e.target.value); }} maxLength={40} list="list-folders" placeholder="Örneğin: 1. dönem"
+              className="h-12 px-4 rounded-xl bg-s2 border border-line3 text-ink text-[16px] outline-none focus:border-acc" />
+            <datalist id="list-folders">{known.folders.map((f) => <option key={f} value={f} />)}</datalist>
+          </label>
+          <TagInput tags={tags} known={known.tags} onChange={(t) => { dirty.current = true; setTags(t); }} />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -165,6 +186,39 @@ function Editor({ list, topics }: { list?: WordList; topics: TopicWords[] }) {
           <button type="button" onClick={save} disabled={busy} className="h-11 px-6 rounded-xl bg-acc text-onacc font-bold disabled:opacity-60">{busy ? 'Kaydediliyor' : list ? 'Kaydet' : 'Oluştur'}</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Etiketler: yazıp Enter ya da virgülle eklenir, çarpıyla çıkarılır (en fazla 6) */
+function TagInput({ tags, known, onChange }: { tags: string[]; known: string[]; onChange: (t: string[]) => void }) {
+  const [text, setText] = useState('');
+  const add = (raw: string) => {
+    const t = cleanText(raw).replace(/,/g, ' ').replace(/ +/g, ' ').trim().slice(0, 24);
+    setText('');
+    if (!t || tags.length >= 6 || tags.some((x) => x.toLocaleLowerCase('tr') === t.toLocaleLowerCase('tr'))) return;
+    onChange([...tags, t]);
+  };
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor="list-tag-input" className="text-sm font-semibold text-soft">Etiketler <span className="font-normal text-faint">(en fazla 6)</span></label>
+      <div className="min-h-12 px-2 py-1.5 rounded-xl bg-s2 border border-line3 flex flex-wrap items-center gap-1.5 focus-within:border-acc">
+        {tags.map((t) => (
+          <span key={t} className="h-8 pl-3 pr-1 rounded-full bg-chip border border-chipln text-acct text-sm font-semibold inline-flex items-center gap-1">
+            {t}
+            <button type="button" onClick={() => onChange(tags.filter((x) => x !== t))} aria-label={`${t} etiketini çıkar`} className="w-6 h-6 rounded-full inline-flex items-center justify-center hover:bg-s5"><Raw html={I.x(12)} /></button>
+          </span>
+        ))}
+        {tags.length < 6 && (
+          <input id="list-tag-input" value={text} list="list-tags" maxLength={30} placeholder={tags.length ? '' : 'Örneğin: sınav, fiiller'}
+            onChange={(e) => (e.target.value.endsWith(',') ? add(e.target.value) : setText(e.target.value))}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(text); } else if (e.key === 'Backspace' && !text && tags.length) onChange(tags.slice(0, -1)); }}
+            onBlur={() => text.trim() && add(text)}
+            className="flex-1 min-w-[120px] h-8 px-2 bg-transparent border-0 outline-none text-ink text-[16px] placeholder:text-faint" />
+        )}
+        <datalist id="list-tags">{known.filter((k) => !tags.includes(k)).map((k) => <option key={k} value={k} />)}</datalist>
+      </div>
+      <span className="text-xs text-faint">Yazıp Enter'a bas; Listelerim sayfasında etikete göre süzebilirsin.</span>
     </div>
   );
 }

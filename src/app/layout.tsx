@@ -3,7 +3,8 @@ import './globals.css';
 import { AppProvider } from '@/components/AppProvider';
 import NavProgress from '@/components/NavProgress';
 import ServiceWorker from '@/components/ServiceWorker';
-import { getAudioMap } from '@/lib/audio';
+import { getAudioVersion } from '@/lib/audio';
+import { AR_FONT_FLAG, arabic, sans } from '@/lib/fonts';
 import { SETTINGS_COOKIE, THEME_COLOR } from '@/lib/settings';
 import { SITE_DESC, SITE_NAME, siteOrigin } from '@/lib/site';
 
@@ -36,24 +37,22 @@ export const viewport: Viewport = {
 export const revalidate = 3600;
 
 // Görünüm ayarlarını (tema, yazı boyutu, okunuş, İngilizce) sayfa çizilmeden önce çerezden uygular: renk ya da düzen sıçraması olmaz
-const SETTINGS_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${SETTINGS_COOKIE}=([^;]*)/);if(!m)return;var s=JSON.parse(decodeURIComponent(m[1]));var b=document.body;if(['dark','light','system'].indexOf(s.theme)>=0)document.documentElement.setAttribute('data-theme',s.theme);if(s.tl===false)b.classList.add('no-tl');if(s.en===false)b.classList.add('no-en');if(s.arSize===1||s.arSize===2)b.classList.add('ar-'+s.arSize);if(s.txtSize===1||s.txtSize===2)b.classList.add('txt-'+s.txtSize);if(s.motion===false)b.classList.add('no-motion')}catch(e){}})()`;
+// Arapça yazı tipi bu tarayıcıda daha önce indirildiyse (önbellekte) çizimden önce etkinleştirilir: yazı tipi sıçraması olmaz
+const SETTINGS_SCRIPT = `(function(){try{if(localStorage.getItem('${AR_FONT_FLAG}'))document.documentElement.classList.add('ar-font')}catch(e){}try{var m=document.cookie.match(/(?:^|; )${SETTINGS_COOKIE}=([^;]*)/);if(!m)return;var s=JSON.parse(decodeURIComponent(m[1]));var b=document.body;if(['dark','light','system'].indexOf(s.theme)>=0)document.documentElement.setAttribute('data-theme',s.theme);if(s.tl===false)b.classList.add('no-tl');if(s.en===false)b.classList.add('no-en');if(s.arSize===1||s.arSize===2)b.classList.add('ar-'+s.arSize);if(s.txtSize===1||s.txtSize===2)b.classList.add('txt-'+s.txtSize);if(s.motion===false)b.classList.add('no-motion')}catch(e){}})()`;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const audios = await getAudioMap();
+  // Ses eşlemesinin yalnızca sürümü gömülür; eşlemenin kendisini tarayıcı bir kez indirip saklar
+  const audioV = await getAudioVersion();
   return (
-    <html lang="tr" data-theme="dark" suppressHydrationWarning>
+    <html lang="tr" data-theme="dark" className={`${sans.variable} ${arabic.variable}`} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         {/* Ziyaretçi istatistikleri (stats.minefox.net) — çerezsiz; /admin sayfaları sayılmaz */}
         <script defer src="https://stats.minefox.net/script.js" data-site="4v8cc95jeg" data-exclude="/admin" />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen flex flex-col" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: SETTINGS_SCRIPT }} />
         <a href="#app" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-acc focus:text-onacc">İçeriğe geç</a>
-        <AppProvider audios={audios}>
+        <AppProvider audioV={audioV}>
           {children}
         </AppProvider>
         <NavProgress />

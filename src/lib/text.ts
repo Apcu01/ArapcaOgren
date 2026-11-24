@@ -5,7 +5,11 @@ export const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const AR_RE = /[؀-ۿ]/;
 export const isAr = (s: unknown) => AR_RE.test(String(s || ''));
-export const strip = (s: unknown) => String(s || '').replace(/[ً-ٰٟـ]/g, '');
+/** Görünmez biçim karakterleri (sıfır genişlikli boşluk, yön işaretleri, BOM): kopyala-yapıştırla gelir, eşleştirmeyi ve ses bulmayı bozar */
+export const INVISIBLE_RE = /[\u00AD\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+/** Kullanıcıdan gelen metni temizler: görünmez karakterler atılır, harfler birleşik biçime (NFC) getirilir */
+export const cleanText = (s: unknown) => String(s ?? '').replace(INVISIBLE_RE, '').normalize('NFC');
+export const strip = (s: unknown) => String(s || '').replace(INVISIBLE_RE, '').replace(/[ً-ٰٟـ]/g, '');
 export const normAr = (s: unknown) => strip(s).replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
 /** Ses kaydı eşleştirme anahtarı: harekesiz, noktalamasız, tek boşluklu Arapça */
 export const audioKey = (s: unknown) => normAr(s).replace(/[؟،؛.!?,:;"'()]/g, '').replace(/\s+/g, ' ').trim().slice(0, 191);
@@ -83,7 +87,8 @@ export const HARAKAT_MIN_LETTERS = 2;
 /** Telaffuz etkinliğinde sorulan en fazla kelime */
 export const SPEAK_MAX = 8;
 
-export type ActView = Activity & { count: number; meta: string; mins: number };
+/** blitz: sınırsız pratik 60 saniye meydan okumayla açılır */
+export type ActView = Activity & { count: number; meta: string; mins: number; blitz?: boolean };
 
 /** Etkinlik listesi + kart bilgileri (dinleme etkinliği item'sızsa kelimelerden üretilir) */
 export function actsOf(t: Pick<Topic, 'acts' | 'words'> & { autoListen?: boolean }): ActView[] {

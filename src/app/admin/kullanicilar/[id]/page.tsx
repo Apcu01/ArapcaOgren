@@ -4,7 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { Card, Stat, ago, dt, pct, scoreColor } from '@/components/admin/ui';
 import UserActions from '@/components/admin/UserActions';
-import { getSessionUser } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { ALPHABET_TOPIC } from '@/lib/alphabet';
 import { getUserProgress } from '@/lib/progress';
 import { getUserEvents } from '@/lib/stats';
@@ -15,9 +15,10 @@ import { getTopics } from '@/lib/topics';
 export const metadata = { title: 'Kullanıcı' };
 
 export default async function UserDetail({ params }: { params: Promise<{ id: string }> }) {
+  const me = await requireAdmin();
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
-  const [[u], me] = await Promise.all([db.select().from(schema.users).where(eq(schema.users.id, id)), getSessionUser()]);
+  const [u] = await db.select().from(schema.users).where(eq(schema.users.id, id));
   if (!u) notFound();
   const [prog, topics, events, [sess], lists] = await Promise.all([
     getUserProgress(id),
@@ -48,7 +49,7 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
             <p className="m-0 text-xs text-faint">Kayıt: {dt(u.createdAt, true)} · Son görülme: {ago(u.lastSeenAt)} · Açık oturum: {Number(sess.n)}</p>
           </div>
         </div>
-        <UserActions id={u.id} role={u.role} self={me?.id === u.id} />
+        <UserActions id={u.id} role={u.role} self={me.id === u.id} />
       </div>
 
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">

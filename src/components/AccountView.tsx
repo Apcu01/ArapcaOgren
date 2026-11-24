@@ -43,7 +43,7 @@ export default function AccountView({ createdAt, hasPassword, google }: { create
     const form = e.currentTarget;
     const f = new FormData(form);
     const r = await send('PATCH', { currentPassword: hasPassword ? String(f.get('cur')) : undefined, newPassword: String(f.get('new')) });
-    setM2(r.ok ? { ok: true, text: hasPassword ? 'Şifren değiştirildi.' : 'Şifren belirlendi. Artık e-postanla da giriş yapabilirsin.' } : { ok: false, text: r.error || 'Değiştirilemedi.' });
+    setM2(r.ok ? { ok: true, text: (hasPassword ? 'Şifren değiştirildi.' : 'Şifren belirlendi. Artık e-postanla da giriş yapabilirsin.') + ' Diğer cihazlardaki oturumların kapatıldı.' } : { ok: false, text: r.error || 'Değiştirilemedi.' });
     if (r.ok) { form.reset(); if (!hasPassword) router.refresh(); }
   }
   async function del(e: React.FormEvent<HTMLFormElement>) {

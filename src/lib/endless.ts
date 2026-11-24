@@ -4,6 +4,7 @@
    (anlamını bul, Arapçasını bul, dinle, boşluğu doldur, doğru cümleyi bul, dönüştür, kelimeleri diz). */
 import { shuffle } from './text';
 import type { Word } from './types';
+import { DRILLS, numberTexts, pairTexts, rakamQ, SOUND_GROUPS, soundTexts } from './drills';
 
 export type EQ = {
   /** Aynı sorunun art arda gelmemesi için anahtar */
@@ -27,7 +28,54 @@ export type EQ = {
   full: string;
   fullTr: string;
   why: string;
+  /** Hatalarım'daki kural başlığı (RULE_TR) */
+  g?: string;
+  /** Cevaptan sonra okunacak metin (varsayılan: full); null ise ses düğmesi yok */
+  say?: string | null;
+  /** Dinleme: art arda okunacak ifadeler (telefon numarası rakam rakam) */
+  seq?: string[];
+  /** Seçenek yerine yazarak cevap (rakamlarla); alt: Hatalarım için yanlış seçenekler */
+  input?: 'digits';
 };
+
+/** Oturum özetindeki soru türü adları */
+export const KIND_TR: Record<string, string> = {
+  'zamir-anlam': 'Zamirin anlamı', 'zamir-ar': 'Zamirin Arapçası', 'zamir-dinle': 'Zamiri dinleme', 'zamir-ozne': 'Yükleme uygun zamir',
+  'zamir-yuklem': 'Zamire uygun yüklem', 'zamir-isaret': 'İşaret zamirleri', 'zamir-sifat': 'Sıfat cümleleri', 'zamir-dizme': 'Cümle kurma',
+  'zamir-fiil': 'Fiil çekimi', 'zamir-cumle': 'Cümlenin anlamı', 'zamir-dogru': 'Doğru cümleyi bulma', 'zamir-donustur': 'İkil ve çoğula dönüştürme',
+  'iyelik-anlam': 'Ekli ismin anlamı', 'iyelik-ar': 'Ekli ismin Arapçası', 'iyelik-dinle': 'Ekli ismi dinleme', 'iyelik-ek': 'Doğru iyelik eki',
+  'iyelik-donustur': 'Ek değiştirme', 'iyelik-cumle': 'İyelikli cümleler', 'iyelik-dizme': 'Cümle kurma', 'iyelik-inde': '"Bende var" kalıbı',
+  'kelime-anlam': 'Kelimenin anlamı', 'kelime-ar': 'Kelimenin Arapçası', 'kelime-dinle': 'Kelimeyi dinleme',
+  'rakam-oku': 'Rakam okuma', 'rakam-yaz': 'Rakamla yazma', 'rakam-dinle': 'Sayı dinleme', 'rakam-telefon': 'Telefon numarası', 'rakam-fiyat': 'Fiyat dinleme',
+  'zit-ar': 'Zıt anlamlısını bulma', 'zit-tr': 'Zıt anlamlı (Türkçeden)', 'es-ar': 'Eş anlamlısını bulma', 'es-tr': 'Eş anlamlı (Türkçeden)'
+};
+/** Oturum özeti: benzer seslerde harf grubuna göre (ح ve ه), diğerlerinde soru türüne göre */
+export const kindLabel = (q: Pick<EQ, 'kind' | 'label' | 'g'>) => (q.g?.startsWith('ses-') ? q.label.replace(/^Benzer sesler: /, '') : KIND_TR[q.kind] || q.label);
+
+/** Hatalarım'da kural başlıkları */
+export const RULE_TR: Record<string, string> = {
+  zamir: 'Zamirler', yuklem: 'Zamir ve yüklem uyumu', isaret: 'İşaret zamiri ve cinsiyet', cinsiyet: 'Sıfat ve cinsiyet uyumu',
+  dizme: 'Cümle kurma ve kelime sırası', fiil: 'Zamir ve fiil uyumu', cogul: 'Tekil, ikil ve çoğul', iyelik: 'İyelik ekleri',
+  ta: 'ة ve ت değişimi', inde: 'Sahiplik: عِنْدَ + ek', kelime: 'Kelime anlamları', saat: 'Saatler',
+  rakam: 'Arapça rakamlar', sayi: 'Sayıları dinleme', zit: 'Zıt anlamlılar', es: 'Eş anlamlılar',
+  ...Object.fromEntries(SOUND_GROUPS.map((gr) => ['ses-' + gr.id, 'Benzer sesler: ' + gr.title]))
+};
+
+/** Zamir sorularının kural başlığı (soru türünden; fiilli ve isimli cümleler ayrılır) */
+function zamirRule(q: EQ): string {
+  switch (q.kind) {
+    case 'zamir-anlam': case 'zamir-ar': case 'zamir-dinle': return 'zamir';
+    case 'zamir-ozne': case 'zamir-yuklem': return 'yuklem';
+    case 'zamir-isaret': return 'isaret';
+    case 'zamir-sifat': return 'cinsiyet';
+    case 'zamir-dizme': return 'dizme';
+    case 'zamir-fiil': return 'fiil';
+    case 'zamir-cumle': return q.key.startsWith('z-fiil-anlam') ? 'fiil' : 'yuklem';
+    case 'zamir-dogru': return q.key.startsWith('z-dogruf') ? 'fiil' : 'yuklem';
+    case 'zamir-donustur': return q.key.startsWith('z-donf') ? 'fiil' : 'cogul';
+    default: return 'zamir';
+  }
+}
 
 const pick = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)];
 const chance = (p: number) => Math.random() < p;
@@ -407,7 +455,9 @@ function iyelikQ(): EQ {
   const kind = pick(['anlam', 'anlam', 'ar', 'ar', 'dinle', 'ek', 'inde', 'inde', 'isaret', 'isaret', 'donustur', 'donustur', 'sifat', 'sifat', 'dizme', 'dizme']);
   const n = pick(PNOUNS), i = Math.floor(Math.random() * 8);
   const form = withSuf(n, i), tr = pTr(n, i), js = sibsOf(i);
-  const base = { full: form, fullTr: tr, why: sufWhy(n, i) };
+  // ة ile biten isimlerde asıl zorluk ة'nin ت'ye dönmesi
+  const rule = ta(n) ? 'ta' : 'iyelik';
+  const base = { full: form, fullTr: tr, why: sufWhy(n, i), g: rule };
   if (kind === 'anlam' || kind === 'dinle') {
     return { ...base, key: 'i-' + kind + form, kind: 'iyelik-' + kind, label: 'İyelik: ' + SUF_TR[i],
       prompt: kind === 'dinle' ? 'Dinle: ne duydun?' : 'Bu kelimenin anlamı ne?', ar: form, listen: kind === 'dinle',
@@ -430,7 +480,7 @@ function iyelikQ(): EQ {
   if (kind === 'donustur') {
     // Ekli kelimeyi başka bir kişiye çevir: كِتَابِي → كِتَابُهَا
     const j = pick([0, 1, 2, 3, 4, 5, 6, 7].filter((k) => k !== i)), a = withSuf(n, j);
-    return { key: 'i-don' + form + j, kind: 'iyelik-donustur', label: 'Ek değiştirme: ' + SUF_TR[j],
+    return { key: 'i-don' + form + j, kind: 'iyelik-donustur', label: 'Ek değiştirme: ' + SUF_TR[j], g: rule,
       prompt: `{{${form}}} "${tr}" demek. "${cap(pTr(n, j))}" nasıl denir?`, ar: form,
       options: opts(a, [form, ...sibsOf(j).map((k) => withSuf(n, k))]), optAr: true, a, full: a, fullTr: pTr(n, j), why: sufWhy(n, j) };
   }
@@ -438,7 +488,7 @@ function iyelikQ(): EQ {
     // "Bu kitabım." هٰذَا كِتَابِي
     const g = n.f ? 'f' : 'm', og = n.f ? 'm' : 'f', a = DEM.near[g] + ' ' + form;
     const trS = `Bu ${tr}.`;
-    return { key: 'i-isaret' + a, kind: 'iyelik-cumle', label: 'İşaret + iyelik: ' + SUF_TR[i], prompt: 'Bu cümlenin Arapçası hangisi?', tr: trS,
+    return { key: 'i-isaret' + a, kind: 'iyelik-cumle', label: 'İşaret + iyelik: ' + SUF_TR[i], g: rule, prompt: 'Bu cümlenin Arapçası hangisi?', tr: trS,
       options: shuffle([a, DEM.near[og] + ' ' + form, ...js.slice(0, 2).map((j) => DEM.near[g] + ' ' + withSuf(n, j))]), optAr: true, a, full: a, fullTr: trS,
       why: `"${cap(n.tb)}" ${genderWhy(n)} olduğu için "bu" = {{${DEM.near[g]}}}. ${sufWhy(n, i)}` };
   }
@@ -446,7 +496,7 @@ function iyelikQ(): EQ {
     // "Arabam yeni." سَيَّارَتِي جَدِيدَةٌ
     const adj = adjFor(n.c), a = form + ' ' + adjF(adj, n.f);
     const [ph, lb] = pParts(n, i), trS = `${cap(ph)} ${adj.tr}${lb}.`;
-    return { key: 'i-sifat' + a, kind: 'iyelik-cumle', label: 'İyelik + sıfat: ' + SUF_TR[i], prompt: 'Bu cümlenin Arapçası hangisi?', tr: trS,
+    return { key: 'i-sifat' + a, kind: 'iyelik-cumle', label: 'İyelik + sıfat: ' + SUF_TR[i], g: rule, prompt: 'Bu cümlenin Arapçası hangisi?', tr: trS,
       options: shuffle([a, form + ' ' + adjF(adj, !n.f), withSuf(n, js[0]) + ' ' + adjF(adj, n.f), def(n.s) + ' ' + adjF(adj, n.f)]), optAr: true, a,
       full: a, fullTr: trS,
       why: `${sufWhy(n, i)} "${cap(n.tb)}" ${genderWhy(n)} olduğu için sıfat da ${n.f ? 'dişil' : 'eril'}: {{${adjF(adj, n.f)}}}. {{${def(n.s)} ${adjF(adj, n.f)}}} "${cap(n.tb)} ${adj.tr}." demek olurdu.` };
@@ -457,13 +507,13 @@ function iyelikQ(): EQ {
     const adj = adjFor(hn.c), words = [IND[i], ind(hn.s), adjF(adj, hn.f)], a = words.join(' ');
     const trS = `${IND_TR[i]} ${adj.tr} bir ${hn.tb} var.`;
     const alt = [`${IND[js[0]]} ${ind(hn.s)} ${adjF(adj, hn.f)}`, `${IND[i]} ${ind(hn.s)} ${adjF(adj, !hn.f)}`, `${IND[i]} ${adjF(adj, hn.f)} ${ind(hn.s)}`];
-    return tileQ({ key: 'i-dizme' + a, kind: 'iyelik-dizme', label: 'Cümle kurma: عِنْدَ + isim + sıfat', tr: trS, full: a, fullTr: trS,
+    return tileQ({ key: 'i-dizme' + a, kind: 'iyelik-dizme', label: 'Cümle kurma: عِنْدَ + isim + sıfat', g: 'dizme', tr: trS, full: a, fullTr: trS,
       why: `"${IND_TR[i]} var" = {{${IND[i]}}}. Sıfat ismin arkasına gelir ve ona uyar: "${hn.tb}" ${genderWhy(hn)} olduğu için {{${adjF(adj, hn.f)}}}.` },
     words, chance(0.5) ? IND[js[0]] : adjF(adj, !hn.f), alt);
   }
   const a = IND[i] + ' ' + ind(hn.s);
   const trS = `${IND_TR[i]} bir ${hn.tb} var.`;
-  return { key: 'i-inde' + a, kind: 'iyelik-inde', label: 'Sahiplik: ' + IND_TR[i], prompt: 'Bu cümlenin Arapçası hangisi?', tr: trS,
+  return { key: 'i-inde' + a, kind: 'iyelik-inde', label: 'Sahiplik: ' + IND_TR[i], g: 'inde', prompt: 'Bu cümlenin Arapçası hangisi?', tr: trS,
     options: shuffle([a, ...js.map((j) => IND[j] + ' ' + ind(hn.s))]), optAr: true, a, full: a, fullTr: trS,
     why: `"Sahip olmak" Arapçada {{عِنْدَ}} + ek ile söylenir: {{عِنْدَ}} + {{${SUF_SHOW[i]}}} = {{${IND[i]}}} "${low(IND_TR[i])}".` };
 }
@@ -474,15 +524,19 @@ function wordQ(words: Word[]): EQ {
   const kind = pick(['anlam', 'anlam', 'ar', 'ar', 'dinle']);
   const others = shuffle(words.filter((x) => x.ar !== w.ar && x.tr !== w.tr));
   const why = (w.tl ? `Okunuşu: ${w.tl}.` : '') + (w.note ? ' ' + w.note : '');
-  const base = { full: w.ar, fullTr: w.tr, why };
+  const base = { full: w.ar, fullTr: w.tr, why, g: 'kelime' };
   if (kind === 'ar') return { ...base, key: 'k-ar' + w.ar, kind: 'kelime-ar', label: 'Kelime: Türkçeden Arapçaya', prompt: 'Arapçası hangisi?', tr: cap(w.tr), options: opts(w.ar, others.map((x) => x.ar)), optAr: true, a: w.ar };
   return { ...base, key: 'k-' + kind + w.ar, kind: 'kelime-' + kind, label: kind === 'dinle' ? 'Kelime: dinle' : 'Kelime: anlamı', prompt: kind === 'dinle' ? 'Dinle: hangi kelimeyi duydun?' : 'Bu kelimenin anlamı ne?', ar: w.ar, listen: kind === 'dinle', options: opts(w.tr, others.map((x) => x.tr)), optAr: false, a: w.tr };
 }
 
 /** Derse göre soru üretici; kelimesi az olan derslerde kullanılmaz */
 export function endlessGen(topicId: string, words: Word[]): (() => EQ) | null {
-  if (topicId === 'zamirler') return zamirQ;
+  if (topicId === 'zamirler') return () => { const q = zamirQ(); return { ...q, g: q.g || zamirRule(q) }; };
   if (topicId === 'iyelik') return iyelikQ;
+  // Alfabe ve sözlük sayfalarındaki ek alıştırmalar (benzer sesler, rakamlar, zıt ve eş anlamlılar)
+  if (DRILLS[topicId]) return DRILLS[topicId].gen;
+  // Sayılar dersinde kelimelerin yanında Arapça rakam okuma ve sayı dinleme
+  if (topicId === 'sayilar' && words.length >= 4) return () => (Math.random() < 0.5 ? rakamQ() : wordQ(words));
   return words.length >= 4 ? () => wordQ(words) : null;
 }
 /** Art arda aynı soru gelmesin (son birkaç soru hatırlanır) */
@@ -512,6 +566,7 @@ export function endlessTexts(): string[] {
       for (const a of ADJ.filter((x) => x.k.includes(n.c))) out.add(w + ' ' + adjF(a, n.f));
     }
   }
+  for (const t of [...soundTexts(), ...numberTexts(), ...pairTexts()]) out.add(t);
   for (const n of PNOUNS.filter((x) => x.own)) {
     for (const x of IND) {
       out.add(x + ' ' + ind(n.s));

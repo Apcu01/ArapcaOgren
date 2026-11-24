@@ -54,8 +54,8 @@ const config: Config = {
         thumb: 'rgb(var(--c-thumb) / <alpha-value>)'
       },
       fontFamily: {
-        sans: ['Manrope', 'system-ui', 'sans-serif'],
-        ar: ['"Noto Sans Arabic"', 'sans-serif']
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        ar: ['var(--font-ar, system-ui)', 'sans-serif']
       }
     }
   }

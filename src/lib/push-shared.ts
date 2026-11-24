@@ -13,6 +13,18 @@ export const PUSH_HOURS = { streak: 20, due: 18, league: 18 } as const;
 
 export type PushPayload = { title: string; body: string; url: string; tag?: string };
 
+/* Bildirim adresi yalnızca tarayıcıların bildirim servislerinden biri olabilir (Chrome, Opera, Samsung: Google;
+   Firefox: Mozilla; Edge: Microsoft; Safari: Apple). Sunucu bildirimi bu adrese gönderdiği için başka bir adres
+   kabul edilirse site, iç ağdaki ya da başka sitelerdeki adreslere istek atmak için kullanılabilirdi. */
+const PUSH_HOSTS = ['googleapis.com', 'mozilla.com', 'mozaws.net', 'windows.com', 'microsoft.com', 'apple.com'];
+export function pushEndpointOk(endpoint: string) {
+  let u: URL;
+  try { u = new URL(endpoint); } catch { return false; }
+  if (u.protocol !== 'https:' || (u.port && u.port !== '443') || u.username || u.password) return false;
+  const host = u.hostname.toLowerCase();
+  return PUSH_HOSTS.some((d) => host === d || host.endsWith('.' + d));
+}
+
 /** Hatırlatma metinleri */
 export const streakText = (days: number): PushPayload => ({
   title: days > 1 ? `${days} günlük serin bozulmasın` : 'Bugün de biraz Arapça?',

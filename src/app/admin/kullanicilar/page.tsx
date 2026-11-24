@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { Card, ago, dt, pct, scoreColor } from '@/components/admin/ui';
 import { getUsers } from '@/lib/stats';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Kullanıcılar' };
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ q?: string; s?: string }> }) {
+  await requireAdmin();
   const sp = await searchParams;
   const q = (sp.q || '').trim().slice(0, 100);
   const page = Math.max(1, Number(sp.s) || 1);

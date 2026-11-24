@@ -59,27 +59,21 @@ export async function leagueBoard(me: number | null, members?: number[], limit =
 
 /** Rozetler için: toplam puan ve biten haftalarda ilk üçe girme sayısı (son 26 hafta) */
 export async function xpStats(userId: number) {
-  const [[tot]] = await Promise.all([
-    db.select({ xp: sql<number>`COALESCE(SUM(${schema.xpLog.xp}), 0)` }).from(schema.xpLog).where(eq(schema.xpLog.userId, userId))
-  ]);
   const thisWeek = weekStart(trDay());
   const from = addDays(thisWeek, -7 * 26);
-  // Her haftanın puanları: kullanıcının girdiği haftalarda ilk üçte mi
-  const rows = await db.select({ userId: schema.xpLog.userId, day: schema.xpLog.day, xp: schema.xpLog.xp })
-    .from(schema.xpLog).innerJoin(schema.users, eq(schema.users.id, schema.xpLog.userId))
-    .where(and(gte(schema.xpLog.day, from), sql`${schema.xpLog.day} < ${thisWeek}`, eq(schema.users.leagueHidden, false)));
-  const weeks = new Map<string, Map<number, number>>();
-  for (const r of rows) {
-    const w = weekStart(r.day);
-    const m = weeks.get(w) || new Map<number, number>();
-    m.set(r.userId, (m.get(r.userId) || 0) + r.xp);
-    weeks.set(w, m);
-  }
-  let podiums = 0;
-  for (const m of weeks.values()) {
-    if (!m.has(userId)) continue;
-    const ranked = rankRows([...m.entries()].map(([u, xp]) => ({ u, xp })));
-    if (ranked.find((r) => r.u === userId)!.rank <= 3) podiums++;
-  }
-  return { xpTotal: Number(tot?.xp || 0), podiums };
+  const [[tot], res] = await Promise.all([
+    db.select({ xp: sql<number>`COALESCE(SUM(${schema.xpLog.xp}), 0)` }).from(schema.xpLog).where(eq(schema.xpLog.userId, userId)),
+    // Biten haftaların sıralaması veritabanında hesaplanır: herkesin günlük puanları uygulamaya taşınmaz, yalnızca sayı döner.
+    // Hafta pazartesi başlar (WEEKDAY: pazartesi 0), sıra eşit puanda paylaşılır (RANK: 1, 2, 2, 4), adını gizleyenler sayılmaz
+    db.execute(sql`SELECT COUNT(*) AS n FROM (
+        SELECT user_id, RANK() OVER (PARTITION BY wk ORDER BY xp DESC) AS rk FROM (
+          SELECT DATE_SUB(x.day, INTERVAL WEEKDAY(x.day) DAY) AS wk, x.user_id, SUM(x.xp) AS xp
+          FROM xp_log x INNER JOIN users u ON u.id = x.user_id
+          WHERE x.day >= ${from} AND x.day < ${thisWeek} AND u.league_hidden = 0
+          GROUP BY wk, x.user_id
+        ) weekly
+      ) ranked WHERE user_id = ${userId} AND rk <= 3`)
+  ]);
+  const [rows] = res as unknown as [{ n: number | string }[]];
+  return { xpTotal: Number(tot?.xp || 0), podiums: Number(rows[0]?.n || 0) };
 }

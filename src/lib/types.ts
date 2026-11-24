@@ -33,6 +33,8 @@ export type Question = {
   en?: string;
   w?: string[];
   alt?: string[][];
+  /** Hatalarım'daki kural başlığı (endless.ts RULE_TR) */
+  g?: string;
 };
 export type Pair = [string, string];
 export type Item = Question | Pair | Word;
@@ -71,9 +73,10 @@ export type Topic = {
   summaryNarr?: string | null;
 };
 
-// Kart listeleri için hafif ders özeti
+/** Kart listeleri ve ilerleme için hafif ders özeti: anlatım, kelimeler ve sorular tarayıcıya gönderilmez.
+ *  acts, actsOf ile aynı sırada ve aynı kimliklerle (ilerleme yüzdesi ders sayfasındakiyle aynı çıkar). */
 export type TopicSummary = Pick<Topic, 'id' | 'n' | 'level' | 'glyph' | 'ar' | 'name' | 'desc' | 'tags'> & {
-  acts: Pick<Activity, 'id' | 'type'>[];
+  acts: Pick<Activity, 'id' | 'type' | 'title'>[];
 };
 
 export type ActRec = { best: number; done: boolean; tries: number; last: number };
@@ -88,6 +91,6 @@ export type ReportContext = { label: string; question?: Question; word?: Word; s
 
 /** Kelime bul: yapay zekânın bulduğu kelimeler */
 export type LookupResult = {
-  results: { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; example?: { ar: string; tr: string }; note?: string; /** "Bu kelime nerede geçiyor?" bağlamına uyuyor */ fit?: boolean }[];
+  results: { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; example?: { ar: string; tr: string }; note?: string; /** "Bu kelime nerede geçiyor?" bağlamına uyuyor */ fit?: boolean; /** Harfleri aynı, harekesi farklı (yakın sonuç) */ near?: boolean }[];
   note?: string;
 };

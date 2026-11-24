@@ -3,11 +3,13 @@ import { notFound } from 'next/navigation';
 import TopicView from '@/components/TopicView';
 import { getNarrationIds } from '@/lib/narration';
 import { getTopics } from '@/lib/topics';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Ders önizleme', robots: { index: false } };
 
 // Taslak dahil her dersin sitedeki görünümü (yalnızca yöneticiler; yönetim düzeni yetkiyi kontrol eder)
 export default async function TopicPreview({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const all = await getTopics({ all: true });
   const idx = all.findIndex((x) => x.id === id);

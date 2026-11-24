@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from './AppProvider';
 import { I, Raw } from './icons';
 import { outboxSize } from '@/lib/outbox';
+import { preloadPlayer } from './LazyPlayer';
 
 export const OPEN_OFFLINE = 'arb:offline';
 type Plan = { pages: string[]; audio: { urls: string[]; bytes: number }; narration: { urls: string[]; bytes: number }; lists: { urls: string[]; count: number } };
@@ -85,6 +86,15 @@ export function OfflineDialog() {
     if (pick.audio) parts.push(['audio', plan.audio.urls, 'static']);
     if (pick.narration) parts.push(['narration', plan.narration.urls, 'static']);
     let ok = 0, all = 0;
+    // Sonradan yüklenen kod (etkinlik motoru) sayfaların HTML'inde geçmez: önce indirilir, sonra bu sayfanın
+    // yüklediği bütün derlenmiş dosyalar da saklanır ki etkinlikler internetsiz de açılsın
+    await preloadPlayer().catch(() => null);
+    const chunks = [...new Set([
+      ...[...document.querySelectorAll<HTMLScriptElement>('script[src]')].map((s) => s.src),
+      ...[...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')].map((l) => l.href),
+      ...performance.getEntriesByType('resource').map((e) => e.name)
+    ].filter((u) => u.startsWith(location.origin + '/_next/static/')))];
+    if (chunks.length) await runJob(chunks, 'static', () => {});
     for (const [part, urls, kind] of parts) {
       setProg({ part, done: 0, total: urls.length });
       const n = await runJob(urls, kind, (done, total) => setProg({ part, done, total }));

@@ -2,7 +2,9 @@
 const VERSION = 'v1';
 const PAGES = 'pages-' + VERSION;
 const STATIC = 'static-' + VERSION;
+const MAPS = 'audiomap-' + VERSION;
 const OFFLINE = '/cevrimdisi';
+const AUDIO_MAP = '/api/audio/map';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(PAGES).then((c) => c.addAll([OFFLINE, '/', '/logo.svg', '/icons/icon-192.png'])).then(() => self.skipWaiting()));
@@ -11,7 +13,10 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => ![PAGES, STATIC].includes(k)).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => ![PAGES, STATIC, MAPS].includes(k)).map((k) => caches.delete(k))))
+      // Bu sürümden önceki service worker ses eşlemesini değişmeyen dosyalarla birlikte saklamış olabilir
+      .then(() => caches.open(STATIC))
+      .then((c) => c.keys().then((ks) => Promise.all(ks.filter((r) => new URL(r.url).pathname === AUDIO_MAP).map((r) => c.delete(r)))))
       .then(() => self.clients.claim())
   );
 });
@@ -38,6 +43,28 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   if (!same) return;
+
+  // Ses eşlemesi (?v=sürüm): aynı sürümün içeriği değişmez, önce önbellek. Yalnızca son sürüm saklanır;
+  // çevrimdışıyken sürüm tutmasa da eldeki son eşleme verilir (indirilen sesler çalabilsin).
+  if (url.pathname === AUDIO_MAP) {
+    e.respondWith((async () => {
+      const c = await caches.open(MAPS);
+      const hit = await c.match(req, { ignoreVary: true });
+      if (hit) return hit;
+      try {
+        const r = await fetch(req);
+        if (r.ok && r.status === 200) {
+          await Promise.all((await c.keys()).map((k) => c.delete(k)));
+          await c.put(req, r.clone());
+        }
+        return r;
+      } catch {
+        const [last] = await c.keys();
+        return (last && (await c.match(last))) || new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+      }
+    })());
+    return;
+  }
 
   // Değişmeyen dosyalar: önce önbellek
   if (isStatic(url.pathname)) {
@@ -133,7 +160,7 @@ self.addEventListener('message', (e) => {
   if (d.type === 'clear-pages') e.waitUntil(caches.delete(PAGES).then(() => caches.open(PAGES).then((c) => c.add(OFFLINE))));
   // Bütün çevrimdışı verileri sil (sayfalar, sesler, derlenmiş dosyalar)
   if (d.type === 'clear-all') {
-    e.waitUntil(Promise.all([caches.delete(PAGES), caches.delete(STATIC)])
+    e.waitUntil(Promise.all([caches.delete(PAGES), caches.delete(STATIC), caches.delete(MAPS)])
       .then(() => caches.open(PAGES).then((c) => c.add(OFFLINE)))
       .then(() => client?.postMessage({ type: 'cleared' })));
   }

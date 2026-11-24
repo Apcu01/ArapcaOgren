@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { fail, ok, parse } from '@/lib/api';
 import { getSessionUser } from '@/lib/auth';
 import { getSubscription, pushReady, removeSubscription, saveSubscription, sendPush, setKinds } from '@/lib/push';
-import { PUSH_KINDS } from '@/lib/push-shared';
+import { PUSH_KINDS, pushEndpointOk } from '@/lib/push-shared';
 
 // Bildirim ayarı: açık mı ve açık anahtar; endpoint verilirse bu cihazın seçtiği türler
 export async function GET(req: Request) {
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   return res;
 }
 
-const endpoint = z.string().url().max(512);
+const endpoint = z.string().url().max(512).refine(pushEndpointOk, 'Bu tarayıcının bildirim servisi desteklenmiyor.');
 const kinds = z.array(z.enum(PUSH_KINDS)).max(PUSH_KINDS.length);
 const Body = z.discriminatedUnion('action', [
   z.object({ action: z.literal('subscribe'), subscription: z.object({ endpoint, keys: z.object({ p256dh: z.string().min(10).max(200), auth: z.string().min(4).max(100) }) }), kinds }),

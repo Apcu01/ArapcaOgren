@@ -12,7 +12,7 @@ import AddToList from './lists/AddToList';
 type Row = Word & { topics: { id: string; name: string }[]; root: Root | null };
 
 /** slugs: Arapça yazım -> kelime sayfası adresi */
-export default function DictionaryView({ topics, slugs = {} }: { topics: Topic[]; slugs?: Record<string, string> }) {
+export default function DictionaryView({ topics, slugs = {} }: { topics: Pick<Topic, 'id' | 'n' | 'name' | 'words'>[]; slugs?: Record<string, string> }) {
   const { tx } = useApp();
   const [q, setQ] = useState('');
   const [konu, setKonu] = useState('');
@@ -50,6 +50,7 @@ export default function DictionaryView({ topics, slugs = {} }: { topics: Topic[]
         <span className="text-[13px] font-semibold tracking-[.12em] uppercase text-lab">Sözlük</span>
         <h1 className="m-0 text-[36px] sm:text-[44px] font-bold tracking-tight leading-tight">Tüm kelimeler</h1>
         <p className="m-0 text-mute text-lg max-w-[620px]">Derslerde geçen bütün kelimeler. Türkçe, İngilizce, okunuş ya da Arapça yazarak arayabilirsin; harekesiz yazman yeterli. <b className="text-ink">Kök</b> düğmesi, kelimenin ailesini ve Türkçede aynı kökten gelen kelimeleri gösterir.</p>
+        <Link href="/zit-es-anlamlilar" className="self-start mt-1 h-11 px-4 rounded-xl border border-line3 bg-s2 text-soft font-semibold inline-flex items-center gap-2 hover:text-ink hover:border-lineh"><Raw html={I.pairs(17)} /> Zıt ve eş anlamlılar <Raw html={I.arrow()} /></Link>
       </div>
       <div className="flex flex-wrap gap-3">
         <label className="flex-[1_1_320px] flex items-center gap-3 px-[18px] h-[54px] rounded-[14px] bg-s2 border border-line2 text-faint focus-within:border-lineh">

@@ -39,17 +39,16 @@ export async function saveLesson(userId: number, topicId: string) {
 }
 
 // Skor birleştirme: en iyi skor korunur, bir kez tamamlanan tamamlanmış kalır
+const actMerge = {
+  best: sql`GREATEST(best, VALUES(best))`,
+  last: sql`VALUES(last)`,
+  done: sql`(done OR VALUES(done))`,
+  tries: sql`tries + VALUES(tries)`
+};
 export async function saveAct(userId: number, topicId: string, actKey: string, score: number, done: boolean, tries = 1) {
   await db.insert(schema.activityProgress)
     .values({ userId, topicId, actKey, best: score, last: score, done, tries })
-    .onDuplicateKeyUpdate({
-      set: {
-        best: sql`GREATEST(best, VALUES(best))`,
-        last: sql`VALUES(last)`,
-        done: sql`(done OR VALUES(done))`,
-        tries: sql`tries + VALUES(tries)`
-      }
-    });
+    .onDuplicateKeyUpdate({ set: actMerge });
 }
 
 export async function setLastTopic(userId: number, topicId: string) {
@@ -57,15 +56,24 @@ export async function setLastTopic(userId: number, topicId: string) {
 }
 
 // Misafirken biriken localStorage ilerlemesini hesaba aktar
+// Her tablo tek (çok satırlı) sorguyla yazılır: uzak veritabanına her ders, etkinlik ve gün için ayrı gidilmez
 export async function mergeProgress(userId: number, state: ProgressState) {
-  for (const [topicId, rec] of Object.entries(state.progress || {})) {
-    if (rec.lesson) await saveLesson(userId, topicId);
-    for (const [actKey, a] of Object.entries(rec.acts || {})) {
-      await saveAct(userId, topicId, actKey, a.best, a.done, Math.max(1, a.tries || 1));
-    }
-  }
-  for (const d of state.days || []) if (/^\d{4}-\d{2}-\d{2}$/.test(d)) await markDay(userId, d, Math.max(1, Math.min(500, state.counts?.[d] || 1)));
-  if (state.last) await setLastTopic(userId, state.last);
+  const entries = Object.entries(state.progress || {});
+  const lessons = entries.filter(([, rec]) => rec.lesson).map(([topicId]) => ({ userId, topicId, lessonRead: true }));
+  const acts = entries.flatMap(([topicId, rec]) => Object.entries(rec.acts || {}).map(([actKey, a]) => (
+    { userId, topicId, actKey, best: a.best, last: a.best, done: a.done, tries: Math.max(1, a.tries || 1) }
+  )));
+  const days = (state.days || []).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+    .map((day) => ({ userId, day, n: Math.max(1, Math.min(500, state.counts?.[day] || 1)) }));
+  const inChunks = async <T,>(rows: T[], write: (part: T[]) => Promise<unknown>) => {
+    for (let i = 0; i < rows.length; i += 500) await write(rows.slice(i, i + 500));
+  };
+  await Promise.all([
+    inChunks(lessons, (part) => db.insert(schema.topicProgress).values(part).onDuplicateKeyUpdate({ set: { lessonRead: true } })),
+    inChunks(acts, (part) => db.insert(schema.activityProgress).values(part).onDuplicateKeyUpdate({ set: actMerge })),
+    inChunks(days, (part) => db.insert(schema.studyDays).values(part).onDuplicateKeyUpdate({ set: { n: sql`n + VALUES(n)` } })),
+    state.last ? setLastTopic(userId, state.last) : null
+  ]);
 }
 
 export async function resetProgress(userId: number) {

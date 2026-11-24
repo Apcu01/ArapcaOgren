@@ -6,6 +6,7 @@ import LookupsView from '@/components/admin/LookupsView';
 import { Bar, Card, Stat, ago, dt } from '@/components/admin/ui';
 import { LOOKUP_DAILY_LIMIT, LOOKUP_MODEL } from '@/lib/lookup';
 import { lookupStats, SOURCE_LABEL } from '@/lib/lookup-stats';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Kelime aramaları' };
 
@@ -18,6 +19,7 @@ const Badge = ({ s, near }: { s: string; near?: boolean }) => (
 );
 
 export default async function LookupsPage({ searchParams }: { searchParams: Promise<{ t?: string; q?: string }> }) {
+  await requireAdmin();
   const sp = await searchParams;
   const tab = sp.t === 'ai' ? 'ai' : 'all';
   const q = (sp.q || '').trim().slice(0, 60);

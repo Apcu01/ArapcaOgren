@@ -8,7 +8,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
       // Sunucuya özel modüller testte boş modüle bağlanır
-      'server-only': path.resolve(import.meta.dirname, 'tests/stubs/empty.ts')
+      'server-only': path.resolve(import.meta.dirname, 'tests/stubs/empty.ts'),
+      // Yazı tipi yükleyicileri yalnızca Next derlemesinde çalışır
+      'next/font/google': path.resolve(import.meta.dirname, 'tests/stubs/next-font-google.ts')
     }
   },
   test: {

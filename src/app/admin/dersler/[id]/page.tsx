@@ -5,10 +5,12 @@ import { getNarrationIds } from '@/lib/narration';
 import { getQuestionStats } from '@/lib/stats';
 import { getTopic, getTopics } from '@/lib/topics';
 import type { Topic } from '@/lib/types';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Ders düzenle' };
 
 export default async function EditTopicPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const audio = await getAudioMap();
   if (id === 'yeni') {

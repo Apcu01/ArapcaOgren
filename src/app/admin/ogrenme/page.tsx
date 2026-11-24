@@ -3,10 +3,12 @@ import { Bar, Card, pct, scoreColor, Stat } from '@/components/admin/ui';
 import { learningStats } from '@/lib/learning-stats';
 import { PUSH_KINDS, PUSH_LABEL } from '@/lib/push-shared';
 import { DICTATE_KEY, HARAKAT_KEY } from '@/lib/text';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Okuma, dikte, sınıf, lig' };
 
 export default async function AdminLearningPage() {
+  await requireAdmin();
   const s = await learningStats();
   const maxViews = Math.max(1, ...s.readings.map((r) => r.views));
   const prac = (k: string) => s.practice[k] || { n: 0, avg: 0, people: 0 };

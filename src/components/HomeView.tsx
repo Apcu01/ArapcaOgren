@@ -2,13 +2,20 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import type { Topic } from '@/lib/types';
-import { actsOf, isAr, normAr, searchKey } from '@/lib/text';
+import type { TopicSummary } from '@/lib/types';
+import { isAr, normAr, searchKey } from '@/lib/text';
 import { Ar, useApp } from './AppProvider';
 import { I, Raw } from './icons';
 import { InstallCard } from './InstallApp';
 
 const LEVELS = ['Tümü', 'Başlangıç', 'Orta', 'İleri'];
+/** Derslerin dışındaki alıştırmalar */
+const EXTRAS: [string, string, string, string][] = [
+  ['/alfabe#benzer-sesler', 'ق ك', 'Benzer sesler', 'قَلْب mi, كَلْب mi? Karışan sesleri dinleyerek ayırt et.'],
+  ['/alfabe#rakamlar', '٣٤٥', 'Rakamlar ve sayılar', 'Arapça rakamları oku; sayı, fiyat ve telefon numarası dinle.'],
+  ['/alfabe/klavye', 'ش', 'Arapça klavye', 'Bilgisayarda Arapça yazmayı harf harf öğren, hızını ölç.'],
+  ['/zit-es-anlamlilar', '↔', 'Zıt ve eş anlamlılar', 'Kelimeleri çiftler hâlinde öğren, eşleştirerek pekiştir.']
+];
 const STEPS: [string, string, string][] = [
   ['1', 'Konuyu oku', 'Kurallar, tablolar ve püf noktalarıyla konuyu adım adım öğren.'],
   ['2', 'Örnekleri dinle', 'Her örneği Türkçe ve İngilizce karşılığıyla oku, sesli dinle.'],
@@ -16,13 +23,12 @@ const STEPS: [string, string, string][] = [
   ['4', 'Testi geç', 'Konu testinde %70 ve üstünü al; yanlışlarının açıklamasını oku.']
 ];
 
-export default function HomeView({ topics }: { topics: Topic[] }) {
+export default function HomeView({ topics }: { topics: TopicSummary[] }) {
   const { tx, topicStats, state } = useApp();
   const [level, setLevel] = useState('Tümü');
   const [q, setQ] = useState('');
-  const actMap = useMemo(() => Object.fromEntries(topics.map((t) => [t.id, actsOf(t)])), [topics]);
   const pctLabel = (st: ReturnType<typeof topicStats>) => (st.pct === 100 ? 'Tamamlandı' : !st.started ? 'Başlanmadı' : '%' + st.pct);
-  const totalActs = topics.reduce((n, t) => n + actMap[t.id].length, 0);
+  const totalActs = topics.reduce((n, t) => n + t.acts.length, 0);
 
   const list = useMemo(() => {
     const qt = searchKey(q), qa = isAr(q) ? normAr(q.trim()) : '';
@@ -33,8 +39,8 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
   const toResults = () => document.getElementById('konular')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // Kaldığın yer kartı
-  const cont = topics.find((x) => x.id === state.last) || topics.find((x) => topicStats(x.id, actMap[x.id]).pct < 100) || topics[0];
-  const cst = cont ? topicStats(cont.id, actMap[cont.id]) : null;
+  const cont = topics.find((x) => x.id === state.last) || topics.find((x) => topicStats(x.id, x.acts).pct < 100) || topics[0];
+  const cst = cont ? topicStats(cont.id, cont.acts) : null;
 
   return (
     <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-20 flex flex-col gap-12">
@@ -102,7 +108,7 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
             <div className="col-span-full p-10 rounded-2xl border border-dashed border-line3 text-center text-mute">"{q}" için konu bulunamadı. Başka bir kelime dene.</div>
           )}
           {list.map((t) => {
-            const st = topicStats(t.id, actMap[t.id]);
+            const st = topicStats(t.id, t.acts);
             return (
               <Link key={t.id} className="cat flex flex-col gap-5 p-6 rounded-[18px] bg-s3 border border-line text-ink hover:text-ink" href={`/konu/${t.id}`}>
                 <div className="flex justify-between items-start gap-3">
@@ -118,12 +124,27 @@ export default function HomeView({ topics }: { topics: Topic[] }) {
                   <Raw className="text-sm leading-relaxed text-mute2" html={tx.text(t.desc)} />
                 </div>
                 <div className="flex flex-col gap-2 mt-auto">
-                  <div className="flex justify-between text-[13px] text-mute2"><span>{actMap[t.id].length} etkinlik</span><span>{pctLabel(st)}</span></div>
+                  <div className="flex justify-between text-[13px] text-mute2"><span>{t.acts.length} etkinlik</span><span>{pctLabel(st)}</span></div>
                   <div className="h-1.5 rounded-full bg-line overflow-hidden"><div className="h-full rounded-full" style={{ width: st.pct + '%', background: st.pct === 100 ? 'rgb(var(--c-ok))' : 'rgb(var(--c-acc))' }} /></div>
                 </div>
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      <section aria-labelledby="ek-alistirmalar" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <h2 id="ek-alistirmalar" className="m-0 text-[28px] font-bold tracking-tight">Ek alıştırmalar</h2>
+          <span className="text-[15px] text-mute2">Derslerin yanında kulağını, okumanı ve yazmanı geliştiren alıştırmalar.</span>
+        </div>
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          {EXTRAS.map(([h, g, t, d]) => (
+            <Link key={h} href={h} className="cat flex gap-4 p-5 rounded-2xl bg-s3 border border-line text-ink hover:text-ink">
+              <span className="w-12 h-12 shrink-0 rounded-xl bg-chip border border-chipln text-acct flex items-center justify-center font-ar text-[20px]" aria-hidden="true">{g}</span>
+              <span className="flex flex-col gap-1"><span className="font-bold">{t}</span><Raw className="text-sm text-mute2 leading-relaxed" html={tx.text(d)} /></span>
+            </Link>
+          ))}
         </div>
       </section>
     </div>

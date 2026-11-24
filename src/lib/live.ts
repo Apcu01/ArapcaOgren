@@ -21,7 +21,10 @@ type Game = {
   players: Map<string, Player>; kicked: Set<string>; v: number; createdAt: number; touchedAt: number;
   /** Giriş yapmış öğretmen: yarışma bitince sonuçları geçmişine yazılır */
   hostUserId: number | null; firstAt: number; endedAt: number; saved: boolean;
+  /** Kaçıncı tur ve yeni turun soruları için kelime havuzu (aynı oyuncularla yeniden oynama) */
+  round: number; pool: LivePool | null;
 };
+export type LivePool = { words: { ar: string; tl: string; tr: string }[]; count: number; dir: Dir };
 
 export const LIVE = { maxPlayers: 80, maxGames: 500, idleMs: 3 * 3600_000, nameMax: 20 };
 
@@ -48,13 +51,13 @@ export function buildQuestions(words: { ar: string; tl: string; tr: string }[], 
   });
 }
 
-export function createGame(title: string, questions: LiveQuestion[], seconds: number, hostUserId: number | null = null) {
+export function createGame(title: string, questions: LiveQuestion[], seconds: number, hostUserId: number | null = null, pool: LivePool | null = null) {
   sweep();
   if (games.size >= LIVE.maxGames) return null;
   let code = '';
   do code = String(randomInt(100000, 1000000)); while (games.has(code));
   const now = Date.now();
-  const game: Game = { code, hostKey: token(), title, seconds, questions, phase: 'lobby', q: -1, startedAt: 0, endsAt: 0, players: new Map(), kicked: new Set(), v: 1, createdAt: now, touchedAt: now, hostUserId, firstAt: 0, endedAt: 0, saved: false };
+  const game: Game = { code, hostKey: token(), title, seconds, questions, phase: 'lobby', q: -1, startedAt: 0, endsAt: 0, players: new Map(), kicked: new Set(), v: 1, createdAt: now, touchedAt: now, hostUserId, firstAt: 0, endedAt: 0, saved: false, round: 1, pool };
   games.set(code, game);
   return { code, hostKey: game.hostKey };
 }
@@ -125,7 +128,9 @@ export function answer(code: string, pid: string, pkey: string, q: number, choic
 
 /* ---------- Öğretmen ---------- */
 
-export type HostAction = 'start' | 'next' | 'skip' | 'kick' | 'end';
+export type HostAction = 'start' | 'next' | 'skip' | 'kick' | 'end' | 'again';
+/** Yeni turda listeden düşen öğrenci: bu kadar süredir ekranı açık değil (sayfayı kapatmış) */
+const GONE_MS = 20_000;
 export function host(code: string, key: string, action: HostAction, pid?: string) {
   const x = get(code);
   if (!x || x.hostKey !== key) return { error: 'Yarışma bulunamadı.' };
@@ -154,10 +159,29 @@ export function host(code: string, key: string, action: HostAction, pid?: string
       x.phase = 'end';
       finish(x);
       break;
+    case 'again': {
+      // Aynı oyuncularla yeni tur: sorular yeniden seçilip karıştırılır, puanlar sıfırlanır, öğrenciler kod girmeden bekleme ekranına döner
+      if (x.phase !== 'end') break;
+      x.questions = x.pool ? buildQuestions(x.pool.words, x.pool.count, x.pool.dir) : reshuffle(x.questions);
+      for (const [id, pl] of x.players) {
+        if (now - pl.seenAt > GONE_MS) { x.players.delete(id); continue; }
+        pl.score = 0; pl.streak = 0; pl.answers = new Map(); pl.shown = new Map();
+      }
+      x.round++; x.phase = 'lobby'; x.q = -1; x.startedAt = 0; x.endsAt = 0; x.firstAt = 0; x.endedAt = 0; x.saved = false;
+      break;
+    }
   }
   bump(x);
   advance(x);
   return { ok: true };
+}
+
+/** Havuz yoksa aynı soruların sırası ve seçeneklerin yeri değişir */
+function reshuffle(questions: LiveQuestion[]): LiveQuestion[] {
+  return shuffle(questions).map((q) => {
+    const order = shuffle(q.options.map((_, i) => i));
+    return { ...q, options: order.map((i) => q.options[i]), correct: order.indexOf(q.correct) };
+  });
 }
 
 /* ---------- Görünümler ---------- */
@@ -171,7 +195,7 @@ export function hostView(code: string, key: string) {
   const showAnswer = x.phase === 'reveal';
   const rank = ranking(x);
   return {
-    v: x.v, code: x.code, title: x.title, phase: x.phase, q: x.q, total: x.questions.length, seconds: x.seconds, remaining: remaining(x),
+    v: x.v, code: x.code, title: x.title, round: x.round, phase: x.phase, q: x.q, total: x.questions.length, seconds: x.seconds, remaining: remaining(x),
     question: qq && x.phase !== 'board' ? { prompt: qq.prompt, promptTl: qq.promptTl, side: qq.side, options: qq.options, say: qq.say, correct: showAnswer || x.phase === 'end' ? qq.correct : null } : null,
     answered: qq ? [...x.players.values()].filter((p) => p.answers.has(x.q)).length : 0,
     counts: showAnswer && qq ? qq.options.map((_, i) => [...x.players.values()].filter((p) => p.answers.get(x.q)?.choice === i).length) : null,
@@ -194,7 +218,7 @@ export function playerView(code: string, pid: string, pkey: string) {
   const place = rank.findIndex((r) => r.id === p.id) + 1;
   const showQ = x.phase === 'question' || x.phase === 'reveal';
   return {
-    v: x.v, title: x.title, phase: x.phase, q: x.q, total: x.questions.length, seconds: x.seconds, remaining: remaining(x),
+    v: x.v, title: x.title, round: x.round, phase: x.phase, q: x.q, total: x.questions.length, seconds: x.seconds, remaining: remaining(x),
     name: p.name, score: p.score, streak: p.streak, place, players: x.players.size,
     question: showQ && qq ? { prompt: qq.prompt, promptTl: qq.promptTl, side: qq.side, options: qq.options, correct: x.phase === 'reveal' ? qq.correct : null } : null,
     answer: mine && showQ ? { choice: mine.choice, ok: x.phase === 'reveal' ? mine.ok : null, points: x.phase === 'reveal' ? mine.points : null } : null,
@@ -222,7 +246,7 @@ export function buildReport(x: Game): LiveReport {
   const players = ranking(x);
   const avg = (ms: number[]) => (ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null);
   return {
-    title: x.title, code: x.code, seconds: x.seconds, startedAt: x.firstAt || x.createdAt, endedAt: x.endedAt || Date.now(),
+    title: x.round > 1 ? `${x.title} (${x.round}. tur)` : x.title, code: x.code, seconds: x.seconds, startedAt: x.firstAt || x.createdAt, endedAt: x.endedAt || Date.now(),
     questions: asked.map((q, i) => {
       const ans = players.map((p) => p.answers.get(i)).filter((a): a is Answer => !!a);
       return {

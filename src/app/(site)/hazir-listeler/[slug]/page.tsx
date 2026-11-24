@@ -33,7 +33,7 @@ export default async function ReadyListPage({ params }: Params) {
         '@context': 'https://schema.org', '@type': 'DefinedTermSet', name: `${l.title} (Arapça)`, description: l.description,
         hasDefinedTerm: words.map((w) => ({ '@type': 'DefinedTerm', name: w.ar, description: w.tr, alternateName: w.tl })),
         publisher: { '@type': 'Organization', name: SITE_NAME }
-      }) }} />
+      }).replace(/</g, '\\u003c') }} />
       <Link href="/hazir-listeler" className="self-start text-sm text-mute hover:text-ink">← Hazır listeler</Link>
       <section className="flex flex-col gap-4 p-6 sm:p-8 rounded-[24px] bg-s3 border border-line">
         <span className="text-[13px] font-semibold tracking-[.12em] uppercase text-lab">Hazır liste · {l.group}</span>

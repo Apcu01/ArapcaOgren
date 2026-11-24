@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { I, Raw } from './icons';
+import { safeNext } from '@/lib/site';
 
 const LS_KEY = 'arblearn:v1';
 const MISTAKES_KEY = 'arblearn:mistakes';
@@ -80,8 +81,7 @@ export default function AuthForm({ mode, google = false, error }: { mode: 'login
       if (!r.ok) { setErr(j.error || 'Bir hata oluştu, tekrar dene.'); setBusy(false); return; }
       await mergeGuestProgress();
       await refreshSession();
-      const next = new URLSearchParams(location.search).get('next');
-      router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
+      router.push(safeNext(new URLSearchParams(location.search).get('next')));
       router.refresh();
     } catch {
       setErr('Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.');

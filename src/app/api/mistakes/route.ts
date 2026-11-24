@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getSessionUser } from '@/lib/auth';
 import { fail, ok, parse } from '@/lib/api';
-import { addMistake, clearMistakes, MAX_MISTAKES, resolveMistake } from '@/lib/mistakes';
+import { addMistake, addMistakes, clearMistakes, MAX_MISTAKES, resolveMistake } from '@/lib/mistakes';
 import type { Question } from '@/lib/types';
 
 const key = z.string().min(1).max(64);
@@ -11,7 +11,8 @@ const QuestionZ = z.object({
   clock: z.string().max(8).optional(), s: z.string().max(2000).optional(), hint: z.string().max(2000).optional(),
   options: z.array(z.string().max(1000)).max(12).optional(), a: z.union([z.string().max(1000), z.boolean()]).optional(),
   fixed: z.boolean().optional(), why: z.string().max(4000).optional(), tr: z.string().max(1000).optional(),
-  en: z.string().max(1000).optional(), w: z.array(z.string().max(200)).max(30).optional(), alt: z.array(z.array(z.string().max(200))).max(5).optional()
+  en: z.string().max(1000).optional(), w: z.array(z.string().max(200)).max(30).optional(), alt: z.array(z.array(z.string().max(200))).max(5).optional(),
+  g: z.string().max(40).optional()
 });
 const Item = z.object({ mkey: key, topicId: key, question: QuestionZ, count: z.number().int().min(1).max(10000).optional() });
 
@@ -31,6 +32,6 @@ export async function POST(req: Request) {
   if (b.action === 'add') await addMistake(user.id, b.mkey, b.topicId, b.question as Question);
   else if (b.action === 'resolve') await resolveMistake(user.id, b.mkey);
   else if (b.action === 'clear') await clearMistakes(user.id);
-  else for (const it of b.items) await addMistake(user.id, it.mkey, it.topicId, it.question as Question, it.count || 1);
+  else await addMistakes(user.id, b.items.map((it) => ({ mkey: it.mkey, topicId: it.topicId, question: it.question as Question, count: it.count || 1 })));
   return ok();
 }

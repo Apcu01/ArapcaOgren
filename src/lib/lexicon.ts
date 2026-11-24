@@ -2,6 +2,7 @@
 import { normAr, searchKey, strip } from './text';
 import { rankByContext } from './context';
 import { phonKeys } from './translit';
+import { arabicSeq, hasConsonant, latinSeq, soundMatch, type LatSeq, type Seq, type SoundMatch } from './soundmatch';
 import type { LookupResult } from './types';
 
 export type LexEntry = {
@@ -72,20 +73,7 @@ export function parseLexicon(text: string): LexEntry[] {
 }
 
 const arKey = (s: string) => normAr(strip(s)).replace(/[؟?!.،,]/g, '').replace(/^ال/, '').replace(/\s+/g, ' ').trim();
-const skel = (k: string) => k.replace(/[aiu]/g, '');
-
-function lev(a: string, b: string) {
-  if (a === b) return 0;
-  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
-  for (let i = 1; i <= a.length; i++) {
-    const cur = [i];
-    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    prev = cur;
-  }
-  return prev[b.length];
-}
-
-type Indexed = { e: LexEntry; keys: string[]; muKeys: string[]; skels: string[]; ar: string[] };
+type Indexed = { e: LexEntry; keys: string[]; muKeys: string[]; vkeys: string[]; seq: Seq; muSeq?: Seq; ar: string[] };
 
 /** Bir kaydın aranabilir okunuşları: kendisi, ek okunuşlar, tâ merbûtalı ve tenvinli hâller */
 export function entryKeys(e: LexEntry) {
@@ -99,16 +87,42 @@ export function entryKeys(e: LexEntry) {
 export function indexLexicon(list: LexEntry[]): Indexed[] {
   return list.map((e) => {
     const { keys, muKeys } = entryKeys(e);
-    return { e, keys, muKeys, skels: [...new Set([...keys, ...muKeys].map(skel))], ar: [arKey(e.ar), ...(e.muAr ? [arKey(e.muAr)] : [])] };
+    const vkeys = [...new Set(e.variants.flatMap(phonKeys))];
+    return { e, keys, muKeys, vkeys, seq: arabicSeq(e.ar), muSeq: e.muAr ? arabicSeq(e.muAr) : undefined, ar: [arKey(e.ar), ...(e.muAr ? [arKey(e.muAr)] : [])] };
   });
 }
 
-export type LexMatch = { kind: 'exact' | 'near'; items: { e: LexEntry; viaMu: boolean; fit?: boolean }[] };
+/** Türkçeye özgü ünsüzler (ş, ç, ğ): ek okunuşla eşleşmede bunlar da aynı olmalı (kış, kıssa değildir) */
+const trCons = (s: string) => s.toLocaleLowerCase('tr').replace(/[^şçğ]/g, '');
+const score = (m: SoundMatch) => m.miss * 100 + m.pen;
+
+/** Kayıt aramaya uyuyor mu: Arapça yazımla harf harf, geçmiş zaman ya da şimdiki zaman hâliyle; yoksa elle eklenmiş ek okunuşlarla */
+function entryMatch(x: Indexed, L: LatSeq, q: string, qk: string[]): { m: SoundMatch; mu: boolean } | null {
+  let best: { m: SoundMatch; mu: boolean } | null = null;
+  const a = soundMatch(L, x.seq);
+  if (a) best = { m: a, mu: false };
+  if (x.muSeq) {
+    const b = soundMatch(L, x.muSeq);
+    if (b && (!best || score(b) < score(best.m))) best = { m: b, mu: true };
+  }
+  // Elle eklenmiş ek okunuşlar (telfaz, tilifiziyon) birebir yazıldıysa tam eşleşme sayılır
+  if ((!best || best.m.miss) && x.vkeys.some((k) => qk.includes(k)) && (!L.tr || x.e.variants.some((v) => trCons(v) === trCons(q)))) best = { m: { miss: 0, pen: 0.2 }, mu: false };
+  // Okunuşu sözlükteki yazımla aynıysa öne (tamamen aynıysa daha çok)
+  if (best && !best.m.miss) {
+    const keys = best.mu ? x.muKeys : x.keys;
+    const bonus = keys.includes(qk[0]) ? 0.1 : keys.some((k) => qk.includes(k)) ? 0.05 : 0;
+    if (bonus) best = { ...best, m: { ...best.m, pen: best.m.pen - bonus } };
+  }
+  return best;
+}
+
+export type LexMatch = { kind: 'exact' | 'near'; items: { e: LexEntry; viaMu: boolean; fit?: boolean; near?: boolean }[] };
 
 /**
  * Okunuşa ya da Arapça yazıma göre arar.
- * exact: okunuş anahtarı aynı (hareke, şedde, uzatma, İngilizce yazım farkları yok sayılır)
- * near: ünsüz iskeleti aynı ve okunuş çok yakın (harekeler tamamen yanlış okunduğunda)
+ * exact: ünsüzler birebir aynı, harekeler uyumlu (e/a, i/ı, u/ü, cezm, şedde ve uzatma farkları yok sayılır)
+ * near: ünsüzler birebir aynı ama harekeler farklı (harekeler tamamen yanlış okunduğunda)
+ * Yazılmayan ya da kelimede olmayan bir ünsüz varsa kayıt hiç önerilmez (soundmatch.ts)
  * fit: "Bu kelime nerede geçiyor?" bağlamına uygunluk; verilirse uyanlar, sonuç sınırından önce öne alınır
  */
 export function matchLexicon(index: Indexed[], q: string, fit?: (e: LexEntry) => number): LexMatch | null {
@@ -121,39 +135,36 @@ export function matchLexicon(index: Indexed[], q: string, fit?: (e: LexEntry) =>
     const items = index.filter((x) => x.ar.includes(k)).map((x) => ({ e: x.e, viaMu: x.ar.indexOf(k) === 1 }));
     return items.length ? { kind: 'exact', items: ranked(items, 5) } : null;
   }
+  const L = latinSeq(s);
+  if (!hasConsonant(L)) return null;
   const qk = phonKeys(s);
-  if (!qk.length) return null;
-  const exact = index
-    .map((x) => ({ x, main: x.keys.some((k) => qk.includes(k)), mu: x.muKeys.some((k) => qk.includes(k)) }))
-    .filter((r) => r.main || r.mu)
-    // Tam anahtar eşleşmesi gevşek eşleşmeden önce gelsin
-    .sort((a, b) => Number(!a.x.keys.includes(qk[0]) && !a.x.muKeys.includes(qk[0])) - Number(!b.x.keys.includes(qk[0]) && !b.x.muKeys.includes(qk[0])));
-  if (exact.length) return { kind: 'exact', items: ranked(exact.map((r) => ({ e: r.x.e, viaMu: !r.main && r.mu })), 5) };
-
-  const qs = qk.map(skel);
-  if (qs[0].length < 2) return null;
-  const near = index
-    .filter((x) => x.skels.some((sk) => qs.includes(sk)))
-    .map((x) => {
-      const all = [...x.keys.map((k) => ({ k, mu: false })), ...x.muKeys.map((k) => ({ k, mu: true }))];
-      let best = { d: 99, mu: false };
-      for (const { k, mu } of all) for (const q2 of qk) { const d = lev(k, q2); if (d < best.d) best = { d, mu }; }
-      return { x, ...best };
-    })
-    .filter((r) => r.d <= Math.max(2, Math.floor(qk[0].length * 0.35)))
-    .sort((a, b) => a.d - b.d);
-  return near.length ? { kind: 'near', items: ranked(near.map((r) => ({ e: r.x.e, viaMu: r.mu })), 3) } : null;
+  const hits: { e: LexEntry; viaMu: boolean; m: SoundMatch }[] = [];
+  for (const x of index) {
+    const r = entryMatch(x, L, s, qk);
+    if (r) hits.push({ e: x.e, viaMu: r.mu, m: r.m });
+  }
+  hits.sort((a, b) => score(a.m) - score(b.m));
+  // Tam eşleşmeler: en temiz eşleşmeye yakın olanlar (cezm ya da şedde payı çok artmışsa ayıklanır)
+  const top = hits.find((h) => !h.m.miss);
+  const exact = top ? hits.filter((h) => !h.m.miss && h.m.pen <= top.m.pen + 0.12) : [];
+  // Harfleri aynı, harekeleri farklı kelimeler: tam eşleşme yoksa ya da azsa ardına eklenir
+  const near = hits.filter((h) => h.m.miss > 0 && h.m.miss <= (exact.length ? 1 : 3));
+  if (exact.length) {
+    const items = ranked(exact.map(({ e, viaMu }) => ({ e, viaMu })), 5);
+    return { kind: 'exact', items: items.length < 3 ? [...items, ...near.slice(0, 3 - items.length).map(({ e, viaMu }) => ({ e, viaMu, near: true }))] : items };
+  }
+  return near.length ? { kind: 'near', items: ranked(near.map(({ e, viaMu }) => ({ e, viaMu })), 3) } : null;
 }
 
 /** Eşleşmeyi sayfanın gösterdiği sonuç biçimine çevirir */
 export function toLookupResult(m: LexMatch): LookupResult {
   return {
-    results: m.items.map(({ e, viaMu, fit }) => {
+    results: m.items.map(({ e, viaMu, fit, near }) => {
       const notes = [] as string[];
       if (e.muAr) notes.push(viaMu ? `Aradığın, ${e.tl} fiilinin şimdiki/geniş zaman hâli: ${e.muAr} (${e.muTl}).` : `Şimdiki/geniş zaman: ${e.muAr} (${e.muTl}).`);
       if (e.note) notes.push(e.note);
-      return { ar: viaMu && e.muAr ? e.muAr : e.ar, tl: viaMu && e.muTl ? e.muTl : e.tl, tr: viaMu && e.muAr ? `"${e.tr}" fiilinin şimdiki / geniş zamanı` : e.tr, en: e.en, type: TYPE_LABEL[e.type] || e.type, root: '', note: notes.join(' ') || undefined, ...(fit ? { fit: true } : {}) };
+      return { ar: viaMu && e.muAr ? e.muAr : e.ar, tl: viaMu && e.muTl ? e.muTl : e.tl, tr: viaMu && e.muAr ? `"${e.tr}" fiilinin şimdiki / geniş zamanı` : e.tr, en: e.en, type: TYPE_LABEL[e.type] || e.type, root: '', note: notes.join(' ') || undefined, ...(fit ? { fit: true } : {}), ...(near ? { near: true } : {}) };
     }),
-    note: m.kind === 'near' ? 'Bu yazıma tam uyan kelime yok; okunuşu en yakın olanlar:' : ''
+    note: m.kind === 'near' ? 'Bu yazıma tam uyan kelime yok; aynı harflerle yazılan, harekeleri farklı kelimeler:' : ''
   };
 }

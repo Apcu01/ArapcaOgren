@@ -225,6 +225,9 @@ export const wordLists = mysqlTable('word_lists', {
   // Paylaşım bağlantısı (/liste/[token]); null ise paylaşım kapalı. copies: bağlantıdan kaç kez kopyalandı
   shareToken: varchar('share_token', { length: 32 }).unique(),
   copies: int('copies').notNull().default(0),
+  // Listelerim sayfasında gruplama: klasör adı (boşsa klasörsüz) ve en fazla 6 etiket
+  folder: varchar('folder', { length: 40 }).notNull().default(''),
+  tags: json('tags').$type<string[]>(),
   // Paylaşılan bir listeden kopyalandıysa asıl liste ve asıl listedeki değişikliklerin en son gözden geçirildiği an
   // (asıl liste silinince bağ kopar: ON DELETE SET NULL, veritabanında tanımlı)
   sourceListId: int('source_list_id'),

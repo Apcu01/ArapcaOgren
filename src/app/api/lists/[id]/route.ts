@@ -22,8 +22,8 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (!id) return fail(MISSING, 404);
   const p = await parse(req, ListZ);
   if ('res' in p) return p.res;
-  const { title, description, items } = p.data;
-  if (!(await saveList(user.id, id, title, description, items))) return fail(MISSING, 404);
+  const { title, description, items, folder, tags } = p.data;
+  if (!(await saveList(user.id, id, title, description, items, { folder, tags }))) return fail(MISSING, 404);
   return ok();
 }
 

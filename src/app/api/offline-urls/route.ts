@@ -18,7 +18,7 @@ const OFFLINE_LISTS = 10;
 export async function GET() {
   const [topics, user, readings] = await Promise.all([getTopics(), getSessionUser(), getReadings()]);
   const pages = [
-    '/', '/sozluk', '/alfabe', '/ilerleme', '/hatalarim', '/cevrimdisi', '/kelime-bul', '/okuma', '/hazir-listeler',
+    '/', '/sozluk', '/alfabe', '/alfabe/klavye', '/zit-es-anlamlilar', '/ilerleme', '/hatalarim', '/cevrimdisi', '/kelime-bul', '/okuma', '/hazir-listeler',
     ...topics.map((t) => `/konu/${t.id}`),
     ...readings.map((r) => `/okuma/${r.slug}`),
     ...READY_LISTS.map((l) => `/hazir-listeler/${l.slug}`)

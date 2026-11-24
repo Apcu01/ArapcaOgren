@@ -1,10 +1,12 @@
 import { desc, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import ReportsView, { type ReportRow } from '@/components/admin/ReportsView';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Hata bildirimleri' };
 
 export default async function ReportsPage() {
+  await requireAdmin();
   const rows = await db.select({
     id: schema.reports.id,
     topicId: schema.reports.topicId,

@@ -20,8 +20,8 @@ export function pkce() {
   return { verifier, challenge, state };
 }
 
-/** Yalnızca sitenin kendi sayfalarına yönlendirmeye izin ver */
-export const safeNext = (n: string | null | undefined) => (n && n.startsWith('/') && !n.startsWith('//') && !n.startsWith('/\\') ? n : '/');
+/** Yalnızca sitenin kendi sayfalarına yönlendirmeye izin ver (giriş formuyla aynı denetim) */
+export { safeNext } from './site';
 
 export type GoogleProfile = { sub: string; email: string; emailVerified: boolean; name: string };
 

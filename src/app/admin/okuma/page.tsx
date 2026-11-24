@@ -1,10 +1,12 @@
 import ReadingsAdmin from '@/components/admin/ReadingsAdmin';
 import { getReadings } from '@/lib/reading-store';
 import { getTopics } from '@/lib/topics';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Okuma metinleri' };
 
 export default async function AdminReadingsPage() {
+  await requireAdmin();
   const [readings, topics] = await Promise.all([getReadings({ all: true }), getTopics({ all: true })]);
   const name = (id: string | null) => topics.find((t) => t.id === id)?.name || '';
   return (

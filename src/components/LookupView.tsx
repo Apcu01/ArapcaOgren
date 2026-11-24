@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LookupResult } from '@/lib/types';
 import { isAr, normAr, searchKey, strip } from '@/lib/text';
-import { LOOKUP_RE, sameSound } from '@/lib/translit';
+import { LOOKUP_RE } from '@/lib/translit';
+import { arabicSeq, hasConsonant, latinSeq, soundMatch, type Seq } from '@/lib/soundmatch';
 import { recognizer, type SR } from '@/lib/speech';
 import { rootOf, spaced } from '@/lib/roots';
 import { SayBtn, useApp, anonId } from './AppProvider';
@@ -15,7 +16,7 @@ import { CONTEXT_MAX, contextFit, contextTerms, rankByContext, type ContextTerms
 import AddToList from './lists/AddToList';
 
 export type DictWord = { ar: string; tr: string; tl: string; en: string; topics: { id: string; name: string; tags?: string }[] };
-type Card = { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; note?: string; example?: { ar: string; tr: string }; topics?: DictWord['topics']; slug?: string; fit?: boolean };
+type Card = { ar: string; tl: string; tr: string; en?: string; type?: string; root?: string; note?: string; example?: { ar: string; tr: string }; topics?: DictWord['topics']; slug?: string; fit?: boolean; near?: boolean };
 type Source = 'lexicon' | 'ai' | 'cache';
 type Ai = { status: 'idle' } | { status: 'loading' } | { status: 'login' } | { status: 'done'; data: LookupResult; source: Source; near: boolean } | { status: 'error'; msg: string };
 
@@ -26,7 +27,22 @@ const arKey = (s: string) => normAr(strip(s)).replace(/^ال/, '').replace(/\s+/
 /** Ders kelimesinin bağlama uygunluğu: geçtiği dersin adı ve etiketleri, anlamı */
 const localFit = (t: ContextTerms | null, w: DictWord) => contextFit(t, [...w.topics.flatMap((x) => [x.name, x.tags]), w.tr, w.en], w.ar);
 
-/** Derslerdeki kelimelerde arama: okunuş benzerliği, Arapça yazım ya da Türkçe anlam */
+/** Ders kelimesinin harf dizileri: tamamı ve (geçmiş + şimdiki zaman gibi) parçaları; bir kez hesaplanır */
+const seqCache = new WeakMap<DictWord, Seq[]>();
+function seqsOf(w: DictWord) {
+  let s = seqCache.get(w);
+  if (!s) {
+    const parts = w.ar.split(/[\s/،,]+/).filter(Boolean);
+    s = [arabicSeq(w.ar), ...(parts.length > 1 ? parts.map(arabicSeq) : [])];
+    seqCache.set(w, s);
+  }
+  return s;
+}
+
+/**
+ * Derslerdeki kelimelerde arama: Arapça yazım, okunuş ya da Türkçe anlam.
+ * Okunuşta yazılan harfler kelimede birebir bulunmalı; harekeler, cezm ve şedde esnek (soundmatch.ts)
+ */
 function searchLocal(words: DictWord[], q: string) {
   const s = q.trim();
   if (!s) return { sound: [] as DictWord[], meaning: [] as DictWord[] };
@@ -34,7 +50,22 @@ function searchLocal(words: DictWord[], q: string) {
     const k = arKey(s);
     return { sound: words.filter((w) => arKey(w.ar) === k || arKey(w.ar).split(' ').includes(k)), meaning: [] };
   }
-  const sound = words.filter((w) => w.tl && [w.tl, ...w.tl.split(/[\s/,]+/)].some((t) => sameSound(t, s)));
+  const L = latinSeq(s);
+  const scored: { w: DictWord; pen: number }[] = [];
+  if (hasConsonant(L)) {
+    for (const w of words) {
+      let best = Infinity;
+      seqsOf(w).forEach((seq, i) => {
+        const m = soundMatch(L, seq);
+        // Tamamına uyan, parçasına uyandan önce gelir
+        if (m && !m.miss) best = Math.min(best, m.pen + (i ? 0.2 : 0));
+      });
+      if (best < Infinity) scored.push({ w, pen: best });
+    }
+  }
+  // En temiz eşleşmeye yakın olanlar (cezm ya da şedde payı çok artmışsa ayıklanır)
+  scored.sort((a, b) => a.pen - b.pen);
+  const sound = scored.filter((x) => x.pen <= scored[0].pen + 0.12).map((x) => x.w);
   const sk = searchKey(s);
   const meaning = sk.length < 2 ? [] : words.filter((w) => !sound.includes(w) && w.tr.split(/[,/;()]+|\s+/).some((t) => searchKey(t) === sk));
   return { sound, meaning };
@@ -207,7 +238,7 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
       <div className="flex flex-col gap-3">
         <span className="text-[13px] font-semibold tracking-[.12em] uppercase text-lab">Kelime bul</span>
         <h1 className="m-0 text-[36px] sm:text-[44px] font-bold tracking-tight leading-tight">Duyduğun kelimeyi yaz</h1>
-        <p className="m-0 text-mute text-lg max-w-[680px] leading-relaxed">Arapça bir kelimeyi Latin harfleriyle, duyduğun gibi yaz: <i>ketebe</i>, <i>afvan</i>, <i>müderris</i>. Harekesi yanlış olsa da (<i>efvan</i>, <i>katabe</i>), şeddeyi yazmasan da bulur. Arapça harflerle de yazabilir ya da mikrofona dokunup söyleyebilirsin.</p>
+        <p className="m-0 text-mute text-lg max-w-[680px] leading-relaxed">Arapça bir kelimeyi Latin harfleriyle, duyduğun gibi yaz: <i>ketebe</i>, <i>afvan</i>, <i>müderris</i>. Yazdığın harfler kelimede birebir aranır; harekeyi yanlış yazsan da (<i>efvan</i>, <i>katabe</i>), cezmi ya da şeddeyi atlasan da bulur. Arapça harflerle de yazabilir ya da mikrofona dokunup söyleyebilirsin.</p>
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); run(input); }} className="flex flex-col gap-3">
@@ -253,7 +284,7 @@ function Lookup({ words, slugs }: { words: DictWord[]; slugs: Record<string, str
           {!localLast && localGroups}
 
           {lex && (
-            <Group title={lex.near ? 'Bunu mu demek istedin?' : 'Sözlüğümüzden'} sub={lex.near ? 'Yazdığına tam uyan kelime yok; okunuşu en yakın olanlar.' : 'Kontrol edilmiş sözlüğümüzde bulundu.'}>
+            <Group title={lex.near ? 'Bunu mu demek istedin?' : 'Sözlüğümüzden'} sub={lex.near ? 'Yazdığına tam uyan kelime yok; aynı harflerle yazılan, harekeleri farklı kelimeler.' : 'Kontrol edilmiş sözlüğümüzde bulundu.'}>
               {lexCards.map((c) => <ResultCard key={c.ar + c.tr} c={{ ...c, slug: slugs[c.ar] }} />)}
             </Group>
           )}
@@ -308,7 +339,12 @@ function ResultCard({ c }: { c: Card }) {
     <article className="pop p-5 sm:p-6 rounded-[20px] bg-s3 border border-line flex flex-col gap-4">
       <div className="flex flex-wrap items-start gap-4 justify-between">
         <div className="flex flex-col gap-1 min-w-0">
-          {c.fit && <span className="self-start px-2 py-0.5 rounded-full bg-okbg border border-okln text-okt text-[11px] font-bold">Bağlama uygun</span>}
+          {(c.fit || c.near) && (
+            <span className="flex flex-wrap gap-1.5">
+              {c.fit && <span className="px-2 py-0.5 rounded-full bg-okbg border border-okln text-okt text-[11px] font-bold">Bağlama uygun</span>}
+              {c.near && <span className="px-2 py-0.5 rounded-full bg-s5 border border-line2 text-soft text-[11px] font-bold">Harfleri aynı, harekesi farklı</span>}
+            </span>
+          )}
           <span className="text-[22px] font-bold text-ink leading-snug">{c.tr}</span>
           <span className="text-sm text-mute2">
             <span className="tl">{c.tl}</span>{c.type && <>{c.tl ? ' · ' : ''}{c.type}</>}{c.en && <span className="en"> · EN: {c.en}</span>}

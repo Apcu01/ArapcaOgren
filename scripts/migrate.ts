@@ -10,6 +10,7 @@
 import { config } from 'dotenv';
 import mysql from 'mysql2/promise';
 import { DEFAULT_READINGS } from '../src/lib/readings';
+import { cleanText } from '../src/lib/text';
 
 config({ path: '.env.local', quiet: true });
 config({ quiet: true });
@@ -18,7 +19,7 @@ config({ quiet: true });
 const TABLES: Record<string, string> = {
   lexicon: "CREATE TABLE IF NOT EXISTS `lexicon` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `ar` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  `tl` varchar(120) NOT NULL,\n  `tr` varchar(300) NOT NULL,\n  `en` varchar(200) NOT NULL DEFAULT '',\n  `type` varchar(4) NOT NULL,\n  `variants` json NOT NULL,\n  `mu_ar` varchar(120) DEFAULT NULL,\n  `mu_tl` varchar(120) DEFAULT NULL,\n  `note` varchar(400) DEFAULT NULL,\n  `topic` varchar(80) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `ar` (`ar`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
   daily_metrics: "CREATE TABLE IF NOT EXISTS `daily_metrics` (\n  `day` char(10) NOT NULL,\n  `metric` varchar(24) NOT NULL,\n  `n` int NOT NULL DEFAULT '0',\n  PRIMARY KEY (`day`,`metric`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-  word_lists: "CREATE TABLE IF NOT EXISTS `word_lists` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `user_id` int NOT NULL,\n  `title` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `description` varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `best` json NOT NULL,\n  `studied_at` timestamp NULL DEFAULT NULL,\n  `share_token` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `copies` int NOT NULL DEFAULT '0',\n  `source_list_id` int DEFAULT NULL,\n  `synced_at` timestamp(3) NULL DEFAULT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `word_lists_share_token_unique` (`share_token`),\n  KEY `word_lists_user_idx` (`user_id`,`updated_at`),\n  KEY `word_lists_source_idx` (`source_list_id`),\n  CONSTRAINT `word_lists_source_fk` FOREIGN KEY (`source_list_id`) REFERENCES `word_lists` (`id`) ON DELETE SET NULL,\n  CONSTRAINT `word_lists_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+  word_lists: "CREATE TABLE IF NOT EXISTS `word_lists` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `user_id` int NOT NULL,\n  `title` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `description` varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `best` json NOT NULL,\n  `studied_at` timestamp NULL DEFAULT NULL,\n  `share_token` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `copies` int NOT NULL DEFAULT '0',\n  `folder` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `tags` json DEFAULT NULL,\n  `source_list_id` int DEFAULT NULL,\n  `synced_at` timestamp(3) NULL DEFAULT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `word_lists_share_token_unique` (`share_token`),\n  KEY `word_lists_user_idx` (`user_id`,`updated_at`),\n  KEY `word_lists_source_idx` (`source_list_id`),\n  CONSTRAINT `word_lists_source_fk` FOREIGN KEY (`source_list_id`) REFERENCES `word_lists` (`id`) ON DELETE SET NULL,\n  CONSTRAINT `word_lists_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   word_list_items: "CREATE TABLE IF NOT EXISTS `word_list_items` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `list_id` int NOT NULL,\n  `position` int NOT NULL DEFAULT '0',\n  `ar` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `tl` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `tr` varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `note` varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `starred` tinyint(1) NOT NULL DEFAULT '0',\n  `correct` int NOT NULL DEFAULT '0',\n  `wrong` int NOT NULL DEFAULT '0',\n  `streak` int NOT NULL DEFAULT '0',\n  `seen_at` timestamp NULL DEFAULT NULL,\n  `source_item_id` int DEFAULT NULL,\n  `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n  `updated_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),\n  PRIMARY KEY (`id`),\n  KEY `word_list_items_list_idx` (`list_id`,`position`),\n  CONSTRAINT `word_list_items_list_fk` FOREIGN KEY (`list_id`) REFERENCES `word_lists` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   lookup_log: "CREATE TABLE IF NOT EXISTS `lookup_log` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `query` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `context` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `qkey` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `source` varchar(12) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `near` tinyint(1) NOT NULL DEFAULT '0',\n  `result_ar` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `result_tr` varchar(300) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `user_id` int DEFAULT NULL,\n  `anon_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `lookup_log_created_idx` (`created_at`),\n  KEY `lookup_log_qkey_idx` (`qkey`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   live_results: "CREATE TABLE IF NOT EXISTS `live_results` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `user_id` int NOT NULL,\n  `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `questions` int NOT NULL,\n  `players` int NOT NULL,\n  `accuracy` double NOT NULL DEFAULT '0',\n  `report` json NOT NULL,\n  `started_at` timestamp NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `live_results_user_idx` (`user_id`,`created_at`),\n  CONSTRAINT `live_results_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -65,6 +66,25 @@ async function main() {
       if (m) await addColumn(t, m[1], m[2]);
     }
   }
+  // Görünmez karakter temizliği: kopyala-yapıştırla gelen sıfır genişlikli boşluklar kelime eşleştirmeyi ve ses bulmayı bozar.
+  // updated_at kendine eşitlenir: kopyalara "düzeltildi" önerisi çıkmasın
+  const cl = (v: unknown) => cleanText(v).trim();
+  const [items] = await conn.query<mysql.RowDataPacket[]>('SELECT id, ar, tl, tr, note FROM word_list_items');
+  let fixed = 0;
+  for (const r of items) {
+    const c = { ar: cl(r.ar), tl: cl(r.tl), tr: cl(r.tr), note: cl(r.note) };
+    if (c.ar === r.ar && c.tl === r.tl && c.tr === r.tr && c.note === r.note) continue;
+    await conn.query('UPDATE word_list_items SET ar = ?, tl = ?, tr = ?, note = ?, updated_at = updated_at WHERE id = ?', [c.ar, c.tl, c.tr, c.note, r.id]);
+    fixed++;
+  }
+  const [lists] = await conn.query<mysql.RowDataPacket[]>('SELECT id, title, description FROM word_lists');
+  for (const r of lists) {
+    const t = cl(r.title), d = cl(r.description);
+    if (t === r.title && d === r.description) continue;
+    await conn.query('UPDATE word_lists SET title = ?, description = ?, updated_at = updated_at WHERE id = ?', [t, d, r.id]);
+    fixed++;
+  }
+  if (fixed) console.log('~ ' + fixed + ' liste kaydında görünmez karakter temizlendi');
   // Okuma metinleri: tablo boşsa ilk 8 metin yayında olarak yüklenir
   const [[cnt]] = await conn.query<mysql.RowDataPacket[]>('SELECT COUNT(*) n FROM readings');
   if (!Number(cnt.n)) {

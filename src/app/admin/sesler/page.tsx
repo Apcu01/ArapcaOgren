@@ -3,10 +3,12 @@ import { db, schema } from '@/db';
 import AudioManager from '@/components/admin/AudioManager';
 import { getAudioMap } from '@/lib/audio';
 import { getTopics } from '@/lib/topics';
+import { requireAdmin } from '@/lib/auth';
 
 export const metadata = { title: 'Sesler' };
 
 export default async function AudioPage() {
+  await requireAdmin();
   const [topics, map, rows] = await Promise.all([
     getTopics({ all: true }),
     getAudioMap(),

@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, ne } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { SessionUser } from './types';
 
@@ -45,6 +45,14 @@ export async function destroySession() {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) { sessCache.delete(hash(token)); await db.delete(schema.sessions).where(eq(schema.sessions.id, hash(token))); }
   jar.delete(SESSION_COOKIE);
+}
+
+/** Bu cihaz dışındaki bütün oturumları kapatır: şifre değişince başka cihazlarda (ör. okul bilgisayarında) açık kalan oturumlar düşer */
+export async function endOtherSessions(userId: number) {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const mine = token ? hash(token) : '';
+  await db.delete(schema.sessions).where(and(eq(schema.sessions.userId, userId), ne(schema.sessions.id, mine)));
+  sessCache.clear();
 }
 
 // Aynı istek içinde tek sorgu

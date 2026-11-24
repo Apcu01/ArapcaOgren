@@ -10,6 +10,7 @@ import { I } from './icons';
 import type { Metric } from '@/lib/metrics';
 import { flushOutbox, send } from '@/lib/outbox';
 import { DEFAULT_SETTINGS, parseSettings, SETTINGS_CLASSES, SETTINGS_COOKIE, settingsClasses, THEME_COLOR, type Settings } from '@/lib/settings';
+import { AR_FONT_FLAG, arabic } from '@/lib/fonts';
 export type { Settings };
 const LS_KEY = 'arblearn:v1';
 const ANON_KEY = 'arblearn:anon';
@@ -20,6 +21,8 @@ const HINT_KEY = 'arblearn:user-hint';
 type UserHint = { name: string };
 
 const empty = (): ProgressState => ({ progress: {}, last: null, days: [], counts: {} });
+/** Ses eşlemesi henüz indirilmedi */
+const NO_AUDIO: Record<string, number> = Object.freeze({});
 
 type Ctx = {
   user: SessionUser | null;
@@ -37,7 +40,7 @@ type Ctx = {
   setLesson: (topicId: string) => void;
   setAct: (topicId: string, actKey: string, score: number, done: boolean) => void;
   actState: (topicId: string, actKey: string) => ActRec | null;
-  topicStats: (topicId: string, acts: ActView[]) => { done: number; total: number; lesson: boolean; pct: number; started: boolean };
+  topicStats: (topicId: string, acts: Pick<ActView, 'id'>[]) => { done: number; total: number; lesson: boolean; pct: number; started: boolean };
   setLast: (topicId: string) => void;
   /** Kelime listesi çalışıldı: bugünü takvime ve seriye işler (sunucuya liste API'si kaydeder) */
   noteStudy: () => void;
@@ -47,6 +50,8 @@ type Ctx = {
   speak: (text: string, opts?: { slow?: boolean }) => boolean;
   /** Bu metnin yönetim panelinden yüklenmiş gerçek ses kaydı var mı */
   hasAudio: (text: string) => boolean;
+  /** Ses eşlemesi indirildi mi (hasAudio'ya göre sabit bir seçim yapacaklar bunu bekler) */
+  audioReady: boolean;
   /** Seslendirir; ses bitince (ya da başka ses başlayınca) tamamlanır */
   playUntilEnd: (text: string, opts?: { slow?: boolean }) => Promise<void>;
   /** Çalan sesi durdurur */
@@ -104,9 +109,9 @@ function post(url: string, body: unknown) {
 
 /* Sayfalar önceden hazırlanır (statik): oturum, ilerleme ve ayarlar sunucuda değil burada, tarayıcıda okunur.
    Ayarlar sayfa çizilmeden önce çerezden uygulanır; oturum /api/me ile gelir. */
-export function AppProvider({ audios, children }: {
-  /** Yüklenmiş ses kayıtları: harekesiz metin anahtarı -> kayıt numarası */
-  audios: Record<string, number>;
+export function AppProvider({ audioV, children }: {
+  /** Ses eşlemesinin sürümü; eşleme (harekesiz metin anahtarı -> kayıt numarası) ayrı indirilir */
+  audioV: string;
   children: React.ReactNode;
 }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -243,7 +248,7 @@ export function AppProvider({ audios, children }: {
 
   const actState = useCallback((topicId: string, actKey: string) => state.progress[topicId]?.acts[actKey] || null, [state]);
 
-  const topicStats = useCallback((topicId: string, acts: ActView[]) => {
+  const topicStats = useCallback((topicId: string, acts: Pick<ActView, 'id'>[]) => {
     const p = state.progress[topicId] || { lesson: false, acts: {} };
     const done = acts.filter((a) => p.acts[a.id]?.done).length;
     const total = acts.length + 1;
@@ -273,6 +278,26 @@ export function AppProvider({ audios, children }: {
     document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => { m.content = light ? THEME_COLOR.light : THEME_COLOR.dark; });
   }, [settings.theme, settingsReady]);
   const tx = useMemo(() => makeText(settings.harakat), [settings.harakat]);
+
+  /* Arapça yazı tipi (~160 KB) sayfa kodu çalıştıktan sonra indirilir, inince etkinleşir: zayıf bağlantıda
+     düğmelerin çalışmasını geciktirmez, indirme sırasında yazı görünmez olmaz. Daha önce indirildiyse
+     kök düzendeki betik onu çizimden önce etkinleştirmiştir (bkz. src/lib/fonts.ts). */
+  useEffect(() => {
+    const root = document.documentElement;
+    if (root.classList.contains('ar-font')) return;
+    if (!document.fonts?.load) { root.classList.add('ar-font'); return; }
+    let live = true;
+    document.fonts.load(`1em ${arabic.style.fontFamily}`, 'بتث').then(
+      (faces) => {
+        if (!live) return;
+        root.classList.add('ar-font');
+        if (faces.length) try { localStorage.setItem(AR_FONT_FLAG, '1'); } catch { /* gizli pencere vb. */ }
+      },
+      // İndirilemediyse de etkinleştir: tarayıcı yeniden dener, olmazsa yedek yazı tipini kullanır
+      () => { if (live) root.classList.add('ar-font'); }
+    );
+    return () => { live = false; };
+  }, []);
 
   /* ---------- Bildirim ---------- */
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -325,6 +350,27 @@ export function AppProvider({ audios, children }: {
   const audioEl = useRef<HTMLAudioElement | null>(null);
   const rateRef = useRef(settings.rate);
   rateRef.current = settings.rate;
+
+  /* Ses eşlemesi sayfaya gömülmez (her sayfada ~160 KB'tı): sürümlü adresten bir kez indirilir.
+     Tarayıcı aynı sürümü önbellekten verir; ses eklenince sürüm, dolayısıyla adres değişir. */
+  const [audios, setAudios] = useState<Record<string, number>>(NO_AUDIO);
+  const [audioReady, setAudioReady] = useState(false);
+  const audiosRef = useRef(NO_AUDIO);
+  const audioLoad = useRef<Promise<Record<string, number>> | null>(null);
+  useEffect(() => {
+    let live = true;
+    const p: Promise<Record<string, number>> = fetch('/api/audio/map?v=' + encodeURIComponent(audioV))
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}));
+    audioLoad.current = p;
+    p.then((m) => {
+      if (!live) return;
+      audiosRef.current = m;
+      setAudios(m);
+      setAudioReady(true);
+    });
+    return () => { live = false; };
+  }, [audioV]);
   const hasAudio = useCallback((text: string) => !!audios[audioKey(text)], [audios]);
   /* Seslendirme: biten ya da yerine yenisi başlayan sesin sözü tamamlanır (art arda okuma için) */
   const ended = useRef<(() => void) | null>(null);
@@ -340,34 +386,47 @@ export function AppProvider({ audios, children }: {
     let finish = () => {};
     const done = new Promise<void>((res) => { finish = () => { if (ended.current === finish) ended.current = null; res(); }; });
     ended.current = finish;
-    // Önce yönetim panelinden yüklenmiş gerçek ses kaydı
-    const rec = audios[audioKey(text)];
-    if (rec) {
+    const play = (rec: number) => {
       const el = new Audio('/api/audio/' + rec);
       audioEl.current = el;
       el.playbackRate = rate;
       el.onended = finish; el.onerror = finish;
       el.play().catch(finish);
+    };
+    const tts = () => {
+      if (!('speechSynthesis' in window)) { toast('Tarayıcın sesli okumayı desteklemiyor.'); finish(); return false; }
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ar-SA';
+        if (voice.current) u.voice = voice.current;
+        // Tarayıcı sesleri normal hızda zaten hızlı: 0.8 temel hız
+        u.rate = 0.8 * rate;
+        u.onend = finish; u.onerror = finish;
+        speechSynthesis.speak(u);
+        // Bazı tarayıcılar bitiş olayını hiç göndermez: metin uzunluğuna göre bir üst süre
+        setTimeout(finish, (2500 + text.length * 160) / rate);
+      } catch { finish(); return false; }
+      if (!voice.current && !warned.current) {
+        warned.current = true;
+        toast('Bu cihazda Arapça ses bulunamadı. Edge tarayıcısı ya da işletim sisteminin Arapça ses paketi en iyi sonucu verir.');
+      }
+      return true;
+    };
+    // Önce yönetim panelinden yüklenmiş gerçek ses kaydı
+    const k = audioKey(text);
+    const rec = audiosRef.current[k];
+    if (rec) { play(rec); return { ok: true, done }; }
+    // Sayfa açılır açılmaz basıldıysa eşleme henüz gelmemiş olabilir: gelince karar verilir
+    const pending = audioLoad.current;
+    if (pending && audiosRef.current === NO_AUDIO) {
+      pending.then((m) => {
+        if (ended.current !== finish) return; // bu arada durduruldu ya da başka ses başladı
+        if (m[k]) play(m[k]); else tts();
+      });
       return { ok: true, done };
     }
-    if (!('speechSynthesis' in window)) { toast('Tarayıcın sesli okumayı desteklemiyor.'); finish(); return { ok: false, done }; }
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      if (voice.current) u.voice = voice.current;
-      // Tarayıcı sesleri normal hızda zaten hızlı: 0.8 temel hız
-      u.rate = 0.8 * rate;
-      u.onend = finish; u.onerror = finish;
-      speechSynthesis.speak(u);
-      // Bazı tarayıcılar bitiş olayını hiç göndermez: metin uzunluğuna göre bir üst süre
-      setTimeout(finish, (2500 + text.length * 160) / rate);
-    } catch { finish(); return { ok: false, done }; }
-    if (!voice.current && !warned.current) {
-      warned.current = true;
-      toast('Bu cihazda Arapça ses bulunamadı. Edge tarayıcısı ya da işletim sisteminin Arapça ses paketi en iyi sonucu verir.');
-    }
-    return { ok: true, done };
-  }, [toast, audios, metric, stopSay]);
+    return { ok: tts(), done };
+  }, [toast, metric, stopSay]);
   const speak = useCallback((text: string, opts: { slow?: boolean } = {}) => say(text, opts).ok, [say]);
   const playUntilEnd = useCallback((text: string, opts: { slow?: boolean } = {}) => say(text, opts).done, [say]);
   // data-say özniteliği taşıyan her düğme (zengin içerikteki tablolar dahil) sesli okur
@@ -384,34 +443,23 @@ export function AppProvider({ audios, children }: {
   const track = useCallback((type: 'view' | 'lesson' | 'activity', data: Record<string, unknown> = {}) => {
     post('/api/events', { type, anonId: anonId(), ...data });
   }, []);
-  const pathname = usePathname();
-  useEffect(() => {
-    // Konu sayfaları TopicView içinde ders kimliğiyle ayrıca sayılır
-    if (!pathname || pathname.startsWith('/admin') || pathname === '/konu') return;
-    track('view', { path: pathname });
-  }, [pathname, track]);
 
-  /* ---------- Şu an sitede: görünür sekme dakikada bir sinyal gönderir (yönetim sayfaları hariç) ---------- */
-  useEffect(() => {
-    if (!pathname || pathname.startsWith('/admin')) return;
-    const ping = () => {
-      if (document.visibilityState !== 'visible') return;
-      post('/api/presence', { anonId: anonId(), path: (location.pathname + location.search).slice(0, 200) });
-    };
-    ping();
-    const t = setInterval(ping, 60_000);
-    document.addEventListener('visibilitychange', ping);
-    return () => { clearInterval(t); document.removeEventListener('visibilitychange', ping); };
-  }, [pathname]);
-
-  const value: Ctx = {
+  /* Değer yalnızca içindekilerden biri değişince yenilenir: bildirim gösterilince ya da sayfa değişince
+     bağlamı kullanan bütün bileşenler (başlık, alt bilgi, sayfa) boşuna yeniden çizilmez */
+  const streak = useMemo(() => streakOf(state.days), [state.days]);
+  const value = useMemo<Ctx>(() => ({
     user, session, hint, refreshSession, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
-    streak: streakOf(state.days), noteStudy, reset, speak, hasAudio, playUntilEnd, stopSay, online, canSpeak, toast, track, metric,
+    streak, noteStudy, reset, speak, hasAudio, audioReady, playUntilEnd, stopSay, online, canSpeak, toast, track, metric,
     mistakes, addMistake, resolveMistake, removeMistake, clearMistakes
-  };
+  }), [
+    user, session, hint, refreshSession, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
+    streak, noteStudy, reset, speak, hasAudio, audioReady, playUntilEnd, stopSay, online, canSpeak, toast, track, metric,
+    mistakes, addMistake, resolveMistake, removeMistake, clearMistakes
+  ]);
 
   return (
     <AppCtx.Provider value={value}>
+      <RouteSignals track={track} />
       {children}
       <div
         id="toast"
@@ -423,6 +471,31 @@ export function AppProvider({ audios, children }: {
       </div>
     </AppCtx.Provider>
   );
+}
+
+/* Sayfa görüntüleme sayacı ve "şu an sitede" sinyali. Adresi bu küçük bileşen dinler:
+   sayfa değişince AppProvider ve onu kullanan her şey yeniden çizilmez. */
+function RouteSignals({ track }: { track: Ctx['track'] }) {
+  const pathname = usePathname();
+  useEffect(() => {
+    // Konu sayfaları TopicView içinde ders kimliğiyle ayrıca sayılır
+    if (!pathname || pathname.startsWith('/admin') || pathname === '/konu') return;
+    track('view', { path: pathname });
+  }, [pathname, track]);
+
+  // Görünür sekme dakikada bir sinyal gönderir (yönetim sayfaları hariç)
+  useEffect(() => {
+    if (!pathname || pathname.startsWith('/admin')) return;
+    const ping = () => {
+      if (document.visibilityState !== 'visible') return;
+      post('/api/presence', { anonId: anonId(), path: (location.pathname + location.search).slice(0, 200) });
+    };
+    ping();
+    const t = setInterval(ping, 60_000);
+    document.addEventListener('visibilitychange', ping);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', ping); };
+  }, [pathname]);
+  return null;
 }
 
 /** Arapça metin: ayarlara göre harekeli/harekesiz */

@@ -10,7 +10,7 @@ type Creds = { pid: string; pkey: string; name: string };
 type Peek = { title: string; phase: string; players: number; joinable: boolean };
 type PlayerState = {
   gone?: boolean; kicked?: boolean;
-  v: number; title: string; phase: 'lobby' | 'question' | 'reveal' | 'board' | 'end'; q: number; total: number; seconds: number; remaining: number;
+  v: number; title: string; round: number; phase: 'lobby' | 'question' | 'reveal' | 'board' | 'end'; q: number; total: number; seconds: number; remaining: number;
   name: string; score: number; streak: number; place: number; players: number;
   question: { prompt: string; promptTl: string; side: 'ar' | 'tr'; options: string[]; correct: number | null } | null;
   answer: { choice: number; ok: boolean | null; points: number | null } | null;
@@ -91,6 +91,8 @@ function Play({ code, creds, onLeave }: { code: string; creds: Creds; onLeave: (
     refresh();
   }
   useEffect(() => { setErr(''); }, [s?.q]);
+  // Yeni turda önceki turun cevabı unutulur
+  useEffect(() => { setSent(null); }, [s?.round]);
 
   if (!s) return <div className="py-24 text-center text-mute" role="status">Bağlanıyor</div>;
   if (s.kicked || s.gone) {
@@ -115,8 +117,8 @@ function Play({ code, creds, onLeave }: { code: string; creds: Creds; onLeave: (
       <Center>
         {head}
         <span className="mt-6 w-16 h-16 rounded-2xl bg-okbg border border-okln text-okt flex items-center justify-center"><Raw html={I.check(30)} /></span>
-        <h1 className="m-0 text-[28px] font-bold">Hazırsın!</h1>
-        <p className="m-0 text-mute">Adın tahtada görünüyor. Öğretmen başlatınca sorular burada çıkacak.</p>
+        <h1 className="m-0 text-[28px] font-bold">{s.round > 1 ? `${s.round}. tur başlıyor` : 'Hazırsın!'}</h1>
+        <p className="m-0 text-mute">{s.round > 1 ? 'Puanlar sıfırlandı, sorular yeniden karıştırıldı. Öğretmen başlatınca sorular burada çıkacak.' : 'Adın tahtada görünüyor. Öğretmen başlatınca sorular burada çıkacak.'}</p>
         <span className="text-sm text-faint">{s.players} kişi katıldı</span>
       </Center>
     );
@@ -196,7 +198,8 @@ function Play({ code, creds, onLeave }: { code: string; creds: Creds; onLeave: (
           {s.podium.map((p, i) => <li key={i} className="flex justify-between px-4 py-3 rounded-xl bg-s4 border border-line3"><span className="font-semibold">{i + 1}. {p.name}</span><b className="tabular-nums">{p.score}</b></li>)}
         </ol>
       )}
-      <Link href="/canli" className="h-12 px-6 rounded-xl bg-acc text-onacc font-bold inline-flex items-center hover:text-onacc">Başka bir yarışmaya katıl</Link>
+      <p className="m-0 text-sm text-faint">Öğretmen yeni bir tur açarsa bu ekran kendiliğinden yenilenir.</p>
+      <Link href="/canli" className="h-12 px-6 rounded-xl border border-line3 bg-s2 text-ink font-semibold inline-flex items-center hover:text-ink hover:border-lineh">Başka bir yarışmaya katıl</Link>
     </Center>
   );
 }

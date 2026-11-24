@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, schema } from '@/db';
-import { clearSessionCache, destroySession, getSessionUser } from '@/lib/auth';
+import { clearSessionCache, destroySession, endOtherSessions, getSessionUser } from '@/lib/auth';
 import { fail, ok, parse } from '@/lib/api';
 import { limitCheck, recordAttempt } from '@/lib/ratelimit';
 
@@ -34,7 +34,9 @@ export async function PATCH(req: Request) {
     set.passwordHash = await bcrypt.hash(newPassword, 12);
   }
   if (Object.keys(set).length) await db.update(schema.users).set(set).where(eq(schema.users.id, user.id));
-  clearSessionCache();
+  // Şifre değiştiyse eski şifreyle açılmış diğer oturumlar kapanır (bu cihaz açık kalır)
+  if (set.passwordHash) await endOtherSessions(user.id);
+  else clearSessionCache();
   return ok();
 }
 

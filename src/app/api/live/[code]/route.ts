@@ -25,7 +25,7 @@ export async function GET(req: Request, { params }: Ctx) {
 const Body = z.discriminatedUnion('action', [
   z.object({ action: z.literal('join'), name: z.string().max(60) }),
   z.object({ action: z.literal('answer'), pid: id, pkey: id, q: z.number().int().min(0).max(100), choice: z.number().int().min(0).max(3) }),
-  z.object({ action: z.enum(['start', 'next', 'skip', 'kick', 'end']), k: id, pid: id.optional() })
+  z.object({ action: z.enum(['start', 'next', 'skip', 'kick', 'end', 'again']), k: id, pid: id.optional() })
 ]);
 
 export async function POST(req: Request, { params }: Ctx) {

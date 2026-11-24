@@ -58,7 +58,8 @@ export async function POST(req: Request) {
   if (words.length < 4) return fail('Yarışma için en az 4 kelime gerekir.');
   // Giriş yapmış öğretmenin yarışma sonuçları geçmişine kaydedilir
   const host = await getSessionUser();
-  const game = createGame(title, buildQuestions(words, Math.min(count, words.length), dir), seconds, host?.id ?? null);
+  const n = Math.min(count, words.length);
+  const game = createGame(title, buildQuestions(words, n, dir), seconds, host?.id ?? null, { words, count: n, dir });
   if (!game) return fail('Şu an çok fazla yarışma var. Biraz sonra tekrar dene.', 503);
   return ok(game);
 }
