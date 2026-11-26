@@ -1,12 +1,13 @@
 /* Yeni dersler (14-17): Evim, Okulda, Yemek ve Alışveriş, Şehirde.
-   Yükleme: npx tsx scripts/add-lessons.ts (var olan dersi günceller, etkinlikleri yeniden yazar).
+   Yükleme: npx tsx scripts/add-lessons.ts (kullanım betiğin başında).
    Biçim yönetim panelindeki ders şemasıyla aynıdır (src/lib/topic-schema.ts). */
 import type { TopicInputT } from '../src/lib/topic-schema';
 
-type T = Omit<TopicInputT, 'published' | 'acts'> & { acts: Omit<TopicInputT['acts'][number], 'id'>[] };
+export type LessonDraft = Omit<TopicInputT, 'published' | 'acts'> & { acts: Omit<TopicInputT['acts'][number], 'id'>[] };
+type T = LessonDraft;
 
-const LISTEN = { type: 'listen' as const, title: 'Dinle ve anlamını seç', desc: 'Kelimeyi dinle, Türkçe anlamını bul. Kulağını Arapçaya alıştır.', glyph: 'اِسْمَعْ', items: null };
-const SPEAK = { type: 'speak' as const, title: 'Telaffuz alıştırması', desc: 'Kelimeyi dinle, sonra sen söyle. Tarayıcı söylediğini kontrol eder.', glyph: 'تَكَلَّمْ', items: null };
+export const LISTEN = { type: 'listen' as const, title: 'Dinle ve anlamını seç', desc: 'Kelimeyi dinle, Türkçe anlamını bul. Kulağını Arapçaya alıştır.', glyph: 'اِسْمَعْ', items: null };
+export const SPEAK = { type: 'speak' as const, title: 'Telaffuz alıştırması', desc: 'Kelimeyi dinle, sonra sen söyle. Tarayıcı söylediğini kontrol eder.', glyph: 'تَكَلَّمْ', items: null };
 
 export const NEW_LESSONS: T[] = [
   /* ---------------------------------------------------------------- 14. Evim */

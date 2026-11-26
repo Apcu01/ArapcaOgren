@@ -1,7 +1,7 @@
 import 'server-only';
 import { randomBytes, randomInt } from 'node:crypto';
 import { saveLiveResult } from './live-history';
-import type { LiveReport } from './live-report';
+import { reviewOf, type LiveReport } from './live-report';
 import { mcQ, pickDir, type Dir, type ListItem } from './study';
 import { shuffle } from './text';
 
@@ -23,6 +23,8 @@ type Game = {
   hostUserId: number | null; firstAt: number; endedAt: number; saved: boolean;
   /** Kaçıncı tur ve yeni turun soruları için kelime havuzu (aynı oyuncularla yeniden oynama) */
   round: number; pool: LivePool | null;
+  /** Yarışma bir dersten açıldıysa dersin kimliği: öğrencinin yanlışları Hatalarım'da o dersin altında toplanır */
+  topicId: string | null;
 };
 export type LivePool = { words: { ar: string; tl: string; tr: string }[]; count: number; dir: Dir };
 
@@ -51,13 +53,13 @@ export function buildQuestions(words: { ar: string; tl: string; tr: string }[], 
   });
 }
 
-export function createGame(title: string, questions: LiveQuestion[], seconds: number, hostUserId: number | null = null, pool: LivePool | null = null) {
+export function createGame(title: string, questions: LiveQuestion[], seconds: number, hostUserId: number | null = null, pool: LivePool | null = null, topicId: string | null = null) {
   sweep();
   if (games.size >= LIVE.maxGames) return null;
   let code = '';
   do code = String(randomInt(100000, 1000000)); while (games.has(code));
   const now = Date.now();
-  const game: Game = { code, hostKey: token(), title, seconds, questions, phase: 'lobby', q: -1, startedAt: 0, endsAt: 0, players: new Map(), kicked: new Set(), v: 1, createdAt: now, touchedAt: now, hostUserId, firstAt: 0, endedAt: 0, saved: false, round: 1, pool };
+  const game: Game = { code, hostKey: token(), title, seconds, questions, phase: 'lobby', q: -1, startedAt: 0, endsAt: 0, players: new Map(), kicked: new Set(), v: 1, createdAt: now, touchedAt: now, hostUserId, firstAt: 0, endedAt: 0, saved: false, round: 1, pool, topicId };
   games.set(code, game);
   return { code, hostKey: game.hostKey };
 }
@@ -222,9 +224,12 @@ export function playerView(code: string, pid: string, pkey: string) {
     name: p.name, score: p.score, streak: p.streak, place, players: x.players.size,
     question: showQ && qq ? { prompt: qq.prompt, promptTl: qq.promptTl, side: qq.side, options: qq.options, correct: x.phase === 'reveal' ? qq.correct : null } : null,
     answer: mine && showQ ? { choice: mine.choice, ok: x.phase === 'reveal' ? mine.ok : null, points: x.phase === 'reveal' ? mine.points : null } : null,
-    podium: x.phase === 'end' ? rank.slice(0, 3).map((r) => ({ name: r.name, score: r.score })) : null
+    podium: x.phase === 'end' ? rank.slice(0, 3).map((r) => ({ name: r.name, score: r.score })) : null,
+    review: x.phase === 'end' ? reviewOf(x, p) : null,
+    topic: x.topicId
   };
 }
+
 
 /** PIN sayfası için: yarışma var mı, katılınabilir mi */
 export function peek(code: string) {

@@ -1,5 +1,33 @@
 /* Canlı yarışma sonuç raporu: tip ve Excel (CSV) dosyası. Tarayıcıda ve sunucuda çalışır */
 
+import type { Question } from './types';
+
+/** Dersten açılmayan yarışmalardaki (liste, hazır liste) yanlışlar Hatalarım'da bu adla toplanır */
+export const LIVE_TOPIC = 'canli';
+
+/** Yarışma bitince öğrencinin telefonuna giden yanlış ya da boş bıraktığı soru (choice: null = boş) */
+export type ReviewItem = { prompt: string; promptTl: string; side: 'ar' | 'tr'; options: string[]; correct: number; choice: number | null };
+
+/** Bitişte öğrencinin yanlış yaptığı ve boş bıraktığı sorular; yalnızca kendi telefonuna gider (Hatalarım'a ekleme ve yeniden çözme).
+ *  q: son sorulan sorunun sırası; yarışma erken bitirildiyse yalnızca sorulanlar gelir (sonuç raporundaki gibi). */
+export function reviewOf(
+  x: { questions: Omit<ReviewItem, 'choice'>[]; q: number },
+  p: { answers: Map<number, { choice: number; ok: boolean }> }
+): ReviewItem[] {
+  return x.questions.slice(0, Math.max(0, x.q + 1)).flatMap((q, i) => {
+    const a = p.answers.get(i);
+    return a?.ok ? [] : [{ prompt: q.prompt, promptTl: q.promptTl, side: q.side, options: q.options, correct: q.correct, choice: a ? a.choice : null }];
+  });
+}
+
+/** Yarışma sorusu, Hatalarım'daki çoktan seçmeli soru biçimine çevrilir (Türkçesi soruluyorsa seçenekler Arapça) */
+export function reviewQuestion(r: ReviewItem): Question {
+  const a = r.options[r.correct];
+  return r.side === 'ar'
+    ? { t: 'mc', q: 'Bu kelimenin anlamı nedir?', ar: r.prompt, ...(r.promptTl ? { tl: r.promptTl } : {}), options: r.options, a }
+    : { t: 'mc', q: `"${r.prompt}" kelimesinin Arapçası hangisi?`, options: r.options, a };
+}
+
 export type LiveAnswer = { choice: number; ok: boolean; points: number; ms: number };
 export type LiveReport = {
   title: string; code: string; seconds: number; startedAt: number; endedAt: number;

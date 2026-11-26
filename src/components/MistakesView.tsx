@@ -8,6 +8,7 @@ import { esc, type ActView, type TextFns } from '@/lib/text';
 import { clockSVG } from '@/lib/clock';
 import { RULE_TR } from '@/lib/endless';
 import { DRILLS } from '@/lib/drills';
+import { LIVE_TOPIC } from '@/lib/live-report';
 import { useApp } from './AppProvider';
 import { I, Raw } from './icons';
 import Player, { usePreloadPlayer } from './LazyPlayer';
@@ -28,8 +29,8 @@ export default function MistakesView({ topics }: { topics: { id: string; name: s
   usePreloadPlayer();
   const { tx, mistakes, removeMistake, clearMistakes, user } = useApp();
   const [playing, setPlaying] = useState<{ act: ActView; nonce: number } | null>(null);
-  const nameOf = (id: string) => (id === 'alfabe' ? 'Alfabe' : DRILLS[id]?.name || topics.find((t) => t.id === id)?.name || id);
-  const orderOf = (id: string) => (id === 'alfabe' ? 0 : DRILLS[id] ? 900 : topics.find((t) => t.id === id)?.n ?? 999);
+  const nameOf = (id: string) => (id === 'alfabe' ? 'Alfabe' : id === LIVE_TOPIC ? 'Canlı yarışma' : DRILLS[id]?.name || topics.find((t) => t.id === id)?.name || id);
+  const orderOf = (id: string) => (id === 'alfabe' ? 0 : DRILLS[id] ? 900 : id === LIVE_TOPIC ? 950 : topics.find((t) => t.id === id)?.n ?? 999);
   // Gruplama: derse göre ya da konuya (kurala) göre; seçim bu tarayıcıda hatırlanır
   const [view, setView] = useState<'topic' | 'rule'>('topic');
   useEffect(() => { try { if (localStorage.getItem(VIEW_KEY) === 'rule') setView('rule'); } catch { /* yok */ } }, []);

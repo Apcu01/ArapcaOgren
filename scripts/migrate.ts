@@ -10,6 +10,7 @@
 import { config } from 'dotenv';
 import mysql from 'mysql2/promise';
 import { DEFAULT_READINGS } from '../src/lib/readings';
+import { DEFAULT_NEWS } from '../src/lib/news-shared';
 import { cleanText } from '../src/lib/text';
 
 config({ path: '.env.local', quiet: true });
@@ -30,7 +31,8 @@ const TABLES: Record<string, string> = {
   readings: "CREATE TABLE IF NOT EXISTS `readings` (\n  `slug` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `position` int NOT NULL DEFAULT '0',\n  `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `ar` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `level` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Başlangıç',\n  `topic` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `description` varchar(400) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `sentences` json NOT NULL,\n  `questions` json NOT NULL,\n  `published` tinyint(1) NOT NULL DEFAULT '0',\n  `ai` tinyint(1) NOT NULL DEFAULT '0',\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`slug`),\n  KEY `readings_pos_idx` (`published`,`position`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   class_posts: "CREATE TABLE IF NOT EXISTS `class_posts` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `class_id` int NOT NULL,\n  `body` varchar(1000) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `class_posts_class_idx` (`class_id`,`created_at`),\n  CONSTRAINT `class_posts_class_fk` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   push_subscriptions: "CREATE TABLE IF NOT EXISTS `push_subscriptions` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `user_id` int NOT NULL,\n  `endpoint` varchar(512) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `p256dh` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `auth` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `kinds` json NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `push_subscriptions_endpoint_uq` (`endpoint`),\n  KEY `push_subscriptions_user_idx` (`user_id`),\n  CONSTRAINT `push_subscriptions_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-  push_sends: "CREATE TABLE IF NOT EXISTS `push_sends` (\n  `user_id` int NOT NULL,\n  `kind` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `day` char(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`user_id`,`kind`,`day`),\n  CONSTRAINT `push_sends_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+  push_sends: "CREATE TABLE IF NOT EXISTS `push_sends` (\n  `user_id` int NOT NULL,\n  `kind` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `day` char(10) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`user_id`,`kind`,`day`),\n  CONSTRAINT `push_sends_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+  news: "CREATE TABLE IF NOT EXISTS `news` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `body` varchar(2000) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `link` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `published` tinyint(1) NOT NULL DEFAULT '1',\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `news_pub_idx` (`published`,`created_at`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
 };
 // Sınırsız pratik etkinliğinin başlık ve açıklaması
 const ENDLESS: Record<string, [string, string]> = {
@@ -93,6 +95,12 @@ async function main() {
         [r.slug, i, r.title, r.ar, r.level, r.topic, r.desc, JSON.stringify(r.sentences), JSON.stringify(r.questions)]);
     }
     console.log('+ ' + DEFAULT_READINGS.length + ' okuma metni');
+  }
+  // Yenilikler: tablo boşsa ilk yazılar eklenir
+  const [[nn]] = await conn.query<mysql.RowDataPacket[]>('SELECT COUNT(*) n FROM news');
+  if (!Number(nn.n)) {
+    for (const x of DEFAULT_NEWS) await conn.query('INSERT INTO news (title, body, link, published) VALUES (?, ?, ?, 1)', [x.title, x.body, x.link]);
+    console.log('+ ' + DEFAULT_NEWS.length + ' yenilik yazısı');
   }
   // Sınırsız pratik: kelimesi olan her derse (saatlerin kendi sınırsız pratiği var) bir kez eklenir, konu testinden önceye
   const [tops] = await conn.query<mysql.RowDataPacket[]>(

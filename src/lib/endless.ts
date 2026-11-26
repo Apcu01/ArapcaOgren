@@ -5,6 +5,7 @@
 import { shuffle } from './text';
 import type { Word } from './types';
 import { DRILLS, numberTexts, pairTexts, rakamQ, SOUND_GROUPS, soundTexts } from './drills';
+import { loanTexts } from './loanwords';
 
 export type EQ = {
   /** Aynı sorunun art arda gelmemesi için anahtar */
@@ -47,7 +48,8 @@ export const KIND_TR: Record<string, string> = {
   'iyelik-donustur': 'Ek değiştirme', 'iyelik-cumle': 'İyelikli cümleler', 'iyelik-dizme': 'Cümle kurma', 'iyelik-inde': '"Bende var" kalıbı',
   'kelime-anlam': 'Kelimenin anlamı', 'kelime-ar': 'Kelimenin Arapçası', 'kelime-dinle': 'Kelimeyi dinleme',
   'rakam-oku': 'Rakam okuma', 'rakam-yaz': 'Rakamla yazma', 'rakam-dinle': 'Sayı dinleme', 'rakam-telefon': 'Telefon numarası', 'rakam-fiyat': 'Fiyat dinleme',
-  'zit-ar': 'Zıt anlamlısını bulma', 'zit-tr': 'Zıt anlamlı (Türkçeden)', 'es-ar': 'Eş anlamlısını bulma', 'es-tr': 'Eş anlamlı (Türkçeden)'
+  'zit-ar': 'Zıt anlamlısını bulma', 'zit-tr': 'Zıt anlamlı (Türkçeden)', 'es-ar': 'Eş anlamlısını bulma', 'es-tr': 'Eş anlamlı (Türkçeden)',
+  'tk-ayni': 'Anlamı aynı mı?', 'tk-anlam': 'Arapçadaki anlamı', 'tk-ar': 'Arapça aslı', 'tk-dinle': 'Dinleyip bulma'
 };
 /** Oturum özeti: benzer seslerde harf grubuna göre (ح ve ه), diğerlerinde soru türüne göre */
 export const kindLabel = (q: Pick<EQ, 'kind' | 'label' | 'g'>) => (q.g?.startsWith('ses-') ? q.label.replace(/^Benzer sesler: /, '') : KIND_TR[q.kind] || q.label);
@@ -57,7 +59,7 @@ export const RULE_TR: Record<string, string> = {
   zamir: 'Zamirler', yuklem: 'Zamir ve yüklem uyumu', isaret: 'İşaret zamiri ve cinsiyet', cinsiyet: 'Sıfat ve cinsiyet uyumu',
   dizme: 'Cümle kurma ve kelime sırası', fiil: 'Zamir ve fiil uyumu', cogul: 'Tekil, ikil ve çoğul', iyelik: 'İyelik ekleri',
   ta: 'ة ve ت değişimi', inde: 'Sahiplik: عِنْدَ + ek', kelime: 'Kelime anlamları', saat: 'Saatler',
-  rakam: 'Arapça rakamlar', sayi: 'Sayıları dinleme', zit: 'Zıt anlamlılar', es: 'Eş anlamlılar',
+  rakam: 'Arapça rakamlar', sayi: 'Sayıları dinleme', zit: 'Zıt anlamlılar', es: 'Eş anlamlılar', turkce: 'Türkçedeki Arapça kelimeler',
   ...Object.fromEntries(SOUND_GROUPS.map((gr) => ['ses-' + gr.id, 'Benzer sesler: ' + gr.title]))
 };
 
@@ -566,7 +568,7 @@ export function endlessTexts(): string[] {
       for (const a of ADJ.filter((x) => x.k.includes(n.c))) out.add(w + ' ' + adjF(a, n.f));
     }
   }
-  for (const t of [...soundTexts(), ...numberTexts(), ...pairTexts()]) out.add(t);
+  for (const t of [...soundTexts(), ...numberTexts(), ...pairTexts(), ...loanTexts()]) out.add(t);
   for (const n of PNOUNS.filter((x) => x.own)) {
     for (const x of IND) {
       out.add(x + ' ' + ind(n.s));

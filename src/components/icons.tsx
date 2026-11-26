@@ -62,7 +62,8 @@ export const I = {
   download: (s?: number) => svg('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', s || 18),
   wifiOff: (s?: number) => svg('<path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-2-1.5M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.7 5M12 20h.01"/>', s || 18),
   slow: (s?: number) => svg('<circle cx="12" cy="12" r="9"/><path d="M12 12 8.5 8.5M12 7v1M7 12h1M16 12h1"/>', s || 18),
-  heart: (s?: number) => svg('<path d="M12 20s-8-4.6-8-10.2A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 2.8C20 15.4 12 20 12 20z" fill="currentColor"/>', s || 18)
+  heart: (s?: number) => svg('<path d="M12 20s-8-4.6-8-10.2A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 2.8C20 15.4 12 20 12 20z" fill="currentColor"/>', s || 18),
+  sparkle: (s?: number) => svg('<path d="M11 3c.6 3.6 2.4 5.4 6 6-3.6.6-5.4 2.4-6 6-.6-3.6-2.4-5.4-6-6 3.6-.6 5.4-2.4 6-6z"/><path d="M18.5 14c.3 1.6 1 2.3 2.5 2.5-1.5.3-2.2 1-2.5 2.5-.3-1.5-1-2.2-2.5-2.5 1.5-.2 2.2-.9 2.5-2.5z"/>', s || 20)
 };
 
 /** Yerleşimi etkilemeyen (display: contents) ham HTML sarmalayıcı */

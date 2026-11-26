@@ -11,8 +11,36 @@ import Logo from './Logo';
 import { clearPageCache } from './ServiceWorker';
 import { OPEN_OFFLINE } from './Offline';
 import { InstallButton } from './InstallApp';
+import { NEWS_SEEN_EVENT, NEWS_SEEN_KEY } from '@/lib/news-shared';
 
 export const SITE = 'ArapcaOgren';
+
+/**
+ * Yenilikler noktası: en yeni yazı bu tarayıcıda görülmediyse true.
+ * Siteye ilk kez gelen (ilerlemesi olmayan) ziyaretçi için o ana kadarki yazılar "görüldü" sayılır: nokta yalnızca sonradan eklenenlerde çıkar.
+ * Kaydı olmayan ama siteyi zaten kullanan ziyaretçi (Yenilikler sayfası açılmadan önce gelmiş olanlar) noktayı görür.
+ */
+function useNewsDot(latest: number) {
+  const { ready, session, state } = useApp();
+  // null: henüz okunmadı, -1: bu tarayıcıda hiç kayıt yok
+  const [seen, setSeen] = useState<number | null>(null);
+  useEffect(() => {
+    const read = () => { try { const v = localStorage.getItem(NEWS_SEEN_KEY); setSeen(v == null ? -1 : Number(v) || 0); } catch { setSeen(latest); } };
+    read();
+    window.addEventListener(NEWS_SEEN_EVENT, read);
+    window.addEventListener('storage', read);
+    return () => { window.removeEventListener(NEWS_SEEN_EVENT, read); window.removeEventListener('storage', read); };
+  }, [latest]);
+  const loaded = ready && session !== 'loading';
+  const fresh = !state.days.length && !Object.keys(state.progress).length;
+  useEffect(() => {
+    if (seen !== -1 || !loaded || !latest || !fresh) return;
+    try { localStorage.setItem(NEWS_SEEN_KEY, String(latest)); } catch { /* depolama kapalı */ }
+    setSeen(latest);
+  }, [seen, loaded, latest, fresh]);
+  if (!latest || seen === null) return false;
+  return seen === -1 ? loaded && !fresh : latest > seen;
+}
 
 const NAV: [string, string, string][] = [
   ['/', 'Kategoriler', 'home'],
@@ -28,7 +56,7 @@ const NAV: [string, string, string][] = [
 
 function activeKey(path: string) {
   if (path.startsWith('/ilerleme')) return 'progress';
-  if (path.startsWith('/sozluk') || path.startsWith('/zit-es-anlamlilar')) return 'dict';
+  if (path.startsWith('/sozluk') || path.startsWith('/zit-es-anlamlilar') || path.startsWith('/turkcedeki-arapca')) return 'dict';
   if (path.startsWith('/kelime-bul')) return 'find';
   if (path.startsWith('/okuma')) return 'read';
   if (path.startsWith('/listelerim')) return 'lists';
@@ -39,11 +67,12 @@ function activeKey(path: string) {
   return '';
 }
 
-export default function Header() {
+export default function Header({ news = 0 }: { news?: number }) {
   const { streak, settings, setSetting, user, mistakes, refreshSession, session, hint } = useApp();
   const path = usePathname() || '/';
   const router = useRouter();
   const active = activeKey(path);
+  const newsDot = useNewsDot(news) && !path.startsWith('/yenilikler');
   const [open, setOpen] = useState<'settings' | 'account' | 'menu' | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
 
@@ -91,6 +120,12 @@ export default function Header() {
           <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-pill border border-track text-sm text-acct font-semibold" title="Art arda çalıştığın gün sayısı">
             <Raw html={I.flame()} /> {streak}<span className="hidden 2xl:inline"> gün</span>
           </div>
+          {/* Telefonda yer dar: Yenilikler menünün içinde */}
+          <Link href="/yenilikler" aria-label={newsDot ? 'Yenilikler: yeni duyuru var' : 'Yenilikler'} title="Yenilikler" aria-current={path.startsWith('/yenilikler') ? 'page' : undefined}
+            className="hidden sm:flex relative w-11 h-11 rounded-full bg-chip border border-line3 text-ink items-center justify-center hover:text-ink hover:border-lineh">
+            <Raw html={I.sparkle(19)} />
+            {newsDot && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-acc border-2 border-head" aria-hidden="true" />}
+          </Link>
           <button
             type="button"
             aria-label="Görünüm ayarları"
@@ -125,7 +160,7 @@ export default function Header() {
             className="xl:hidden relative w-11 h-11 rounded-full bg-chip border border-line3 text-ink flex items-center justify-center hover:border-lineh"
           >
             <Raw html={open === 'menu' ? I.x(18) : I.menu(20)} />
-            {open !== 'menu' && mistakes.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-bad border-2 border-head" aria-hidden="true" />}
+            {open !== 'menu' && (mistakes.length > 0 || newsDot) && <span className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-head ${mistakes.length > 0 ? 'bg-bad' : 'bg-acc sm:hidden'}`} aria-hidden="true" />}
           </button>
 
           {open === 'menu' && (
@@ -142,6 +177,10 @@ export default function Header() {
               <div className="mt-1 pt-1 border-t border-line grid grid-cols-2 gap-1">
                 <Link href="/siniflar" className="flex items-center gap-2 px-4 h-11 rounded-xl text-[15px] font-semibold text-soft hover:text-ink hover:bg-s5"><Raw html={I.users(16)} /> Sınıflar</Link>
                 <Link href="/lig" className="flex items-center gap-2 px-4 h-11 rounded-xl text-[15px] font-semibold text-soft hover:text-ink hover:bg-s5"><Raw html={I.trophy(16)} /> Haftalık lig</Link>
+                <Link href="/yenilikler" className="col-span-2 flex items-center gap-2 px-4 h-11 rounded-xl text-[15px] font-semibold text-soft hover:text-ink hover:bg-s5">
+                  <Raw html={I.sparkle(16)} /> Yenilikler
+                  {newsDot && <span className="ml-auto px-2 h-[22px] rounded-full bg-chip border border-chipln text-acct text-[11px] font-bold inline-flex items-center">Yeni</span>}
+                </Link>
               </div>
               <div className="mt-1 px-4 h-12 border-t border-line flex items-center gap-2 text-sm text-acct font-semibold">
                 <Raw html={I.flame()} /> {streak} gün seri

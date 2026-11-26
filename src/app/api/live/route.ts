@@ -59,7 +59,8 @@ export async function POST(req: Request) {
   // Giriş yapmış öğretmenin yarışma sonuçları geçmişine kaydedilir
   const host = await getSessionUser();
   const n = Math.min(count, words.length);
-  const game = createGame(title, buildQuestions(words, n, dir), seconds, host?.id ?? null, { words, count: n, dir });
+  // Dersten açılan yarışmada öğrencinin yanlışları Hatalarım'da o dersin altında toplanır
+  const game = createGame(title, buildQuestions(words, n, dir), seconds, host?.id ?? null, { words, count: n, dir }, source.type === 'topic' ? source.id : null);
   if (!game) return fail('Şu an çok fazla yarışma var. Biraz sonra tekrar dene.', 503);
   return ok(game);
 }

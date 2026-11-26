@@ -65,6 +65,8 @@ type Ctx = {
   metric: (m: Metric, n?: number) => void;
   mistakes: MistakeItem[];
   addMistake: (topicId: string, q: Question) => void;
+  /** Birden çok hatayı birlikte ekler (canlı yarışmanın sonu); üyede tek istekle gönderilir */
+  addMistakes: (topicId: string, qs: Question[]) => void;
   resolveMistake: (topicId: string, q: Question) => void;
   removeMistake: (mkey: string) => void;
   clearMistakes: () => void;
@@ -183,6 +185,22 @@ export function AppProvider({ audioV, children }: {
       return next;
     });
     if (user) send('/api/mistakes', { action: 'add', mkey, topicId: tid, question: clean }, user.id);
+  }, [user]);
+  const addMistakes = useCallback((topicId: string, qs: Question[]) => {
+    if (!qs.length) return;
+    const items = qs.map((question) => ({ mkey: mistakeKey(topicId, question), topicId, question }));
+    const at = Date.now();
+    setMistakes((prev) => {
+      let next = prev;
+      for (const it of items) {
+        const old = next.find((m) => m.mkey === it.mkey);
+        next = [{ ...it, count: (old?.count || 0) + 1, at }, ...next.filter((m) => m.mkey !== it.mkey)];
+      }
+      next = next.slice(0, MAX_LOCAL_MISTAKES);
+      if (!user) saveLocalMistakes(next);
+      return next;
+    });
+    if (user) send('/api/mistakes', { action: 'merge', items }, user.id);
   }, [user]);
   const removeMistake = useCallback((mkey: string) => {
     if (!mistakesRef.current.some((m) => m.mkey === mkey)) return;
@@ -450,11 +468,11 @@ export function AppProvider({ audioV, children }: {
   const value = useMemo<Ctx>(() => ({
     user, session, hint, refreshSession, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
     streak, noteStudy, reset, speak, hasAudio, audioReady, playUntilEnd, stopSay, online, canSpeak, toast, track, metric,
-    mistakes, addMistake, resolveMistake, removeMistake, clearMistakes
+    mistakes, addMistake, addMistakes, resolveMistake, removeMistake, clearMistakes
   }), [
     user, session, hint, refreshSession, settings, setSetting, tx, state, ready, setLesson, setAct, actState, topicStats, setLast,
     streak, noteStudy, reset, speak, hasAudio, audioReady, playUntilEnd, stopSay, online, canSpeak, toast, track, metric,
-    mistakes, addMistake, resolveMistake, removeMistake, clearMistakes
+    mistakes, addMistake, addMistakes, resolveMistake, removeMistake, clearMistakes
   ]);
 
   return (

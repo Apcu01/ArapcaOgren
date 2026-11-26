@@ -2,6 +2,7 @@
    Sınırsız pratikteki gibi kodla üretilir; dinleme sorularındaki her ifadenin sesi kayıtlıdır (scripts/audio-texts.ts). */
 import { shuffle } from './text';
 import type { EQ } from './endless';
+import { loanQ } from './loanwords';
 
 const pick = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)];
 const chance = (p: number) => Math.random() < p;
@@ -113,6 +114,10 @@ function digitDistractors(s: string): string[] {
     const swap = chance(0.7) && LOOK[c] ? LOOK[c] : String((+c + 1 + Math.floor(Math.random() * 8)) % 10);
     const v = s.slice(0, i) + swap + s.slice(i + 1);
     if (v !== s && v[0] !== '0') out.add(v);
+  }
+  // Rakamları aynı sayılarda (55, 777) yukarıdakiler çoğu zaman tek seçenek bulur: komşu sayılarla tamamlanır
+  for (let d = 1; out.size < 3 && d < 30; d++) {
+    for (const v of [String(+s + d), String(+s - d)]) if (v.length === s.length && v[0] !== '0') out.add(v);
   }
   return shuffle([...out]).slice(0, 3);
 }
@@ -231,6 +236,7 @@ export function soundTexts(): string[] {
 export const DRILLS: Record<string, { name: string; gen: () => EQ }> = {
   sesler: { name: 'Benzer sesler', gen: sesQ },
   rakamlar: { name: 'Rakamlar ve sayılar', gen: rakamQ },
-  zitlar: { name: 'Zıt ve eş anlamlılar', gen: () => pairQ(chance(0.6) ? 'zit' : 'es') }
+  zitlar: { name: 'Zıt ve eş anlamlılar', gen: () => pairQ(chance(0.6) ? 'zit' : 'es') },
+  turkce: { name: 'Türkçedeki Arapça kelimeler', gen: loanQ }
 };
 export { rakamQ };

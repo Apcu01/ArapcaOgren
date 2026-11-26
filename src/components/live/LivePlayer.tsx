@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { I, Raw } from '../icons';
 import { OPTS, OptText, playerKeyOf, post, Prompt, save, Shape, store, useCountdown, usePoll } from './shared';
+import LiveReview from './LiveReview';
+import type { ReviewItem } from '@/lib/live-report';
 
 type Creds = { pid: string; pkey: string; name: string };
 type Peek = { title: string; phase: string; players: number; joinable: boolean };
@@ -15,6 +17,9 @@ type PlayerState = {
   question: { prompt: string; promptTl: string; side: 'ar' | 'tr'; options: string[]; correct: number | null } | null;
   answer: { choice: number; ok: boolean | null; points: number | null } | null;
   podium: { name: string; score: number }[] | null;
+  /** Bitişte yalnızca bu öğrencinin yanlışları ve yarışmanın açıldığı ders */
+  review?: ReviewItem[] | null;
+  topic?: string | null;
 };
 
 export default function LivePlayer({ code }: { code: string }) {
@@ -198,6 +203,7 @@ function Play({ code, creds, onLeave }: { code: string; creds: Creds; onLeave: (
           {s.podium.map((p, i) => <li key={i} className="flex justify-between px-4 py-3 rounded-xl bg-s4 border border-line3"><span className="font-semibold">{i + 1}. {p.name}</span><b className="tabular-nums">{p.score}</b></li>)}
         </ol>
       )}
+      {s.review && <LiveReview key={s.round} review={s.review} topic={s.topic ?? null} title={s.title} />}
       <p className="m-0 text-sm text-faint">Öğretmen yeni bir tur açarsa bu ekran kendiliğinden yenilenir.</p>
       <Link href="/canli" className="h-12 px-6 rounded-xl border border-line3 bg-s2 text-ink font-semibold inline-flex items-center hover:text-ink hover:border-lineh">Başka bir yarışmaya katıl</Link>
     </Center>

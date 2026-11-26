@@ -14,6 +14,7 @@ const ITEMS: [string, string, keyof typeof I][] = [
   ['/admin/sesler', 'Sesler', 'speaker'],
   ['/admin/kelime-aramalari', 'Kelime aramaları', 'search'],
   ['/admin/listeler', 'Kelime listeleri', 'list'],
+  ['/admin/yenilikler', 'Yenilikler', 'sparkle'],
   ['/admin/bildirimler', 'Bildirimler', 'flag']
 ];
 

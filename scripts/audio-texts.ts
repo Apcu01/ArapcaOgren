@@ -5,7 +5,7 @@ import { timeAr } from '../src/lib/clock';
 import { endlessTexts } from '../src/lib/endless';
 import { bareWord, sentenceAr, type Sentence } from '../src/lib/readings';
 import { audioKey, isAr } from '../src/lib/text';
-import type { Item, Section, Word } from '../src/lib/types';
+import type { Item, LookupResult, Section, Word } from '../src/lib/types';
 
 export type AudioText = { key: string; text: string; group: string };
 
@@ -52,5 +52,14 @@ export async function collectTexts(conn: mysql.Connection): Promise<AudioText[]>
   // Yerleşik sözlük: kelime sayfaları, Kelime bul ve kelime listelerinde okunur (fiillerin şimdiki zaman hâli dahil)
   const [lex] = await conn.query<mysql.RowDataPacket[]>('SELECT ar, mu_ar FROM lexicon ORDER BY id');
   for (const r of lex) { add('Sözlük', r.ar); add('Sözlük', r.mu_ar); }
+  // Kullanıcıların eklediği kelimeler: kelime listelerinde (paylaşılan liste sayfası dahil) ve
+  // Kelime bul sonuçlarında (yapay zekâ önbelleği: kelime ve örnek cümlesi) okunur
+  const [items] = await conn.query<mysql.RowDataPacket[]>('SELECT ar FROM word_list_items ORDER BY id');
+  for (const r of items) add('Kelime listeleri', r.ar);
+  const [looks] = await conn.query<mysql.RowDataPacket[]>('SELECT result FROM lookups ORDER BY id');
+  for (const r of looks) {
+    const res = (typeof r.result === 'string' ? JSON.parse(r.result) : r.result) as LookupResult | null;
+    for (const c of res?.results || []) { add('Kelime bul', c.ar); add('Kelime bul', c.example?.ar); }
+  }
   return [...out.values()];
 }

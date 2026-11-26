@@ -366,3 +366,14 @@ export const pushSends = mysqlTable('push_sends', {
   day: char('day', { length: 10 }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow()
 }, (t) => [primaryKey({ columns: [t.userId, t.kind, t.day] })]);
+
+// Yenilikler: sitedeki güncellemelerin kısa duyuruları; yönetim panelinden yazılır, /yenilikler sayfasında görünür
+export const news = mysqlTable('news', {
+  id: int('id').autoincrement().primaryKey(),
+  title: varchar('title', { length: 120 }).notNull(),
+  body: varchar('body', { length: 2000 }).notNull().default(''),
+  // Site içi bağlantı (ör. /okuma); yazının altında düğme olarak görünür
+  link: varchar('link', { length: 200 }),
+  published: boolean('published').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (t) => [index('news_pub_idx').on(t.published, t.createdAt)]);

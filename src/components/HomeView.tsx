@@ -133,6 +133,26 @@ export default function HomeView({ topics }: { topics: TopicSummary[] }) {
         </div>
       </section>
 
+      {/* Yeni başlayana "bunları zaten biliyorum" hissi: Türkçedeki Arapça kelimeler */}
+      <section aria-labelledby="turkcedeki-arapca" className="p-6 sm:p-8 rounded-[24px] bg-s4 border border-line3 flex flex-wrap items-center gap-6 justify-between">
+        <div className="flex-[1_1_380px] flex flex-col gap-2.5">
+          <span className="text-[13px] font-semibold tracking-[.12em] uppercase text-lab">Bunları zaten biliyorsun</span>
+          <h2 id="turkcedeki-arapca" className="m-0 text-[26px] sm:text-[30px] font-bold tracking-tight leading-tight">Türkçedeki Arapça kelimeler</h2>
+          <Raw as="p" className="m-0 text-mute leading-relaxed" html={tx.text('Kitap, saat, hayat, dünya: Türkçede her gün kullandığın yüzü aşkın kelimenin Arapça aslını dinle. Anlamı değişenlere dikkat: Arapçada {{مَدْرَسَة}} her türlü okul, {{صَدِيق}} arkadaş demek.')} />
+          <Link href="/turkcedeki-arapca" className="self-start mt-1 h-12 px-5 rounded-xl bg-acc text-onacc font-bold inline-flex items-center gap-2 hover:text-onacc">Kelimelere göz at <Raw html={I.arrow()} /></Link>
+        </div>
+        <ul className="m-0 p-0 list-none grid grid-cols-2 gap-2 flex-[0_1_320px]" aria-label="Örnek kelimeler">
+          {([['كِتَاب', 'kitap'], ['سَاعَة', 'saat'], ['حَيَاة', 'hayat'], ['دُنْيَا', 'dünya']] as const).map(([a, t]) => (
+            <li key={a}>
+              <button type="button" data-say={a} aria-label={`${t}: dinle`} className="cat w-full px-3 py-2.5 rounded-2xl bg-s3 border border-line2 flex flex-col items-center gap-0.5 text-ink">
+                <Raw html={tx.ar(a, 'text-[26px] leading-tight')} />
+                <span className="text-sm text-mute2">{t}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section aria-labelledby="ek-alistirmalar" className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <h2 id="ek-alistirmalar" className="m-0 text-[28px] font-bold tracking-tight">Ek alıştırmalar</h2>
